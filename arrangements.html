@@ -1,0 +1,54 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    html, body { margin:0; height:100%; background:#000; overflow:hidden; }
+    .wrap { height:100%; display:grid; grid-template-columns: 1fr 1.6fr; gap:1.5vw; padding:1.5vw; box-sizing:border-box; }
+    .pane { display:flex; align-items:center; justify-content:center; overflow:hidden; border-radius:16px; }
+    img { max-width:100%; max-height:100%; object-fit:contain; display:block; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="pane"><img id="poster" alt=""></div>
+    <div class="pane"><img id="land" alt=""></div>
+  </div>
+
+<script>
+(async () => {
+  const MANIFEST = "./assets/arrangements.json";
+  const posterEl = document.getElementById("poster");
+  const landEl   = document.getElementById("land");
+
+  let items = [];
+  let idx = 0;
+  let version = "";
+
+  async function load() {
+    const res = await fetch(MANIFEST, { cache: "no-store" });
+    const data = await res.json();
+    version = data.updated ? ("?v=" + encodeURIComponent(data.updated)) : "";
+    items = data.arrangements || [];
+    idx = 0;
+  }
+
+  function show() {
+    if (!items.length) return;
+    const it = items[idx];
+    posterEl.style.display = it.poster ? "block" : "none";
+    landEl.style.display   = it.landscape ? "block" : "none";
+    if (it.poster) posterEl.src = it.poster + version;
+    if (it.landscape) landEl.src = it.landscape + version;
+  }
+
+  await load();
+  show();
+
+  setInterval(() => { if (items.length) { idx = (idx + 1) % items.length; show(); } }, 12000);
+  setInterval(async () => { try { await load(); show(); } catch(e) {} }, 5 * 60 * 1000);
+})();
+</script>
+</body>
+</html>
