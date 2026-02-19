@@ -1,0 +1,115 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Landscape – Films + Arrangements</title>
+  <style>
+    html, body { margin:0; height:100%; background:#000; overflow:hidden; }
+    .stage { position:relative; width:100%; height:100%; }
+    .layer {
+      position:absolute; inset:0;
+      width:100%; height:100%;
+      object-fit:contain;
+      opacity:0;
+      transition: opacity 900ms ease-in-out;
+      will-change: opacity;
+    }
+    .layer.show { opacity:1; }
+
+    #empty {
+      position:fixed; inset:0;
+      display:none;
+      align-items:center; justify-content:center;
+      color:#fff;
+      font: 28px/1.2 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background:#000;
+      text-align:center;
+      padding:40px;
+    }
+  </style>
+</head>
+<body>
+  <div id="empty">No landscape posters available right now.</div>
+
+  <div class="stage">
+    <img id="a" class="layer show" alt="">
+    <img id="b" class="layer" alt="">
+  </div>
+
+  <script>
+    (async () => {
+      const FILMS_MANIFEST = "./assets/films.json";
+      const ARR_MANIFEST   = "./assets/arrangements.json";
+      const FIELD = "landscape";    // landscape only
+      const SECONDS = 12;
+
+      let urls = [];
+      let i = 0;
+      let frontIsA = true;
+      let version = "";
+
+      const emptyEl = document.getElementById("empty");
+
+      async function fetchJson(url) {
+        const r = await fetch(url, { cache: "no-store" });
+        return await r.json();
+      }
+
+      async function load() {
+        const [filmsData, arrData] = await Promise.all([
+          fetchJson(FILMS_MANIFEST),
+          fetchJson(ARR_MANIFEST)
+        ]);
+
+        const u1 = filmsData.updated || "";
+        const u2 = arrData.updated || "";
+        version = (u1 || u2) ? ("?v=" + encodeURIComponent(u1 + "_" + u2)) : "";
+
+        const films = (filmsData.films || []).map(x => x?.[FIELD]).filter(Boolean);
+        const arrs  = (arrData.arrangements || []).map(x => x?.[FIELD]).filter(Boolean);
+
+        urls = films.concat(arrs); // films first, then arrangements
+        i = 0;
+
+        emptyEl.style.display = urls.length ? "none" : "flex";
+      }
+
+      function swapTo(url) {
+        const A = document.getElementById("a");
+        const B = document.getElementById("b");
+        const front = frontIsA ? A : B;
+        const back  = frontIsA ? B : A;
+
+        back.src = url + version;
+        back.classList.add("show");
+        front.classList.remove("show");
+        frontIsA = !frontIsA;
+      }
+
+      async function preload(url) {
+        await new Promise(resolve => {
+          const img = new Image();
+          img.onload = resolve;
+          img.onerror = resolve;
+          img.src = url + version;
+        });
+      }
+
+      async function showNext() {
+        if (!urls.length) return;
+        const url = urls[i % urls.length];
+        i += 1;
+        await preload(url);
+        swapTo(url);
+      }
+
+      await load();
+      await showNext();
+
+      setInterval(showNext, SECONDS * 1000);
+      setInterval(async () => { try { await load(); } catch(e) {} }, 5 * 60 * 1000);
+    })();
+  </script>
+</body>
+</html>
