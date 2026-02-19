@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>InfoSkjermen Posters – Status</title>
+  <style>
+    :root { color-scheme: dark; }
+    html, body {
+      margin:0; padding:0; background:#0b0b0b; color:#f2f2f2;
+      font: 15px/1.4 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    }
+    .wrap { max-width: 980px; margin: 24px auto; padding: 0 16px; }
+    h1 { font-size: 20px; margin: 0 0 12px; }
+    .muted { color:#bdbdbd; }
+    .card {
+      background:#151515; border:1px solid #242424; border-radius: 14px;
+      padding: 14px; margin: 12px 0;
+    }
+    .row { display:flex; gap:12px; flex-wrap: wrap; align-items:center; }
+    label { display:flex; gap:8px; align-items:center; }
+    input[type="number"] {
+      width: 90px; padding: 6px 8px; border-radius: 10px;
+      border:1px solid #2b2b2b; background:#0f0f0f; color:#fff;
+    }
+    button {
+      padding: 8px 10px; border-radius: 10px;
+      border:1px solid #2b2b2b; background:#0f0f0f; color:#fff; cursor:pointer;
+    }
+    button:hover { background:#141414; }
+    table { width:100%; border-collapse: collapse; }
+    th, td {
+      text-align:left; padding: 10px 8px; border-bottom: 1px solid #242424;
+      vertical-align: top;
+    }
+    th { color:#cfcfcf; font-weight:600; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    .pill {
+      display:inline-block; padding: 2px 8px; border-radius: 999px;
+      border:1px solid #2b2b2b; background:#0f0f0f; color:#eaeaea;
+      font-size: 12px;
+    }
+    .ok { border-color:#2e5; color:#bfffd0; }
+    .warn { border-color:#e93; color:#ffd3a8; }
+    .bad { border-color:#e55; color:#ffd0d0; }
+    a { color:#9dd1ff; text-decoration:none; }
+    a:hover { text-decoration:underline; }
+    .right { text-align:right; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Poster rotation status</h1>
+    <div class="card">
+      <div class="row">
+        <label>Seconds per poster
+          <input id="secondsPerPoster" type="number" min="1" value="12">
+        </label>
+        <label>Calendar seconds (optional)
+          <input id="calendarSeconds" type="number" min="0" value="15">
+        </label>
+        <button id="refreshBtn">Refresh</button>
+        <span id="lastUpdated" class="muted"></span>
+      </div>
+      <div class="muted" style="margin-top:8px;">
+        This page reads <span class="mono">assets/films.json</span> and <span class="mono">assets/arrangements.json</span>,
+        counts portrait/landscape availability, and suggests a safe playlist duration for the “posters URL” item in InfoSkjermen.
+      </div>
+    </div>
+
+    <div class="card">
+      <table>
+        <thead>
+          <tr>
+            <th>Page / playlist item</th>
+            <th>What it shows</th>
+            <th class="right">Count</th>
+            <th class="right">Suggested posters duration</th>
+            <th class="right">Posters + calendar</th>
+          </tr>
+        </thead>
+        <tbody id="tbody">
+          <tr><td colspan="5" class="muted">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <div class="row" style="justify-content:space-between;">
+        <div>
+          <div class="muted">Quick links</div>
+          <div style="margin-top:6px; display:flex; gap:10px; flex-wrap:wrap;">
+            <a href="./films-portrait.html" target="_blank">films-portrait</a>
+            <a href="./films-landscape.html" target="_blank">films-landscape</a>
+            <a href="./arrangements-portrait.html" target="_blank">arrangements-portrait</a>
+            <a href="./arrangements-landscape.html" target="_blank">arrangements-landscape</a>
+            <a href="./portrait-all.html" target="_blank">portrait-all</a>
+            <a href="./landscape-all.html" target="_blank">landscape-all</a>
+          </div>
+        </div>
+        <div class="muted">
+          Manifests:
+          <div style="margin-top:6px; display:flex; gap:10px; flex-wrap:wrap;">
+            <a class="mono" href="./assets/films.json" target="_blank">assets/films.json</a>
+            <a class="mono" href="./assets/arrangements.json" target="_blank">assets/arrangements.json</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const FILMS = "./assets/films.json";
+    const ARR   = "./assets/arrangements.json";
+
+    function fmtDuration(seconds) {
+      seconds = Math.max(0, Math.round(seconds));
+      const m = Math.floor(seconds / 60);
+      const s = seconds % 60;
+      return `${m}:${String(s).padStart(2,'0')}`;
+    }
+
+    function pill(text, cls) {
+      return `<span class="pill ${cls}">${text}</span>`;
+    }
+
+    async function fetchJson(url) {
+      const res = await fetch(url, { cache: "no-store" });
+      if (!res.ok) throw new Error(`${res.status} ${res.statusText} for ${url}`);
+      return await res.json();
+    }
+
+    function countField(items, field) {
+      return (items || []).map(x => x?.[field]).filter(Boolean).length;
+    }
+
+    async function render() {
+      const secondsPerPoster = Number(document.getElementById("secondsPerPoster").value || 12);
+      const calendarSeconds  = Number(document.getElementById("calendarSeconds").value || 0);
+
+      const tbody = document.getElementById("tbody");
+      const lastUpdated = document.getElementById("lastUpdated");
+
+      tbody.innerHTML = `<tr><td colspan="5" class="muted">Loading…</td></tr>`;
+
+      let filmsData, arrData;
+      try {
+        [filmsData, arrData] = await Promise.all([fetchJson(FILMS), fetchJson(ARR)]);
+      } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="5">${pill("ERROR", "bad")} <span class="mono">${String(e.message || e)}</span></td></tr>`;
+        lastUpdated.textContent = "";
+        return;
+      }
+
+      const filmsItems = filmsData.films || [];
+      const arrItems   = arrData.arrangements || [];
+
+      const filmsPortrait = countField(filmsItems, "poster");
+      const filmsLandscape = countField(filmsItems, "landscape");
+
+      const arrPortrait = countField(arrItems, "poster");
+      const arrLandscape = countField(arrItems, "landscape");
+
+      const portraitAll = filmsPortrait + arrPortrait;
+      const landscapeAll = filmsLandscape + arrLandscape;
+
+      // Suggested duration = count * secondsPerPoster
+      function postersDuration(count) {
+        return count * secondsPerPoster;
+      }
+
+      function postersPlusCalendar(count) {
+        return postersDuration(count) + (calendarSeconds || 0);
+      }
+
+      // status tag if empty
+      function statusFor(count) {
+        if (count <= 0) return pill("empty", "warn");
+        return pill("ok", "ok");
+      }
+
+      // Updated timestamps
+      const u1 = filmsData.updated ? `films: ${filmsData.updated}` : "films: (no updated)";
+      const u2 = arrData.updated ? `arrangements: ${arrData.updated}` : "arrangements: (no updated)";
+      lastUpdated.textContent = `Manifests updated → ${u1} | ${u2}`;
+
+      const rows = [
+        {
+          name: "films-portrait.html",
+          desc: "Films portrait posters",
+          count: filmsPortrait
+        },
+        {
+          name: "films-landscape.html",
+          desc: "Films landscape posters (subset)",
+          count: filmsLandscape
+        },
+        {
+          name: "arrangements-portrait.html",
+          desc: "Arrangements portrait posters",
+          count: arrPortrait
+        },
+        {
+          name: "arrangements-landscape.html",
+          desc: "Arrangements landscape posters (subset)",
+          count: arrLandscape
+        },
+        {
+          name: "portrait-all.html",
+          desc: "Films then arrangements (portrait)",
+          count: portraitAll
+        },
+        {
+          name: "landscape-all.html",
+          desc: "Films then arrangements (landscape subset)",
+          count: landscapeAll
+        }
+      ];
+
+      tbody.innerHTML = rows.map(r => {
+        const dur = postersDuration(r.count);
+        const total = postersPlusCalendar(r.count);
+        return `
+          <tr>
+            <td>
+              ${statusFor(r.count)}
+              <a href="./${r.name}" target="_blank">${r.name}</a>
+            </td>
+            <td class="muted">${r.desc}</td>
+            <td class="right mono">${r.count}</td>
+            <td class="right mono">${fmtDuration(dur)}</td>
+            <td class="right mono">${calendarSeconds ? fmtDuration(total) : "—"}</td>
+          </tr>
+        `;
+      }).join("");
+
+      // extra recommendation text if you use the combined portrait page + calendar module separately:
+      // For InfoSkjermen playlist items, you're likely using: [posters page for X] then [calendar module for 0:15]
+      // This page gives you X based on current manifest counts.
+    }
+
+    document.getElementById("refreshBtn").addEventListener("click", render);
+    document.getElementById("secondsPerPoster").addEventListener("change", render);
+    document.getElementById("calendarSeconds").addEventListener("change", render);
+
+    render();
+    setInterval(render, 60 * 1000); // auto refresh every 1 minute
+  </script>
+</body>
+</html>
