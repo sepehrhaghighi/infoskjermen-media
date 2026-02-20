@@ -16,70 +16,107 @@
       will-change: opacity;
     }
     .layer.show { opacity:1; }
+    #empty {
+      position:fixed; inset:0; display:none;
+      align-items:center; justify-content:center;
+      color:#fff; background:#000; text-align:center; padding:40px;
+      font: 26px/1.2 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    }
   </style>
 </head>
 <body>
+  <div id="empty">No film posters available.</div>
   <div class="stage">
     <img id="a" class="layer show" alt="">
     <img id="b" class="layer" alt="">
   </div>
 
-  <script>
-    (async () => {
-      const MANIFEST = "./assets/films.json";
-      const FIELD = "poster";      // portrait
-      const SECONDS = 12;          // time per item
-      const FADE_MS = 900;         // keep in sync with CSS transition
+<script>
+(async () => {
+  const CONFIG_URL = "./assets/display-config.json";
+  const MANIFEST_URL = "./assets/films.json";
+  const FIELD = "poster";
 
-      let urls = [];
-      let i = 0;
-      let version = "";
-      let frontIsA = true;
+  let posterSeconds = 12;
+  let fadeMs = 900;
+  let refreshSeconds = 300;
 
-      async function load() {
-        const res = await fetch(MANIFEST, { cache: "no-store" });
-        const data = await res.json();
-        version = data.updated ? ("?v=" + encodeURIComponent(data.updated)) : "";
-        const items = data.films || [];
-        urls = items.map(x => x?.[FIELD]).filter(Boolean);
-        i = 0;
-      }
+  let urls = [];
+  let idx = 0;
+  let frontIsA = true;
+  let version = "";
 
-      function swapTo(url) {
-        const A = document.getElementById("a");
-        const B = document.getElementById("b");
-        const front = frontIsA ? A : B;
-        const back  = frontIsA ? B : A;
+  const emptyEl = document.getElementById("empty");
+  const A = document.getElementById("a");
+  const B = document.getElementById("b");
 
-        back.src = url + version;
-        back.classList.add("show");
-        front.classList.remove("show");
-        frontIsA = !frontIsA;
-      }
+  function numParam(name, fallback) {
+    const v = new URLSearchParams(location.search).get(name);
+    const n = Number(v);
+    return Number.isFinite(n) && n > 0 ? n : fallback;
+  }
 
-      async function preload(url) {
-        await new Promise(resolve => {
-          const img = new Image();
-          img.onload = resolve;
-          img.onerror = resolve;
-          img.src = url + version;
-        });
-      }
+  async function fetchJson(url) {
+    const r = await fetch(url, { cache: "no-store" });
+    if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+    return await r.json();
+  }
 
-      async function showNext() {
-        if (!urls.length) return;
-        const url = urls[i % urls.length];
-        i += 1;
-        await preload(url);
-        swapTo(url);
-      }
+  async function loadConfig() {
+    try { return await fetchJson(CONFIG_URL); }
+    catch { return {}; }
+  }
 
-      await load();
-      await showNext();
+  async function load() {
+    const [cfg, data] = await Promise.all([loadConfig(), fetchJson(MANIFEST_URL)]);
 
-      setInterval(showNext, SECONDS * 1000);
-      setInterval(async () => { try { await load(); } catch(e) {} }, 5 * 60 * 1000);
-    })();
-  </script>
+    posterSeconds  = numParam("p", cfg.posterSeconds ?? 12);
+    fadeMs         = numParam("fade", cfg.fadeMs ?? 900);
+    refreshSeconds = numParam("r", cfg.manifestRefreshSeconds ?? 300);
+
+    A.style.transitionDuration = fadeMs + "ms";
+    B.style.transitionDuration = fadeMs + "ms";
+
+    version = data.updated ? ("?v=" + encodeURIComponent(data.updated)) : "";
+
+    urls = (data.films || []).map(x => x?.[FIELD]).filter(Boolean);
+    idx = 0;
+
+    emptyEl.style.display = urls.length ? "none" : "flex";
+  }
+
+  async function preload(url) {
+    await new Promise(resolve => {
+      const img = new Image();
+      img.onload = resolve;
+      img.onerror = resolve;
+      img.src = url + version;
+    });
+  }
+
+  function swapTo(url) {
+    const front = frontIsA ? A : B;
+    const back  = frontIsA ? B : A;
+
+    back.src = url + version;
+    back.classList.add("show");
+    front.classList.remove("show");
+    frontIsA = !frontIsA;
+  }
+
+  async function tick() {
+    if (!urls.length) { setTimeout(tick, 2000); return; }
+    const url = urls[idx % urls.length];
+    idx += 1;
+    await preload(url);
+    swapTo(url);
+    setTimeout(tick, posterSeconds * 1000);
+  }
+
+  await load();
+  tick();
+  setInterval(() => load().catch(()=>{}), refreshSeconds * 1000);
+})();
+</script>
 </body>
 </html>
