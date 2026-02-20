@@ -16,85 +16,111 @@
       will-change: opacity;
     }
     .layer.show { opacity:1; }
+    #empty {
+      position:fixed; inset:0; display:none;
+      align-items:center; justify-content:center;
+      color:#fff; background:#000; text-align:center; padding:40px;
+      font: 26px/1.2 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    }
   </style>
 </head>
 <body>
+  <div id="empty">No posters available.</div>
   <div class="stage">
     <img id="a" class="layer show" alt="">
     <img id="b" class="layer" alt="">
   </div>
 
-  <script>
-    (async () => {
-      const FILMS_MANIFEST = "./assets/films.json";
-      const ARR_MANIFEST   = "./assets/arrangements.json";
-      const FIELD = "poster";        // portrait only
-      const SECONDS = 12;            // change timing here
+<script>
+(async () => {
+  const CONFIG_URL = "./assets/display-config.json";
+  const FILMS_URL = "./assets/films.json";
+  const ARR_URL   = "./assets/arrangements.json";
+  const FIELD = "poster";
 
-      let urls = [];
-      let i = 0;
-      let frontIsA = true;
-      let version = "";
+  let posterSeconds = 12;
+  let fadeMs = 900;
+  let refreshSeconds = 300;
 
-      async function fetchJson(url) {
-        const r = await fetch(url, { cache: "no-store" });
-        return await r.json();
-      }
+  let items = []; // {url, v}
+  let idx = 0;
+  let frontIsA = true;
 
-      async function load() {
-        const [filmsData, arrData] = await Promise.all([
-          fetchJson(FILMS_MANIFEST),
-          fetchJson(ARR_MANIFEST)
-        ]);
+  const emptyEl = document.getElementById("empty");
+  const A = document.getElementById("a");
+  const B = document.getElementById("b");
 
-        // use a combined cache-buster so new runs refresh images
-        const u1 = filmsData.updated || "";
-        const u2 = arrData.updated || "";
-        version = (u1 || u2) ? ("?v=" + encodeURIComponent(u1 + "_" + u2)) : "";
+  function numParam(name, fallback) {
+    const v = new URLSearchParams(location.search).get(name);
+    const n = Number(v);
+    return Number.isFinite(n) && n > 0 ? n : fallback;
+  }
 
-        const films = (filmsData.films || []).map(x => x?.[FIELD]).filter(Boolean);
-        const arrs  = (arrData.arrangements || []).map(x => x?.[FIELD]).filter(Boolean);
+  async function fetchJson(url) {
+    const r = await fetch(url, { cache: "no-store" });
+    if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+    return await r.json();
+  }
 
-        // films first, then arrangements
-        urls = films.concat(arrs);
-        i = 0;
-      }
+  async function loadConfig() {
+    try { return await fetchJson(CONFIG_URL); }
+    catch { return {}; }
+  }
 
-      function swapTo(url) {
-        const A = document.getElementById("a");
-        const B = document.getElementById("b");
-        const front = frontIsA ? A : B;
-        const back  = frontIsA ? B : A;
+  async function load() {
+    const [cfg, filmsData, arrData] = await Promise.all([loadConfig(), fetchJson(FILMS_URL), fetchJson(ARR_URL)]);
 
-        back.src = url + version;
-        back.classList.add("show");
-        front.classList.remove("show");
-        frontIsA = !frontIsA;
-      }
+    posterSeconds  = numParam("p", cfg.posterSeconds ?? 12);
+    fadeMs         = numParam("fade", cfg.fadeMs ?? 900);
+    refreshSeconds = numParam("r", cfg.manifestRefreshSeconds ?? 300);
 
-      async function preload(url) {
-        await new Promise(resolve => {
-          const img = new Image();
-          img.onload = resolve;
-          img.onerror = resolve;
-          img.src = url + version;
-        });
-      }
+    A.style.transitionDuration = fadeMs + "ms";
+    B.style.transitionDuration = fadeMs + "ms";
 
-      async function showNext() {
-        if (!urls.length) return;
-        const url = urls[i % urls.length];
-        i += 1;
-        await preload(url);
-        swapTo(url);
-      }
+    const v1 = filmsData.updated ? ("?v=" + encodeURIComponent(filmsData.updated)) : "";
+    const v2 = arrData.updated ? ("?v=" + encodeURIComponent(arrData.updated)) : "";
 
-      await load();
-      await showNext();
+    const films = (filmsData.films || []).map(x => x?.[FIELD]).filter(Boolean).map(url => ({ url, v: v1 }));
+    const arrs  = (arrData.arrangements || []).map(x => x?.[FIELD]).filter(Boolean).map(url => ({ url, v: v2 }));
 
-      setInterval(showNext, SECONDS * 1000);
-      setInterval(async () => { try { await load(); } catch(e) {} }, 5 * 60 * 1000);
-    })();
-  </script>
+    items = films.concat(arrs); // films first
+    idx = 0;
+
+    emptyEl.style.display = items.length ? "none" : "flex";
+  }
+
+  async function preload(item) {
+    await new Promise(resolve => {
+      const img = new Image();
+      img.onload = resolve;
+      img.onerror = resolve;
+      img.src = item.url + item.v;
+    });
+  }
+
+  function swapTo(item) {
+    const front = frontIsA ? A : B;
+    const back  = frontIsA ? B : A;
+
+    back.src = item.url + item.v;
+    back.classList.add("show");
+    front.classList.remove("show");
+    frontIsA = !frontIsA;
+  }
+
+  async function tick() {
+    if (!items.length) { setTimeout(tick, 2000); return; }
+    const item = items[idx % items.length];
+    idx += 1;
+    await preload(item);
+    swapTo(item);
+    setTimeout(tick, posterSeconds * 1000);
+  }
+
+  await load();
+  tick();
+  setInterval(() => load().catch(()=>{}), refreshSeconds * 1000);
+})();
+</script>
 </body>
 </html>
