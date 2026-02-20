@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Poster Status & Timing</title>
+  <title>Status & Timing Control</title>
   <style>
     :root { color-scheme: dark; }
     html, body { margin:0; padding:0; background:#0b0b0b; color:#f2f2f2; font: 15px/1.4 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
@@ -28,7 +28,6 @@
     a:hover { text-decoration:underline; }
     .pill { display:inline-block; padding: 2px 8px; border-radius: 999px; border:1px solid #2b2b2b; background:#0f0f0f; color:#eaeaea; font-size: 12px; }
     .ok { border-color:#2e5; color:#bfffd0; }
-    .warn { border-color:#e93; color:#ffd3a8; }
     .bad { border-color:#e55; color:#ffd0d0; }
     .small { font-size:12px; }
   </style>
@@ -52,16 +51,14 @@
 
       <div class="row" style="margin-top:10px;">
         <label>Update key
-          <input id="updateKey" type="password" placeholder="(required for Apply)">
+          <input id="updateKey" type="password" placeholder="(required)">
         </label>
-        <button id="applyBtn">Apply (update Drive config)</button>
-        <button id="reloadBtn">Reload config</button>
-        <button id="refreshCountsBtn">Refresh counts</button>
+        <button id="applyBtn">Apply</button>
         <span id="info" class="muted small"></span>
       </div>
 
       <div class="muted small" style="margin-top:10px;">
-        Apply writes to the config file in Drive via Apps Script. The slideshow pages read config via JSONP.
+        Apply updates the shared config in Drive. All slideshow pages pick it up automatically.
       </div>
     </div>
 
@@ -100,9 +97,7 @@
 
 <script>
 (() => {
-  // ✅ your Apps Script service URL:
   const CONFIG_SERVICE_URL = "https://script.google.com/macros/s/AKfycbzfSFnMeg-26QNv802KVleuZWoEPqQE8zU4JwQLO3ikWL-fpYP4SFWTu8Q89jmgXq0YvQ/exec";
-
   const FILMS_URL = "./assets/films.json";
   const ARR_URL   = "./assets/arrangements.json";
 
@@ -112,8 +107,6 @@
     refreshSeconds: document.getElementById("refreshSeconds"),
     updateKey: document.getElementById("updateKey"),
     applyBtn: document.getElementById("applyBtn"),
-    reloadBtn: document.getElementById("reloadBtn"),
-    refreshCountsBtn: document.getElementById("refreshCountsBtn"),
     tbody: document.getElementById("tbody"),
     info: document.getElementById("info"),
   };
@@ -135,7 +128,7 @@
     return await r.json();
   }
 
-  // JSONP config loader (avoids CORS issues with Apps Script)
+  // JSONP config loader (avoids CORS issues)
   function loadConfigJSONP(timeoutMs = 4000) {
     return new Promise((resolve) => {
       const cbName = "__cfgcb_" + Math.random().toString(16).slice(2);
@@ -183,6 +176,7 @@
   async function renderCounts() {
     const posterSeconds = Number(els.posterSeconds.value || 12);
     els.tbody.innerHTML = `<tr><td colspan="4" class="muted">Loading…</td></tr>`;
+
     try {
       const [filmsData, arrData] = await Promise.all([fetchJson(FILMS_URL), fetchJson(ARR_URL)]);
       const films = filmsData.films || [];
@@ -214,42 +208,40 @@
         </tr>
       `).join("");
 
+      // show update timestamps if present
       const u1 = filmsData.updated ? `films: ${filmsData.updated}` : `films: (no updated)`;
       const u2 = arrData.updated ? `arr: ${arrData.updated}` : `arr: (no updated)`;
       els.info.textContent = `${u1} | ${u2}`;
     } catch (e) {
       els.tbody.innerHTML = `<tr><td colspan="4">${pill("ERROR","bad")} <span class="mono">${String(e.message || e)}</span></td></tr>`;
-      els.info.textContent = "";
     }
   }
 
   async function reloadConfig() {
     const cfg = await loadConfigJSONP();
     setUiConfig(cfg);
-    els.info.textContent = "Loaded config from Apps Script.";
   }
 
   async function applyConfig() {
     const key = (els.updateKey.value || "").trim();
     if (!key) {
-      els.info.textContent = "Update key is required for Apply.";
+      els.info.textContent = "Update key is required.";
       return;
     }
 
-    // store key on this device for convenience (optional)
+    // store key on this device for convenience
     try { localStorage.setItem("poster_update_key", key); } catch {}
 
     const cfg = readUiConfig();
-
     const body = new URLSearchParams({
       posterSeconds: String(cfg.posterSeconds),
       fadeMs: String(cfg.fadeMs),
       manifestRefreshSeconds: String(cfg.manifestRefreshSeconds),
     }).toString();
 
-    // Apps Script expects POST + key in query string.
-    // mode: "no-cors" sends the request without needing CORS response headers.
     const url = CONFIG_SERVICE_URL + "?key=" + encodeURIComponent(key);
+
+    els.info.textContent = "Applying…";
 
     try {
       await fetch(url, {
@@ -259,18 +251,24 @@
         body
       });
 
-      els.info.textContent = "Applied. (Config updated in Drive.)";
+      // auto-reload config + counts so operator never needs another button
+      setTimeout(async () => {
+        try {
+          await reloadConfig();
+          await renderCounts();
+          els.info.textContent = "Applied ✓";
+        } catch {
+          els.info.textContent = "Applied ✓ (reload failed)";
+        }
+      }, 1200);
+
     } catch (e) {
       els.info.textContent = "Apply failed: " + String(e.message || e);
     }
   }
 
-  // wire UI
   els.applyBtn.addEventListener("click", applyConfig);
-  els.reloadBtn.addEventListener("click", reloadConfig);
-  els.refreshCountsBtn.addEventListener("click", renderCounts);
 
-  // init
   (async () => {
     // prefill key on this device if present
     try {
