@@ -39,13 +39,14 @@
     <div class="card">
       <div class="row">
         <label>Seconds per poster
-          <input id="posterSeconds" type="number" min="1" value="12">
+          <!-- IMPORTANT: no baked-in "value=12" so it won't visually snap back on reload -->
+          <input id="posterSeconds" type="number" min="1" placeholder="12">
         </label>
         <label>Fade (ms)
-          <input id="fadeMs" type="number" min="0" value="900">
+          <input id="fadeMs" type="number" min="0" placeholder="900">
         </label>
         <label>Refresh (sec)
-          <input id="refreshSeconds" type="number" min="30" value="300">
+          <input id="refreshSeconds" type="number" min="30" placeholder="300">
         </label>
       </div>
 
@@ -101,6 +102,12 @@
   const FILMS_URL = "./assets/films.json";
   const ARR_URL   = "./assets/arrangements.json";
 
+  const DEFAULTS = {
+    posterSeconds: 12,
+    fadeMs: 900,
+    manifestRefreshSeconds: 300,
+  };
+
   const els = {
     posterSeconds: document.getElementById("posterSeconds"),
     fadeMs: document.getElementById("fadeMs"),
@@ -129,7 +136,7 @@
   }
 
   // JSONP config loader (avoids CORS issues)
-  function loadConfigJSONP(timeoutMs = 4000) {
+  function loadConfigJSONP(timeoutMs = 5000) {
     return new Promise((resolve) => {
       const cbName = "__cfgcb_" + Math.random().toString(16).slice(2);
       let done = false;
@@ -155,18 +162,62 @@
     });
   }
 
+  function setInfo(msg) {
+    els.info.textContent = msg || "";
+  }
+
+  function safeNumber(x) {
+    const n = Number(x);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  // Normalize whatever Apps Script returns into our expected config shape.
+  function normalizeCfg(raw) {
+    if (!raw) return {};
+    if (typeof raw === "string") {
+      try { return JSON.parse(raw); } catch { return {}; }
+    }
+    // common pattern: { data: {...} }
+    if (raw.data && typeof raw.data === "object") return raw.data;
+    return raw;
+  }
+
+  // Read config from UI, but do NOT fall back to defaults silently; we control defaults elsewhere.
   function readUiConfig() {
+    const ps = safeNumber(els.posterSeconds.value);
+    const fm = safeNumber(els.fadeMs.value);
+    const rs = safeNumber(els.refreshSeconds.value);
+
     return {
-      posterSeconds: Number(els.posterSeconds.value || 12),
-      fadeMs: Number(els.fadeMs.value || 900),
-      manifestRefreshSeconds: Number(els.refreshSeconds.value || 300),
+      posterSeconds: ps ?? DEFAULTS.posterSeconds,
+      fadeMs: fm ?? DEFAULTS.fadeMs,
+      manifestRefreshSeconds: rs ?? DEFAULTS.manifestRefreshSeconds,
     };
   }
 
-  function setUiConfig(cfg) {
-    els.posterSeconds.value = cfg.posterSeconds ?? 12;
-    els.fadeMs.value = cfg.fadeMs ?? 900;
-    els.refreshSeconds.value = cfg.manifestRefreshSeconds ?? 300;
+  // IMPORTANT: only apply values that actually exist in loaded config.
+  // If config load fails / returns empty, we KEEP current UI values (no snap-back).
+  function setUiConfig(rawCfg) {
+    const cfg = normalizeCfg(rawCfg);
+
+    const refresh = cfg.manifestRefreshSeconds ?? cfg.refreshSeconds;
+
+    const hasAny =
+      cfg.posterSeconds != null ||
+      cfg.fadeMs != null ||
+      refresh != null;
+
+    if (!hasAny) {
+      // Do not overwrite UI with defaults; keep what's currently shown.
+      setInfo("Couldn’t load saved config (showing current values).");
+      return false;
+    }
+
+    if (cfg.posterSeconds != null) els.posterSeconds.value = cfg.posterSeconds;
+    if (cfg.fadeMs != null) els.fadeMs.value = cfg.fadeMs;
+    if (refresh != null) els.refreshSeconds.value = refresh;
+
+    return true;
   }
 
   function countField(items, field) {
@@ -174,7 +225,7 @@
   }
 
   async function renderCounts() {
-    const posterSeconds = Number(els.posterSeconds.value || 12);
+    const posterSeconds = safeNumber(els.posterSeconds.value) ?? DEFAULTS.posterSeconds;
     els.tbody.innerHTML = `<tr><td colspan="4" class="muted">Loading…</td></tr>`;
 
     try {
@@ -208,10 +259,12 @@
         </tr>
       `).join("");
 
-      // show update timestamps if present
       const u1 = filmsData.updated ? `films: ${filmsData.updated}` : `films: (no updated)`;
       const u2 = arrData.updated ? `arr: ${arrData.updated}` : `arr: (no updated)`;
-      els.info.textContent = `${u1} | ${u2}`;
+      // only set info if we don't already have an important status message
+      if (!els.info.textContent || els.info.textContent.startsWith("films:") || els.info.textContent.startsWith("arr:")) {
+        els.info.textContent = `${u1} | ${u2}`;
+      }
     } catch (e) {
       els.tbody.innerHTML = `<tr><td colspan="4">${pill("ERROR","bad")} <span class="mono">${String(e.message || e)}</span></td></tr>`;
     }
@@ -219,13 +272,13 @@
 
   async function reloadConfig() {
     const cfg = await loadConfigJSONP();
-    setUiConfig(cfg);
+    return setUiConfig(cfg);
   }
 
   async function applyConfig() {
     const key = (els.updateKey.value || "").trim();
     if (!key) {
-      els.info.textContent = "Update key is required.";
+      setInfo("Update key is required.");
       return;
     }
 
@@ -241,9 +294,10 @@
 
     const url = CONFIG_SERVICE_URL + "?key=" + encodeURIComponent(key);
 
-    els.info.textContent = "Applying…";
+    setInfo("Applying…");
 
     try {
+      // Apps Script POST + no-cors means we can't read the response, but request is sent.
       await fetch(url, {
         method: "POST",
         mode: "no-cors",
@@ -254,29 +308,34 @@
       // auto-reload config + counts so operator never needs another button
       setTimeout(async () => {
         try {
-          await reloadConfig();
+          const ok = await reloadConfig();
           await renderCounts();
-          els.info.textContent = "Applied ✓";
+          setInfo(ok ? "Applied ✓" : "Applied ✓ (saved, but reload returned empty)");
         } catch {
-          els.info.textContent = "Applied ✓ (reload failed)";
+          setInfo("Applied ✓ (reload failed)");
         }
       }, 1200);
 
     } catch (e) {
-      els.info.textContent = "Apply failed: " + String(e.message || e);
+      setInfo("Apply failed: " + String(e.message || e));
     }
   }
 
   els.applyBtn.addEventListener("click", applyConfig);
 
   (async () => {
+    // show initial defaults immediately (optional but nice UX)
+    els.posterSeconds.value = DEFAULTS.posterSeconds;
+    els.fadeMs.value = DEFAULTS.fadeMs;
+    els.refreshSeconds.value = DEFAULTS.manifestRefreshSeconds;
+
     // prefill key on this device if present
     try {
       const k = localStorage.getItem("poster_update_key");
       if (k) els.updateKey.value = k;
     } catch {}
 
-    await reloadConfig();
+    await reloadConfig();   // will NOT overwrite UI if load fails
     await renderCounts();
   })();
 })();
