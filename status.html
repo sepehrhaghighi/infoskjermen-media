@@ -8,36 +8,34 @@
   <style>
     :root { color-scheme: dark; }
 
-    html, body {
+    html, body{
       margin:0; padding:0; min-height:100%;
       color:#f2f2f2;
       font: 15px/1.4 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
       background:#0b0b0b;
     }
 
-    /* ✅ Background is rendered as real layers (no negative z-index) */
-    #bgLayer, #bgOverlay {
+    /* Background layers (works well on mobile + desktop) */
+    #bgLayer, #bgOverlay{
       position: fixed;
       inset: 0;
       pointer-events: none;
     }
-    #bgLayer {
+    #bgLayer{
       z-index: 0;
       background-color:#0b0b0b;
-      background-size: cover;
-      background-position: center;
+      background-size: cover;          /* fills screen */
+      background-position: center;     /* adjust if needed */
       background-repeat: no-repeat;
-      transform: scale(1.02);
+      transform: none;                 /* no extra zoom/crop */
       filter: saturate(1.05) contrast(1.05);
     }
-    #bgOverlay {
+    #bgOverlay{
       z-index: 1;
-      /* Lower alpha => image more visible */
-      background: rgba(0,0,0,0.28);
+      background: rgba(0,0,0,0.14);    /* dim amount (lower = brighter) */
     }
 
-    /* Content above background */
-    .wrap {
+    .wrap{
       position: relative;
       z-index: 2;
       max-width: 980px;
@@ -45,11 +43,11 @@
       padding: 0 16px;
     }
 
-    h1 { font-size: 20px; margin: 0 0 6px; }
-    .muted { color:#bdbdbd; }
-    .small { font-size:12px; }
+    h1{ font-size: 20px; margin: 0 0 12px; }
+    .muted{ color:#bdbdbd; }
+    .small{ font-size:12px; }
 
-    .card {
+    .card{
       background: rgba(21,21,21,0.82);
       border: 1px solid rgba(36,36,36,0.9);
       border-radius: 14px;
@@ -58,42 +56,73 @@
       box-shadow: 0 6px 28px rgba(0,0,0,0.35);
     }
 
-    .row { display:flex; gap:12px; flex-wrap: wrap; align-items:center; }
-    label { display:flex; gap:8px; align-items:center; }
+    .row{ display:flex; gap:12px; flex-wrap: wrap; align-items:center; }
+    label{ display:flex; gap:8px; align-items:center; }
 
-    input[type="number"], input[type="password"] {
-      width: 140px; padding: 6px 8px;
-      border-radius: 10px; border:1px solid #2b2b2b;
+    input[type="number"], input[type="password"]{
+      width: 140px;
+      padding: 6px 8px;
+      border-radius: 10px;
+      border:1px solid #2b2b2b;
       background: rgba(15,15,15,0.9);
       color:#fff;
     }
-    input[type="password"] { width: 220px; }
+    input[type="password"]{ width: 220px; }
 
-    button {
-      padding: 8px 10px; border-radius: 10px;
+    button{
+      padding: 8px 10px;
+      border-radius: 10px;
       border:1px solid #2b2b2b;
       background: rgba(15,15,15,0.9);
-      color:#fff; cursor:pointer;
+      color:#fff;
+      cursor:pointer;
     }
-    button:hover { background: rgba(20,20,20,0.95); }
-
-    table { width:100%; border-collapse: collapse; }
-    th, td { text-align:left; padding: 10px 8px; border-bottom: 1px solid rgba(36,36,36,0.9); vertical-align: top; }
-    th { color:#cfcfcf; font-weight:600; }
-
-    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
-    .right { text-align:right; }
-
-    a { color:#9dd1ff; text-decoration:none; }
-    a:hover { text-decoration:underline; }
-
-    .pill {
-      display:inline-block; padding: 2px 8px; border-radius: 999px;
-      border:1px solid #2b2b2b; background: rgba(15,15,15,0.9);
-      color:#eaeaea; font-size: 12px;
+    button:hover{ background: rgba(20,20,20,0.95); }
+    button:disabled, input:disabled{
+      opacity: 0.6;
+      cursor: not-allowed;
     }
-    .ok { border-color:#2e5; color:#bfffd0; }
-    .bad { border-color:#e55; color:#ffd0d0; }
+
+    table{ width:100%; border-collapse: collapse; }
+    th, td{
+      text-align:left;
+      padding: 10px 8px;
+      border-bottom: 1px solid rgba(36,36,36,0.9);
+      vertical-align: top;
+    }
+    th{ color:#cfcfcf; font-weight:600; }
+
+    .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    .right{ text-align:right; }
+
+    a{ color:#9dd1ff; text-decoration:none; }
+    a:hover{ text-decoration:underline; }
+
+    .pill{
+      display:inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border:1px solid #2b2b2b;
+      background: rgba(15,15,15,0.9);
+      color:#eaeaea;
+      font-size: 12px;
+    }
+    .ok{ border-color:#2e5; color:#bfffd0; }
+    .bad{ border-color:#e55; color:#ffd0d0; }
+
+    /* ✅ Table stays inside the card on mobile */
+    .tableWrap{
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      border-radius: 12px;
+    }
+    .tableWrap table{
+      min-width: 720px; /* keeps last column from spilling */
+    }
+    @media (max-width: 700px){
+      th, td{ padding: 8px 6px; }
+    }
   </style>
 </head>
 
@@ -104,12 +133,10 @@
   <div class="wrap">
     <h1>Status & timing control</h1>
 
-    <!-- Shows ONLY if background fails -->
-    <div id="bgWarn" class="muted small" style="margin-bottom:10px;"></div>
-
     <div class="card">
       <div class="row">
         <label>Seconds per poster
+          <!-- ✅ no value here -> avoids flashing 12 before config loads -->
           <input id="posterSeconds" type="number" min="1" placeholder="12">
         </label>
         <label>Fade (ms)
@@ -139,19 +166,21 @@
         Suggested duration = count × seconds-per-poster.
       </div>
 
-      <table>
-        <thead>
-          <tr>
-            <th>Page</th>
-            <th>What it shows</th>
-            <th class="right">Count</th>
-            <th class="right">Suggested duration</th>
-          </tr>
-        </thead>
-        <tbody id="tbody">
-          <tr><td colspan="4" class="muted">Loading…</td></tr>
-        </tbody>
-      </table>
+      <div class="tableWrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Page</th>
+              <th>What it shows</th>
+              <th class="right">Count</th>
+              <th class="right">Suggested duration</th>
+            </tr>
+          </thead>
+          <tbody id="tbody">
+            <tr><td colspan="4" class="muted">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
 
     <div class="card">
@@ -171,10 +200,9 @@
   const CONFIG_SERVICE_URL = "https://script.google.com/macros/s/AKfycbzfSFnMeg-26QNv802KVleuZWoEPqQE8zU4JwQLO3ikWL-fpYP4SFWTu8Q89jmgXq0YvQ/exec";
   const FILMS_URL = "./assets/films.json";
   const ARR_URL   = "./assets/arrangements.json";
-  const DEFAULTS = { posterSeconds: 12, fadeMs: 900, manifestRefreshSeconds: 300 };
+  const BG_REL    = "./assets/status-bg.jpg";
 
-  // ✅ Your local background image path (relative to this HTML file)
-  const BG_REL = "./assets/status-bg.jpg";
+  const DEFAULTS = { posterSeconds: 12, fadeMs: 900, manifestRefreshSeconds: 300 };
 
   const els = {
     posterSeconds: document.getElementById("posterSeconds"),
@@ -184,53 +212,21 @@
     applyBtn: document.getElementById("applyBtn"),
     tbody: document.getElementById("tbody"),
     info: document.getElementById("info"),
-    bgWarn: document.getElementById("bgWarn"),
     bgLayer: document.getElementById("bgLayer"),
   };
 
-  const setInfo = (msg) => { els.info.textContent = msg || ""; };
+  function setInfo(msg) { els.info.textContent = msg || ""; }
 
-  // ---- BACKGROUND preload + set ----
-  function preload(url) {
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.onload = () => resolve({ ok:true, url: img.src });
-      img.onerror = () => resolve({ ok:false, url: img.src });
-
-      // Cache-bust so you don’t get an old version
-      const u = new URL(url, location.href);
-      u.searchParams.set("v", String(Date.now()));
-      img.src = u.href;
-    });
+  function disableUi(disabled) {
+    els.posterSeconds.disabled = disabled;
+    els.fadeMs.disabled = disabled;
+    els.refreshSeconds.disabled = disabled;
+    els.applyBtn.disabled = disabled;
   }
 
-  async function initBackground() {
-    // For GitHub Pages repos, try a couple fallbacks too:
-    const repo = location.pathname.split("/")[1] || "";
-    const candidates = [
-      new URL(BG_REL, location.href).href, // normal relative
-      new URL("/" + repo + "/assets/status-bg.jpg", location.origin).href,
-      new URL("/assets/status-bg.jpg", location.origin).href,
-    ];
-
-    for (const c of candidates) {
-      const res = await preload(c);
-      if (res.ok) {
-        const u = new URL(c);
-        u.searchParams.set("v", "1");
-        els.bgLayer.style.backgroundImage = `url("${u.href}")`;
-        els.bgWarn.textContent = "";
-        return;
-      }
-    }
-
-    // If we get here, the image truly didn’t load
-    els.bgWarn.textContent =
-      "Background image could not be loaded. Check: (1) file exists and is committed, (2) exact case matches (status-bg.jpg), (3) you can open /assets/status-bg.jpg in the browser.";
+  function pill(text, cls="ok") {
+    return `<span class="pill ${cls}">${text}</span>`;
   }
-  // ---------------------------------
-
-  function pill(text, cls="ok") { return `<span class="pill ${cls}">${text}</span>`; }
 
   function fmtDuration(seconds) {
     seconds = Math.max(0, Math.round(seconds));
@@ -264,6 +260,7 @@
     return (cfg.posterSeconds != null) || (cfg.fadeMs != null) || (refresh != null);
   }
 
+  // JSONP loader (avoids CORS)
   function loadConfigJSONP(extraParams = {}, timeoutMs = 7000) {
     return new Promise((resolve) => {
       const cbName = "__cfgcb_" + Math.random().toString(16).slice(2);
@@ -281,16 +278,16 @@
       const s = document.createElement("script");
       s.src = CONFIG_SERVICE_URL + "?" + params.toString();
 
-      s.onerror = () => { setInfo("Config read failed (script error)."); finish({}); };
+      s.onerror = () => finish({});
       s.onload = () => {
         setTimeout(() => {
-          if (!finished && !called) { setInfo("Config endpoint did not call JSONP callback."); finish({}); }
+          if (!finished && !called) finish({});
         }, 250);
       };
 
       document.head.appendChild(s);
 
-      const t = setTimeout(() => { if (!finished) { setInfo("Config read timed out."); finish({}); } }, timeoutMs);
+      const t = setTimeout(() => { if (!finished) finish({}); }, timeoutMs);
 
       function cleanup() {
         clearTimeout(t);
@@ -364,7 +361,8 @@
 
       const u1 = filmsData.updated ? `films: ${filmsData.updated}` : `films: (no updated)`;
       const u2 = arrData.updated ? `arr: ${arrData.updated}` : `arr: (no updated)`;
-      if (!els.info.textContent || els.info.textContent.startsWith("films:") || els.info.textContent.startsWith("arr:")) {
+      // Only show timestamps if we aren't showing another status message
+      if (!els.info.textContent || els.info.textContent.includes("Loading") || els.info.textContent.includes("Applied")) {
         els.info.textContent = `${u1} | ${u2}`;
       }
     } catch (e) {
@@ -373,13 +371,10 @@
   }
 
   async function reloadConfig() {
-    let cfg = await loadConfigJSONP({});
-    if (isMeaningfulCfg(cfg)) { setUiConfig(cfg); return true; }
-
-    const key = (els.updateKey.value || "").trim();
-    if (key) {
-      const cfg2 = await loadConfigJSONP({ key });
-      if (isMeaningfulCfg(cfg2)) { setUiConfig(cfg2); return true; }
+    const cfg = await loadConfigJSONP({});
+    if (isMeaningfulCfg(cfg)) {
+      setUiConfig(cfg);
+      return true;
     }
     return false;
   }
@@ -396,6 +391,7 @@
     }).toString();
 
     const url = CONFIG_SERVICE_URL + "?key=" + encodeURIComponent(key);
+
     setInfo("Applying…");
 
     try {
@@ -417,19 +413,66 @@
     }
   }
 
+  // Background init (assets folder)
+  function preload(url) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve(true);
+      img.onerror = () => resolve(false);
+      const u = new URL(url, location.href);
+      u.searchParams.set("v", String(Date.now()));
+      img.src = u.href;
+    });
+  }
+
+  async function initBackground() {
+    const repo = location.pathname.split("/")[1] || "";
+    const candidates = [
+      new URL(BG_REL, location.href).href,
+      new URL("/" + repo + "/assets/status-bg.jpg", location.origin).href,
+      new URL("/assets/status-bg.jpg", location.origin).href,
+    ];
+
+    for (const c of candidates) {
+      if (await preload(c)) {
+        const u = new URL(c);
+        u.searchParams.set("v", "1");
+        els.bgLayer.style.backgroundImage = `url("${u.href}")`;
+        return;
+      }
+    }
+  }
+
   els.applyBtn.addEventListener("click", applyConfig);
 
-  // Clear password on reload/navigation away and never store it
+  // ✅ never keep password across reloads
   window.addEventListener("beforeunload", () => { els.updateKey.value = ""; });
 
+  // Optional: update suggested durations live when you change seconds-per-poster
+  els.posterSeconds.addEventListener("input", () => { renderCounts(); });
+
   (async () => {
-    els.posterSeconds.value = DEFAULTS.posterSeconds;
-    els.fadeMs.value = DEFAULTS.fadeMs;
-    els.refreshSeconds.value = DEFAULTS.manifestRefreshSeconds;
+    // Start with UI disabled + empty values to avoid the "12 -> 7" flash
+    disableUi(true);
+    setInfo("Loading config…");
+
+    // Always clear password on load
     els.updateKey.value = "";
 
-    await initBackground();
-    await reloadConfig();
+    // Background can load in parallel
+    initBackground();
+
+    // Load config FIRST, then set inputs once (no flicker)
+    const ok = await reloadConfig();
+    if (!ok) {
+      // If config read fails, set defaults once (still no flicker)
+      els.posterSeconds.value = DEFAULTS.posterSeconds;
+      els.fadeMs.value = DEFAULTS.fadeMs;
+      els.refreshSeconds.value = DEFAULTS.manifestRefreshSeconds;
+      setInfo("Using defaults (config read failed).");
+    }
+
+    disableUi(false);
     await renderCounts();
   })();
 })();
