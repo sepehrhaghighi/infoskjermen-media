@@ -283,7 +283,7 @@
     }
 
     // store key on this device for convenience
-    try { localStorage.setItem("poster_update_key", key); } catch {}
+    // try { localStorage.setItem("poster_update_key", key); } catch {}
 
     const cfg = readUiConfig();
     const body = new URLSearchParams({
@@ -329,11 +329,10 @@
     els.fadeMs.value = DEFAULTS.fadeMs;
     els.refreshSeconds.value = DEFAULTS.manifestRefreshSeconds;
 
-    // prefill key on this device if present
-    try {
-      const k = localStorage.getItem("poster_update_key");
-      if (k) els.updateKey.value = k;
-    } catch {}
+    // always clear key on load (and erase any previously stored key)
+    els.updateKey.value = "";
+    try { localStorage.removeItem("poster_update_key"); } catch {}
+    
 
     await reloadConfig();   // will NOT overwrite UI if load fails
     await renderCounts();
