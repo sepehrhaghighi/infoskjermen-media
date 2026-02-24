@@ -5,28 +5,107 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Status & Timing Control</title>
   <style>
-    :root { color-scheme: dark; }
-    html, body { margin:0; padding:0; background:#0b0b0b; color:#f2f2f2; font: 15px/1.4 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+    :root {
+      color-scheme: dark;
+
+      /* ✅ CHANGE THIS to your image path or a full URL */
+      --bg-url: url("./assets/status-bg.jpg");
+
+      /* tweak darkness/blur if you want */
+      --bg-dim: 0.78;     /* 0..1 (higher = darker overlay) */
+      --bg-blur: 2px;     /* blur amount */
+    }
+
+    html, body {
+      margin:0; padding:0;
+      color:#f2f2f2;
+      font: 15px/1.4 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background:#0b0b0b; /* fallback */
+    }
+
+    body {
+      min-height: 100vh;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* Background image layer */
+    body::before {
+      content:"";
+      position: fixed;
+      inset: 0;
+      background-image: var(--bg-url);
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      transform: scale(1.02); /* avoids edge gaps on some browsers */
+      filter: saturate(1.05) contrast(1.05);
+      z-index: -2;
+    }
+
+    /* Dark/blur overlay layer for readability */
+    body::after {
+      content:"";
+      position: fixed;
+      inset: 0;
+      background: linear-gradient(
+        180deg,
+        rgba(0,0,0,var(--bg-dim)),
+        rgba(0,0,0,calc(var(--bg-dim) + 0.08))
+      );
+      backdrop-filter: blur(var(--bg-blur));
+      -webkit-backdrop-filter: blur(var(--bg-blur));
+      z-index: -1;
+    }
+
     .wrap { max-width: 980px; margin: 24px auto; padding: 0 16px; }
     h1 { font-size: 20px; margin: 0 0 12px; }
     .muted { color:#bdbdbd; }
-    .card { background:#151515; border:1px solid #242424; border-radius: 14px; padding: 14px; margin: 12px 0; }
+
+    /* slightly transparent cards look nicer on photo backgrounds */
+    .card {
+      background: rgba(21,21,21,0.82);
+      border: 1px solid rgba(36,36,36,0.9);
+      border-radius: 14px;
+      padding: 14px;
+      margin: 12px 0;
+      box-shadow: 0 6px 28px rgba(0,0,0,0.35);
+    }
+
     .row { display:flex; gap:12px; flex-wrap: wrap; align-items:center; }
     label { display:flex; gap:8px; align-items:center; }
+
     input[type="number"], input[type="password"] {
-      width: 140px; padding: 6px 8px; border-radius: 10px; border:1px solid #2b2b2b; background:#0f0f0f; color:#fff;
+      width: 140px; padding: 6px 8px;
+      border-radius: 10px; border:1px solid #2b2b2b;
+      background: rgba(15,15,15,0.9);
+      color:#fff;
     }
     input[type="password"] { width: 220px; }
-    button { padding: 8px 10px; border-radius: 10px; border:1px solid #2b2b2b; background:#0f0f0f; color:#fff; cursor:pointer; }
-    button:hover { background:#141414; }
+
+    button {
+      padding: 8px 10px; border-radius: 10px;
+      border:1px solid #2b2b2b;
+      background: rgba(15,15,15,0.9);
+      color:#fff; cursor:pointer;
+    }
+    button:hover { background: rgba(20,20,20,0.95); }
+
     table { width:100%; border-collapse: collapse; }
-    th, td { text-align:left; padding: 10px 8px; border-bottom: 1px solid #242424; vertical-align: top; }
+    th, td { text-align:left; padding: 10px 8px; border-bottom: 1px solid rgba(36,36,36,0.9); vertical-align: top; }
     th { color:#cfcfcf; font-weight:600; }
+
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
     .right { text-align:right; }
+
     a { color:#9dd1ff; text-decoration:none; }
     a:hover { text-decoration:underline; }
-    .pill { display:inline-block; padding: 2px 8px; border-radius: 999px; border:1px solid #2b2b2b; background:#0f0f0f; color:#eaeaea; font-size: 12px; }
+
+    .pill {
+      display:inline-block; padding: 2px 8px; border-radius: 999px;
+      border:1px solid #2b2b2b; background: rgba(15,15,15,0.9);
+      color:#eaeaea; font-size: 12px;
+    }
     .ok { border-color:#2e5; color:#bfffd0; }
     .bad { border-color:#e55; color:#ffd0d0; }
     .small { font-size:12px; }
@@ -149,7 +228,7 @@
     return (cfg.posterSeconds != null) || (cfg.fadeMs != null) || (refresh != null);
   }
 
-  // JSONP loader (avoids CORS issues). Also detects "HTML/login page" cases.
+  // JSONP loader (avoids CORS). Detects "HTML/login page" cases too.
   function loadConfigJSONP(extraParams = {}, timeoutMs = 7000) {
     return new Promise((resolve) => {
       const cbName = "__cfgcb_" + Math.random().toString(16).slice(2);
@@ -171,14 +250,14 @@
       s.src = CONFIG_SERVICE_URL + "?" + params.toString();
 
       s.onerror = () => {
-        setInfo("Config read failed (script error). Check Apps Script is public + returns JSONP.");
+        setInfo("Config read failed (script error).");
         finish({});
       };
 
       s.onload = () => {
         setTimeout(() => {
           if (!finished && !called) {
-            setInfo("Config endpoint did not call JSONP callback (likely not public or not JSONP).");
+            setInfo("Config endpoint did not call JSONP callback.");
             finish({});
           }
         }, 250);
@@ -188,7 +267,7 @@
 
       const t = setTimeout(() => {
         if (!finished) {
-          setInfo("Config read timed out. Check Apps Script access/public deployment.");
+          setInfo("Config read timed out.");
           finish({});
         }
       }, timeoutMs);
@@ -276,14 +355,12 @@
   }
 
   async function reloadConfig() {
-    // 1) try public read
     let cfg = await loadConfigJSONP({});
     if (isMeaningfulCfg(cfg)) {
       setUiConfig(cfg);
       return true;
     }
 
-    // 2) fallback: try read with key (in case Apps Script requires key for GET too)
     const key = (els.updateKey.value || "").trim();
     if (key) {
       const cfg2 = await loadConfigJSONP({ key });
@@ -331,7 +408,7 @@
 
   els.applyBtn.addEventListener("click", applyConfig);
 
-  // Always clear password on reload/navigation away (and never store it)
+  // ✅ always clear password on reload/navigation away and never store it
   window.addEventListener("beforeunload", () => { els.updateKey.value = ""; });
 
   (async () => {
@@ -340,9 +417,8 @@
     els.fadeMs.value = DEFAULTS.fadeMs;
     els.refreshSeconds.value = DEFAULTS.manifestRefreshSeconds;
 
-    // IMPORTANT: always clear key on load, and delete any old stored key
+    // ✅ clear password every page load
     els.updateKey.value = "";
-    try { localStorage.removeItem("poster_update_key"); } catch {}
 
     await reloadConfig();
     await renderCounts();
