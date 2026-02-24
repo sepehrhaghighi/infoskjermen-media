@@ -39,7 +39,6 @@
     <div class="card">
       <div class="row">
         <label>Seconds per poster
-          <!-- IMPORTANT: no baked-in "value=12" so it won't visually snap back on reload -->
           <input id="posterSeconds" type="number" min="1" placeholder="12">
         </label>
         <label>Fade (ms)
@@ -102,11 +101,7 @@
   const FILMS_URL = "./assets/films.json";
   const ARR_URL   = "./assets/arrangements.json";
 
-  const DEFAULTS = {
-    posterSeconds: 12,
-    fadeMs: 900,
-    manifestRefreshSeconds: 300,
-  };
+  const DEFAULTS = { posterSeconds: 12, fadeMs: 900, manifestRefreshSeconds: 300 };
 
   const els = {
     posterSeconds: document.getElementById("posterSeconds"),
@@ -118,9 +113,9 @@
     info: document.getElementById("info"),
   };
 
-  function pill(text, cls="ok") {
-    return `<span class="pill ${cls}">${text}</span>`;
-  }
+  const setInfo = (msg) => { els.info.textContent = msg || ""; };
+
+  function pill(text, cls="ok") { return `<span class="pill ${cls}">${text}</span>`; }
 
   function fmtDuration(seconds) {
     seconds = Math.max(0, Math.round(seconds));
@@ -135,89 +130,100 @@
     return await r.json();
   }
 
-  // JSONP config loader (avoids CORS issues)
-  function loadConfigJSONP(timeoutMs = 5000) {
+  function safeNumber(x) {
+    const n = Number(x);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  function normalizeCfg(raw) {
+    if (!raw) return {};
+    if (typeof raw === "string") { try { return JSON.parse(raw); } catch { return {}; } }
+    if (raw.data && typeof raw.data === "object") return raw.data;
+    if (raw.config && typeof raw.config === "object") return raw.config;
+    return raw;
+  }
+
+  function isMeaningfulCfg(raw) {
+    const cfg = normalizeCfg(raw);
+    const refresh = cfg.manifestRefreshSeconds ?? cfg.refreshSeconds;
+    return (cfg.posterSeconds != null) || (cfg.fadeMs != null) || (refresh != null);
+  }
+
+  // JSONP loader (avoids CORS issues). Also detects "HTML/login page" cases.
+  function loadConfigJSONP(extraParams = {}, timeoutMs = 7000) {
     return new Promise((resolve) => {
       const cbName = "__cfgcb_" + Math.random().toString(16).slice(2);
-      let done = false;
+      let called = false;
+      let finished = false;
 
       window[cbName] = (cfg) => {
-        done = true;
-        cleanup();
-        resolve(cfg || {});
+        called = true;
+        finish(cfg || {});
       };
 
+      const params = new URLSearchParams({
+        callback: cbName,
+        _: String(Date.now()),
+        ...Object.fromEntries(Object.entries(extraParams).filter(([,v]) => v != null && String(v).length > 0))
+      });
+
       const s = document.createElement("script");
-      s.src = CONFIG_SERVICE_URL + "?callback=" + cbName + "&_=" + Date.now();
-      s.onerror = () => { cleanup(); resolve({}); };
+      s.src = CONFIG_SERVICE_URL + "?" + params.toString();
+
+      s.onerror = () => {
+        setInfo("Config read failed (script error). Check Apps Script is public + returns JSONP.");
+        finish({});
+      };
+
+      s.onload = () => {
+        setTimeout(() => {
+          if (!finished && !called) {
+            setInfo("Config endpoint did not call JSONP callback (likely not public or not JSONP).");
+            finish({});
+          }
+        }, 250);
+      };
+
       document.head.appendChild(s);
 
-      const t = setTimeout(() => { if (!done) { cleanup(); resolve({}); } }, timeoutMs);
+      const t = setTimeout(() => {
+        if (!finished) {
+          setInfo("Config read timed out. Check Apps Script access/public deployment.");
+          finish({});
+        }
+      }, timeoutMs);
 
       function cleanup() {
         clearTimeout(t);
         try { delete window[cbName]; } catch {}
         s.remove();
       }
+
+      function finish(val) {
+        if (finished) return;
+        finished = true;
+        cleanup();
+        resolve(val);
+      }
     });
   }
 
-  function setInfo(msg) {
-    els.info.textContent = msg || "";
-  }
-
-  function safeNumber(x) {
-    const n = Number(x);
-    return Number.isFinite(n) ? n : null;
-  }
-
-  // Normalize whatever Apps Script returns into our expected config shape.
-  function normalizeCfg(raw) {
-    if (!raw) return {};
-    if (typeof raw === "string") {
-      try { return JSON.parse(raw); } catch { return {}; }
-    }
-    // common pattern: { data: {...} }
-    if (raw.data && typeof raw.data === "object") return raw.data;
-    return raw;
-  }
-
-  // Read config from UI, but do NOT fall back to defaults silently; we control defaults elsewhere.
-  function readUiConfig() {
-    const ps = safeNumber(els.posterSeconds.value);
-    const fm = safeNumber(els.fadeMs.value);
-    const rs = safeNumber(els.refreshSeconds.value);
-
-    return {
-      posterSeconds: ps ?? DEFAULTS.posterSeconds,
-      fadeMs: fm ?? DEFAULTS.fadeMs,
-      manifestRefreshSeconds: rs ?? DEFAULTS.manifestRefreshSeconds,
-    };
-  }
-
-  // IMPORTANT: only apply values that actually exist in loaded config.
-  // If config load fails / returns empty, we KEEP current UI values (no snap-back).
   function setUiConfig(rawCfg) {
     const cfg = normalizeCfg(rawCfg);
-
     const refresh = cfg.manifestRefreshSeconds ?? cfg.refreshSeconds;
 
-    const hasAny =
-      cfg.posterSeconds != null ||
-      cfg.fadeMs != null ||
-      refresh != null;
-
-    if (!hasAny) {
-      // Do not overwrite UI with defaults; keep what's currently shown.
-      setInfo("Couldn’t load saved config (showing current values).");
-      return false;
-    }
-
+    // Only touch fields that exist (never snap-back due to empty load)
     if (cfg.posterSeconds != null) els.posterSeconds.value = cfg.posterSeconds;
     if (cfg.fadeMs != null) els.fadeMs.value = cfg.fadeMs;
     if (refresh != null) els.refreshSeconds.value = refresh;
+  }
 
-    return true;
+  function readUiConfig() {
+    return {
+      posterSeconds: safeNumber(els.posterSeconds.value) ?? DEFAULTS.posterSeconds,
+      fadeMs: safeNumber(els.fadeMs.value) ?? DEFAULTS.fadeMs,
+      manifestRefreshSeconds: safeNumber(els.refreshSeconds.value) ?? DEFAULTS.manifestRefreshSeconds,
+    };
   }
 
   function countField(items, field) {
@@ -261,7 +267,6 @@
 
       const u1 = filmsData.updated ? `films: ${filmsData.updated}` : `films: (no updated)`;
       const u2 = arrData.updated ? `arr: ${arrData.updated}` : `arr: (no updated)`;
-      // only set info if we don't already have an important status message
       if (!els.info.textContent || els.info.textContent.startsWith("films:") || els.info.textContent.startsWith("arr:")) {
         els.info.textContent = `${u1} | ${u2}`;
       }
@@ -271,19 +276,28 @@
   }
 
   async function reloadConfig() {
-    const cfg = await loadConfigJSONP();
-    return setUiConfig(cfg);
+    // 1) try public read
+    let cfg = await loadConfigJSONP({});
+    if (isMeaningfulCfg(cfg)) {
+      setUiConfig(cfg);
+      return true;
+    }
+
+    // 2) fallback: try read with key (in case Apps Script requires key for GET too)
+    const key = (els.updateKey.value || "").trim();
+    if (key) {
+      const cfg2 = await loadConfigJSONP({ key });
+      if (isMeaningfulCfg(cfg2)) {
+        setUiConfig(cfg2);
+        return true;
+      }
+    }
+    return false;
   }
 
   async function applyConfig() {
     const key = (els.updateKey.value || "").trim();
-    if (!key) {
-      setInfo("Update key is required.");
-      return;
-    }
-
-    // store key on this device for convenience
-    // try { localStorage.setItem("poster_update_key", key); } catch {}
+    if (!key) { setInfo("Update key is required."); return; }
 
     const cfg = readUiConfig();
     const body = new URLSearchParams({
@@ -297,7 +311,6 @@
     setInfo("Applying…");
 
     try {
-      // Apps Script POST + no-cors means we can't read the response, but request is sent.
       await fetch(url, {
         method: "POST",
         mode: "no-cors",
@@ -305,15 +318,10 @@
         body
       });
 
-      // auto-reload config + counts so operator never needs another button
       setTimeout(async () => {
-        try {
-          const ok = await reloadConfig();
-          await renderCounts();
-          setInfo(ok ? "Applied ✓" : "Applied ✓ (saved, but reload returned empty)");
-        } catch {
-          setInfo("Applied ✓ (reload failed)");
-        }
+        const ok = await reloadConfig();
+        await renderCounts();
+        setInfo(ok ? "Applied ✓" : "Applied ✓ (saved, but reload returned empty)");
       }, 1200);
 
     } catch (e) {
@@ -323,18 +331,20 @@
 
   els.applyBtn.addEventListener("click", applyConfig);
 
+  // Always clear password on reload/navigation away (and never store it)
+  window.addEventListener("beforeunload", () => { els.updateKey.value = ""; });
+
   (async () => {
-    // show initial defaults immediately (optional but nice UX)
+    // show defaults immediately
     els.posterSeconds.value = DEFAULTS.posterSeconds;
     els.fadeMs.value = DEFAULTS.fadeMs;
     els.refreshSeconds.value = DEFAULTS.manifestRefreshSeconds;
 
-    // always clear key on load (and erase any previously stored key)
+    // IMPORTANT: always clear key on load, and delete any old stored key
     els.updateKey.value = "";
     try { localStorage.removeItem("poster_update_key"); } catch {}
-    
 
-    await reloadConfig();   // will NOT overwrite UI if load fails
+    await reloadConfig();
     await renderCounts();
   })();
 })();
