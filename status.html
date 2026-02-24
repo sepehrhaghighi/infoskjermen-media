@@ -4,65 +4,42 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Status & Timing Control</title>
+
   <style>
     :root {
       color-scheme: dark;
 
-      /* ✅ CHANGE THIS to your image path or a full URL */
-      --bg-url: url("./assets/status-bg.jpg");
+      /* Default (will be auto-corrected by JS if needed) */
+      --bg-url: url("./assets/status-bg.jpg?v=1");
 
-      /* tweak darkness/blur if you want */
-      --bg-dim: 0.78;     /* 0..1 (higher = darker overlay) */
-      --bg-blur: 2px;     /* blur amount */
+      /* Dark overlay strength: lower = brighter image */
+      --bg-dim: 0.55;
     }
 
     html, body {
       margin:0; padding:0;
+      min-height:100%;
       color:#f2f2f2;
       font: 15px/1.4 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-      background:#0b0b0b; /* fallback */
     }
 
-    body {
-      min-height: 100vh;
-      position: relative;
-      overflow-x: hidden;
-    }
-
-    /* Background image layer */
-    body::before {
-      content:"";
-      position: fixed;
-      inset: 0;
-      background-image: var(--bg-url);
+    /* Super-compatible background: stacked gradient + image */
+    body{
+      background:
+        linear-gradient(rgba(0,0,0,var(--bg-dim)), rgba(0,0,0,calc(var(--bg-dim) + 0.10))),
+        var(--bg-url);
       background-size: cover;
       background-position: center;
       background-repeat: no-repeat;
-      transform: scale(1.02); /* avoids edge gaps on some browsers */
-      filter: saturate(1.05) contrast(1.05);
-      z-index: -2;
-    }
-
-    /* Dark/blur overlay layer for readability */
-    body::after {
-      content:"";
-      position: fixed;
-      inset: 0;
-      background: linear-gradient(
-        180deg,
-        rgba(0,0,0,var(--bg-dim)),
-        rgba(0,0,0,calc(var(--bg-dim) + 0.08))
-      );
-      backdrop-filter: blur(var(--bg-blur));
-      -webkit-backdrop-filter: blur(var(--bg-blur));
-      z-index: -1;
+      background-attachment: fixed;
+      background-color:#0b0b0b; /* fallback */
+      overflow-x:hidden;
     }
 
     .wrap { max-width: 980px; margin: 24px auto; padding: 0 16px; }
     h1 { font-size: 20px; margin: 0 0 12px; }
     .muted { color:#bdbdbd; }
 
-    /* slightly transparent cards look nicer on photo backgrounds */
     .card {
       background: rgba(21,21,21,0.82);
       border: 1px solid rgba(36,36,36,0.9);
@@ -77,17 +54,20 @@
 
     input[type="number"], input[type="password"] {
       width: 140px; padding: 6px 8px;
-      border-radius: 10px; border:1px solid #2b2b2b;
+      border-radius: 10px;
+      border:1px solid #2b2b2b;
       background: rgba(15,15,15,0.9);
       color:#fff;
     }
     input[type="password"] { width: 220px; }
 
     button {
-      padding: 8px 10px; border-radius: 10px;
+      padding: 8px 10px;
+      border-radius: 10px;
       border:1px solid #2b2b2b;
       background: rgba(15,15,15,0.9);
-      color:#fff; cursor:pointer;
+      color:#fff;
+      cursor:pointer;
     }
     button:hover { background: rgba(20,20,20,0.95); }
 
@@ -102,15 +82,20 @@
     a:hover { text-decoration:underline; }
 
     .pill {
-      display:inline-block; padding: 2px 8px; border-radius: 999px;
-      border:1px solid #2b2b2b; background: rgba(15,15,15,0.9);
-      color:#eaeaea; font-size: 12px;
+      display:inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border:1px solid #2b2b2b;
+      background: rgba(15,15,15,0.9);
+      color:#eaeaea;
+      font-size: 12px;
     }
     .ok { border-color:#2e5; color:#bfffd0; }
     .bad { border-color:#e55; color:#ffd0d0; }
     .small { font-size:12px; }
   </style>
 </head>
+
 <body>
   <div class="wrap">
     <h1>Status & timing control</h1>
@@ -193,6 +178,42 @@
   };
 
   const setInfo = (msg) => { els.info.textContent = msg || ""; };
+
+  // --- Background auto-detect (GitHub Pages-safe) ---
+  (() => {
+    const rel = "assets/status-bg.jpg";
+    const repo = location.pathname.split("/")[1] || "";
+
+    const candidates = [
+      new URL("./" + rel, location.href),                 // same folder as page
+      new URL("../" + rel, location.href),                // one folder up
+      new URL("../../" + rel, location.href),             // two folders up
+      new URL("/" + repo + "/" + rel, location.origin),   // GitHub Pages /REPO/...
+      new URL("/" + rel, location.origin),                // root /assets/... (custom domains sometimes)
+    ];
+
+    const tryLoad = (u) => new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve(u);
+      img.onerror = () => resolve(null);
+      const uu = new URL(u.href);
+      uu.searchParams.set("v", String(Date.now())); // cache-bust probe
+      img.src = uu.href;
+    });
+
+    (async () => {
+      for (const u of candidates) {
+        const ok = await tryLoad(u);
+        if (ok) {
+          const uu = new URL(ok.href);
+          uu.searchParams.set("v", "1");
+          document.documentElement.style.setProperty("--bg-url", `url("${uu.href}")`);
+          return;
+        }
+      }
+      console.warn("Background image not found. Tried:", candidates.map(c => c.href));
+    })();
+  })();
 
   function pill(text, cls="ok") { return `<span class="pill ${cls}">${text}</span>`; }
 
