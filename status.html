@@ -12,20 +12,39 @@
       margin:0; padding:0; min-height:100%;
       color:#f2f2f2;
       font: 15px/1.4 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-      background:#0b0b0b; /* fallback */
+      background:#0b0b0b;
     }
 
-    body {
-      /* fallback background if image load fails */
-      background:
-        linear-gradient(rgba(0,0,0,0.70), rgba(0,0,0,0.80));
+    /* ✅ Background is rendered as real layers (no negative z-index) */
+    #bgLayer, #bgOverlay {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+    }
+    #bgLayer {
+      z-index: 0;
+      background-color:#0b0b0b;
       background-size: cover;
       background-position: center;
       background-repeat: no-repeat;
-      overflow-x:hidden;
+      transform: scale(1.02);
+      filter: saturate(1.05) contrast(1.05);
+    }
+    #bgOverlay {
+      z-index: 1;
+      /* Lower alpha => image more visible */
+      background: rgba(0,0,0,0.28);
     }
 
-    .wrap { max-width: 980px; margin: 24px auto; padding: 0 16px; }
+    /* Content above background */
+    .wrap {
+      position: relative;
+      z-index: 2;
+      max-width: 980px;
+      margin: 24px auto;
+      padding: 0 16px;
+    }
+
     h1 { font-size: 20px; margin: 0 0 6px; }
     .muted { color:#bdbdbd; }
     .small { font-size:12px; }
@@ -79,8 +98,13 @@
 </head>
 
 <body>
+  <div id="bgLayer"></div>
+  <div id="bgOverlay"></div>
+
   <div class="wrap">
     <h1>Status & timing control</h1>
+
+    <!-- Shows ONLY if background fails -->
     <div id="bgWarn" class="muted small" style="margin-bottom:10px;"></div>
 
     <div class="card">
@@ -147,8 +171,10 @@
   const CONFIG_SERVICE_URL = "https://script.google.com/macros/s/AKfycbzfSFnMeg-26QNv802KVleuZWoEPqQE8zU4JwQLO3ikWL-fpYP4SFWTu8Q89jmgXq0YvQ/exec";
   const FILMS_URL = "./assets/films.json";
   const ARR_URL   = "./assets/arrangements.json";
-
   const DEFAULTS = { posterSeconds: 12, fadeMs: 900, manifestRefreshSeconds: 300 };
+
+  // ✅ Your local background image path (relative to this HTML file)
+  const BG_REL = "./assets/status-bg.jpg";
 
   const els = {
     posterSeconds: document.getElementById("posterSeconds"),
@@ -159,60 +185,50 @@
     tbody: document.getElementById("tbody"),
     info: document.getElementById("info"),
     bgWarn: document.getElementById("bgWarn"),
+    bgLayer: document.getElementById("bgLayer"),
   };
 
   const setInfo = (msg) => { els.info.textContent = msg || ""; };
 
-  // ---------- BACKGROUND (no CSS vars; JS verifies image exists) ----------
-  const BG_DIM = 0.55; // lower = brighter image
-  const BG_REL = "assets/status-bg.jpg";
-
-  function setBodyBackground(url) {
-    const dim1 = BG_DIM;
-    const dim2 = Math.min(0.95, BG_DIM + 0.10);
-    document.body.style.backgroundImage =
-      `linear-gradient(rgba(0,0,0,${dim1}), rgba(0,0,0,${dim2})), url("${url}")`;
-    document.body.style.backgroundSize = "cover";
-    document.body.style.backgroundPosition = "center";
-    document.body.style.backgroundRepeat = "no-repeat";
-    // optional: fixed looks nice on desktop; harmless if ignored on iOS
-    document.body.style.backgroundAttachment = "fixed";
-  }
-
-  function tryLoadImage(url) {
+  // ---- BACKGROUND preload + set ----
+  function preload(url) {
     return new Promise((resolve) => {
       const img = new Image();
-      img.onload = () => resolve(true);
-      img.onerror = () => resolve(false);
+      img.onload = () => resolve({ ok:true, url: img.src });
+      img.onerror = () => resolve({ ok:false, url: img.src });
+
+      // Cache-bust so you don’t get an old version
       const u = new URL(url, location.href);
-      u.searchParams.set("v", String(Date.now())); // cache-bust probe
+      u.searchParams.set("v", String(Date.now()));
       img.src = u.href;
     });
   }
 
   async function initBackground() {
+    // For GitHub Pages repos, try a couple fallbacks too:
     const repo = location.pathname.split("/")[1] || "";
     const candidates = [
-      new URL(BG_REL, location.href).href,                 // relative to current page (root -> /REPO/assets/..)
-      new URL("./" + BG_REL, location.href).href,
-      new URL("/" + repo + "/" + BG_REL, location.origin).href,
-      new URL("/" + BG_REL, location.origin).href,         // custom domain root
+      new URL(BG_REL, location.href).href, // normal relative
+      new URL("/" + repo + "/assets/status-bg.jpg", location.origin).href,
+      new URL("/assets/status-bg.jpg", location.origin).href,
     ];
 
     for (const c of candidates) {
-      if (await tryLoadImage(c)) {
+      const res = await preload(c);
+      if (res.ok) {
         const u = new URL(c);
-        u.searchParams.set("v", "1"); // stable cache-bust
-        setBodyBackground(u.href);
-        els.bgWarn.textContent = ""; // success
+        u.searchParams.set("v", "1");
+        els.bgLayer.style.backgroundImage = `url("${u.href}")`;
+        els.bgWarn.textContent = "";
         return;
       }
     }
 
+    // If we get here, the image truly didn’t load
     els.bgWarn.textContent =
-      "Background image not found. Check the file is committed and the name matches exactly: assets/status-bg.jpg";
+      "Background image could not be loaded. Check: (1) file exists and is committed, (2) exact case matches (status-bg.jpg), (3) you can open /assets/status-bg.jpg in the browser.";
   }
-  // ----------------------------------------------------------------------
+  // ---------------------------------
 
   function pill(text, cls="ok") { return `<span class="pill ${cls}">${text}</span>`; }
 
@@ -403,19 +419,16 @@
 
   els.applyBtn.addEventListener("click", applyConfig);
 
-  // Always clear password on reload/navigation away and never store it
+  // Clear password on reload/navigation away and never store it
   window.addEventListener("beforeunload", () => { els.updateKey.value = ""; });
 
   (async () => {
-    // defaults immediately
     els.posterSeconds.value = DEFAULTS.posterSeconds;
     els.fadeMs.value = DEFAULTS.fadeMs;
     els.refreshSeconds.value = DEFAULTS.manifestRefreshSeconds;
-
-    // clear password every load
     els.updateKey.value = "";
 
-    await initBackground();  // <- background first, with a warning if missing
+    await initBackground();
     await reloadConfig();
     await renderCounts();
   })();
