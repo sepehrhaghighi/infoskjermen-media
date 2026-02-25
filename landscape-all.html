@@ -140,7 +140,7 @@
       .filter(Boolean)
       .map(url => ({ url, v: v2 }));
 
-    items = mergeUniqueItems(films.concat(arrs), extraItems);
+    items = mergeUniqueItems(extraItems, films.concat(arrs));;
     emptyEl.style.display = items.length ? "none" : "flex";
   }
 
