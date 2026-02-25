@@ -24,16 +24,16 @@
 (async () => {
   const CONFIG_SERVICE_URL = "https://script.google.com/macros/s/AKfycbzfSFnMeg-26QNv802KVleuZWoEPqQE8zU4JwQLO3ikWL-fpYP4SFWTu8Q89jmgXq0YvQ/exec";
   const MANIFEST_URL = "./assets/films.json";
+  const EXTRA_MANIFEST_URL = "./assets/landscape_extra/manifest.json";
   const FIELD = "landscape";
 
   let posterSeconds = 12;
   let fadeMs = 900;
   let refreshSeconds = 300;
 
-  let urls = [];
+  let items = []; // { url, v }
   let idx = 0;
   let frontIsA = true;
-  let version = "";
 
   const emptyEl = document.getElementById("empty");
   const A = document.getElementById("a");
@@ -49,6 +49,33 @@
     const r = await fetch(url, { cache: "no-store" });
     if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
     return await r.json();
+  }
+
+  async function loadManualExtras(manifestUrl) {
+    try {
+      const m = await fetchJson(manifestUrl);
+      const rawItems = Array.isArray(m.items) ? m.items : [];
+      return rawItems
+        .map(it => ({
+          url: it?.url || "",
+          v: it?.v ? ("?v=" + encodeURIComponent(it.v)) : ""
+        }))
+        .filter(it => it.url);
+    } catch {
+      return [];
+    }
+  }
+
+  function mergeUniqueItems(primary, extra) {
+    const seen = new Set(primary.map(it => it.url));
+    const out = primary.slice();
+    for (const it of extra) {
+      if (it.url && !seen.has(it.url)) {
+        seen.add(it.url);
+        out.push(it);
+      }
+    }
+    return out;
   }
 
   function loadConfigJSONP(timeoutMs = 4000) {
@@ -78,7 +105,11 @@
   }
 
   async function load() {
-    const [cfg, data] = await Promise.all([loadConfigJSONP(), fetchJson(MANIFEST_URL)]);
+    const [cfg, data, extraItems] = await Promise.all([
+      loadConfigJSONP(),
+      fetchJson(MANIFEST_URL),
+      loadManualExtras(EXTRA_MANIFEST_URL)
+    ]);
 
     posterSeconds  = numParam("p", cfg.posterSeconds ?? 12);
     fadeMs         = numParam("fade", cfg.fadeMs ?? 900);
@@ -87,36 +118,41 @@
     A.style.transitionDuration = fadeMs + "ms";
     B.style.transitionDuration = fadeMs + "ms";
 
-    version = data.updated ? ("?v=" + encodeURIComponent(data.updated)) : "";
-    urls = (data.films || []).map(x => x?.[FIELD]).filter(Boolean);
+    const baseVersion = data.updated ? ("?v=" + encodeURIComponent(data.updated)) : "";
+    const films = (data.films || [])
+      .map(x => x?.[FIELD])
+      .filter(Boolean)
+      .map(url => ({ url, v: baseVersion }));
+
+    items = mergeUniqueItems(films, extraItems);
     idx = 0;
-    emptyEl.style.display = urls.length ? "none" : "flex";
+    emptyEl.style.display = items.length ? "none" : "flex";
   }
 
-  async function preload(url) {
+  async function preload(item) {
     await new Promise(resolve => {
       const img = new Image();
       img.onload = resolve;
       img.onerror = resolve;
-      img.src = url + version;
+      img.src = item.url + item.v;
     });
   }
 
-  function swapTo(url) {
+  function swapTo(item) {
     const front = frontIsA ? A : B;
     const back  = frontIsA ? B : A;
-    back.src = url + version;
+    back.src = item.url + item.v;
     back.classList.add("show");
     front.classList.remove("show");
     frontIsA = !frontIsA;
   }
 
   async function tick() {
-    if (!urls.length) { setTimeout(tick, 2000); return; }
-    const url = urls[idx % urls.length];
+    if (!items.length) { setTimeout(tick, 2000); return; }
+    const item = items[idx % items.length];
     idx += 1;
-    await preload(url);
-    swapTo(url);
+    await preload(item);
+    swapTo(item);
     setTimeout(tick, posterSeconds * 1000);
   }
 
