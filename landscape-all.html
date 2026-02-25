@@ -140,7 +140,18 @@
       .filter(Boolean)
       .map(url => ({ url, v: v2 }));
 
-    items = mergeUniqueItems(extraItems, films.concat(arrs));;
+    // Order: films -> manual extras -> arrangements
+    const nextItems = mergeUniqueItems(films, extraItems.concat(arrs));
+
+    const changed =
+      nextItems.length !== items.length ||
+      nextItems.some((it, i) => it.url !== items[i]?.url || it.v !== items[i]?.v);
+
+    items = nextItems;
+
+    // If the set changed, restart from the beginning so new extras appear quickly
+    if (changed) idx = 0;
+
     emptyEl.style.display = items.length ? "none" : "flex";
   }
 
