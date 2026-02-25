@@ -52,13 +52,19 @@
     return await r.json();
   }
 
+  function normalizeExtraUrl(url) {
+    if (!url) return "";
+    if (url.startsWith("/assets/")) return "." + url;
+    return url;
+  }
+
   async function loadManualExtras(manifestUrl) {
     try {
       const m = await fetchJson(manifestUrl);
       const rawItems = Array.isArray(m.items) ? m.items : [];
       return rawItems
         .map(it => ({
-          url: it?.url || "",
+          url: normalizeExtraUrl(it?.url || ""),
           v: it?.v ? ("?v=" + encodeURIComponent(it.v)) : ""
         }))
         .filter(it => it.url);
@@ -167,7 +173,7 @@
 
   await load();
   tick();
-  setInterval(() => load().catch(()=>{}), refreshSeconds * 1000);
+  setInterval(() => load().catch(() => {}), refreshSeconds * 1000);
 })();
 </script>
 </body>
