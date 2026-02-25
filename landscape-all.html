@@ -25,6 +25,7 @@
   const CONFIG_SERVICE_URL = "https://script.google.com/macros/s/AKfycbzfSFnMeg-26QNv802KVleuZWoEPqQE8zU4JwQLO3ikWL-fpYP4SFWTu8Q89jmgXq0YvQ/exec";
   const FILMS_URL = "./assets/films.json";
   const ARR_URL   = "./assets/arrangements.json";
+  const EXTRA_MANIFEST_URL = "./assets/landscape_extra/manifest.json";
   const FIELD = "landscape";
 
   let posterSeconds = 12;
@@ -49,6 +50,33 @@
     const r = await fetch(url, { cache: "no-store" });
     if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
     return await r.json();
+  }
+
+  async function loadManualExtras(manifestUrl) {
+    try {
+      const m = await fetchJson(manifestUrl);
+      const rawItems = Array.isArray(m.items) ? m.items : [];
+      return rawItems
+        .map(it => ({
+          url: it?.url || "",
+          v: it?.v ? ("?v=" + encodeURIComponent(it.v)) : ""
+        }))
+        .filter(it => it.url);
+    } catch {
+      return [];
+    }
+  }
+
+  function mergeUniqueItems(primary, extra) {
+    const seen = new Set(primary.map(it => it.url));
+    const out = primary.slice();
+    for (const it of extra) {
+      if (it.url && !seen.has(it.url)) {
+        seen.add(it.url);
+        out.push(it);
+      }
+    }
+    return out;
   }
 
   function loadConfigJSONP(timeoutMs = 4000) {
@@ -78,7 +106,12 @@
   }
 
   async function load() {
-    const [cfg, filmsData, arrData] = await Promise.all([loadConfigJSONP(), fetchJson(FILMS_URL), fetchJson(ARR_URL)]);
+    const [cfg, filmsData, arrData, extraItems] = await Promise.all([
+      loadConfigJSONP(),
+      fetchJson(FILMS_URL),
+      fetchJson(ARR_URL),
+      loadManualExtras(EXTRA_MANIFEST_URL)
+    ]);
 
     posterSeconds  = numParam("p", cfg.posterSeconds ?? 12);
     fadeMs         = numParam("fade", cfg.fadeMs ?? 900);
@@ -90,10 +123,17 @@
     const v1 = filmsData.updated ? ("?v=" + encodeURIComponent(filmsData.updated)) : "";
     const v2 = arrData.updated ? ("?v=" + encodeURIComponent(arrData.updated)) : "";
 
-    const films = (filmsData.films || []).map(x => x?.[FIELD]).filter(Boolean).map(url => ({ url, v: v1 }));
-    const arrs  = (arrData.arrangements || []).map(x => x?.[FIELD]).filter(Boolean).map(url => ({ url, v: v2 }));
+    const films = (filmsData.films || [])
+      .map(x => x?.[FIELD])
+      .filter(Boolean)
+      .map(url => ({ url, v: v1 }));
 
-    items = films.concat(arrs);
+    const arrs = (arrData.arrangements || [])
+      .map(x => x?.[FIELD])
+      .filter(Boolean)
+      .map(url => ({ url, v: v2 }));
+
+    items = mergeUniqueItems(films.concat(arrs), extraItems);
     idx = 0;
     emptyEl.style.display = items.length ? "none" : "flex";
   }
