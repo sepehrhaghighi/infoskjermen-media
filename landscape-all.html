@@ -31,6 +31,7 @@
   let posterSeconds = 12;
   let fadeMs = 900;
   let refreshSeconds = 300;
+  let refreshTimer = null;
 
   let items = []; // {url, v}
   let idx = 0;
@@ -140,7 +141,6 @@
       .map(url => ({ url, v: v2 }));
 
     items = mergeUniqueItems(films.concat(arrs), extraItems);
-    idx = 0;
     emptyEl.style.display = items.length ? "none" : "flex";
   }
 
@@ -171,9 +171,19 @@
     setTimeout(tick, posterSeconds * 1000);
   }
 
+  function scheduleReload() {
+    clearTimeout(refreshTimer);
+    refreshTimer = setTimeout(async () => {
+      try {
+        await load();
+      } catch {}
+      scheduleReload();
+    }, refreshSeconds * 1000);
+  }
+
   await load();
   tick();
-  setInterval(() => load().catch(() => {}), refreshSeconds * 1000);
+  scheduleReload();
 })();
 </script>
 </body>
