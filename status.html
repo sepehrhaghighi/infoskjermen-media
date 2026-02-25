@@ -15,7 +15,6 @@
       background:#0b0b0b;
     }
 
-    /* Background layers (works well on mobile + desktop) */
     #bgLayer, #bgOverlay{
       position: fixed;
       inset: 0;
@@ -24,15 +23,15 @@
     #bgLayer{
       z-index: 0;
       background-color:#0b0b0b;
-      background-size: cover;          /* fills screen */
-      background-position: center;     /* adjust if needed */
+      background-size: cover;
+      background-position: center;
       background-repeat: no-repeat;
-      transform: none;                 /* no extra zoom/crop */
+      transform: none;
       filter: saturate(1.05) contrast(1.05);
     }
     #bgOverlay{
       z-index: 1;
-      background: rgba(0,0,0,0.14);    /* dim amount (lower = brighter) */
+      background: rgba(0,0,0,0.14);
     }
 
     .wrap{
@@ -110,7 +109,6 @@
     .ok{ border-color:#2e5; color:#bfffd0; }
     .bad{ border-color:#e55; color:#ffd0d0; }
 
-    /* ✅ Table stays inside the card on mobile */
     .tableWrap{
       width: 100%;
       overflow-x: auto;
@@ -118,7 +116,7 @@
       border-radius: 12px;
     }
     .tableWrap table{
-      min-width: 720px; /* keeps last column from spilling */
+      min-width: 720px;
     }
     @media (max-width: 700px){
       th, td{ padding: 8px 6px; }
@@ -136,7 +134,6 @@
     <div class="card">
       <div class="row">
         <label>Seconds per poster
-          <!-- ✅ no value here -> avoids flashing 12 before config loads -->
           <input id="posterSeconds" type="number" min="1" placeholder="12">
         </label>
         <label>Fade (ms)
@@ -162,7 +159,7 @@
 
     <div class="card">
       <div class="muted small" style="margin-bottom:10px;">
-        Counts are based on <span class="mono">assets/films.json</span> and <span class="mono">assets/arrangements.json</span>.
+        Counts are based on <span class="mono">assets/films.json</span>, <span class="mono">assets/arrangements.json</span>, and <span class="mono">assets/landscape_extra/manifest.json</span>.
         Suggested duration = count × seconds-per-poster.
       </div>
 
@@ -200,6 +197,7 @@
   const CONFIG_SERVICE_URL = "https://script.google.com/macros/s/AKfycbzfSFnMeg-26QNv802KVleuZWoEPqQE8zU4JwQLO3ikWL-fpYP4SFWTu8Q89jmgXq0YvQ/exec";
   const FILMS_URL = "./assets/films.json";
   const ARR_URL   = "./assets/arrangements.json";
+  const EXTRA_URL = "./assets/landscape_extra/manifest.json";
   const BG_REL    = "./assets/status-bg.jpg";
 
   const DEFAULTS = { posterSeconds: 12, fadeMs: 900, manifestRefreshSeconds: 300 };
@@ -260,7 +258,6 @@
     return (cfg.posterSeconds != null) || (cfg.fadeMs != null) || (refresh != null);
   }
 
-  // JSONP loader (avoids CORS)
   function loadConfigJSONP(extraParams = {}, timeoutMs = 7000) {
     return new Promise((resolve) => {
       const cbName = "__cfgcb_" + Math.random().toString(16).slice(2);
@@ -324,30 +321,41 @@
     return (items || []).map(x => x?.[field]).filter(Boolean).length;
   }
 
+  function countExtraItems(extraData) {
+    return Array.isArray(extraData?.items) ? extraData.items.filter(x => x?.url).length : 0;
+  }
+
   async function renderCounts() {
     const posterSeconds = safeNumber(els.posterSeconds.value) ?? DEFAULTS.posterSeconds;
     els.tbody.innerHTML = `<tr><td colspan="4" class="muted">Loading…</td></tr>`;
 
     try {
-      const [filmsData, arrData] = await Promise.all([fetchJson(FILMS_URL), fetchJson(ARR_URL)]);
+      const [filmsData, arrData, extraData] = await Promise.all([
+        fetchJson(FILMS_URL),
+        fetchJson(ARR_URL),
+        fetchJson(EXTRA_URL).catch(() => ({ items: [] }))
+      ]);
+
       const films = filmsData.films || [];
       const arrs  = arrData.arrangements || [];
+      const extraLandscape = countExtraItems(extraData);
 
-      const filmsPortrait = countField(films, "poster");
-      const filmsLandscape= countField(films, "landscape");
-      const arrPortrait   = countField(arrs, "poster");
-      const arrLandscape  = countField(arrs, "landscape");
+      const filmsPortrait      = countField(films, "poster");
+      const filmsLandscapeBase = countField(films, "landscape");
+      const arrPortrait        = countField(arrs, "poster");
+      const arrLandscape       = countField(arrs, "landscape");
 
-      const portraitAll = filmsPortrait + arrPortrait;
-      const landscapeAll= filmsLandscape + arrLandscape;
+      const filmsLandscape = filmsLandscapeBase + extraLandscape;
+      const portraitAll    = filmsPortrait + arrPortrait;
+      const landscapeAll   = filmsLandscapeBase + arrLandscape + extraLandscape;
 
       const rows = [
-        { page:"films-portrait.html", desc:"Films portrait (poster)", count: filmsPortrait },
-        { page:"films-landscape.html", desc:"Films landscape (subset)", count: filmsLandscape },
+        { page:"films-portrait.html",        desc:"Films portrait (poster)", count: filmsPortrait },
+        { page:"films-landscape.html",       desc:`Films landscape (subset + ${extraLandscape} manual extra)`, count: filmsLandscape },
         { page:"arrangements-portrait.html", desc:"Arrangements portrait (poster)", count: arrPortrait },
-        { page:"arrangements-landscape.html", desc:"Arrangements landscape (subset)", count: arrLandscape },
-        { page:"portrait-all.html", desc:"Films then arrangements (portrait)", count: portraitAll },
-        { page:"landscape-all.html", desc:"Films then arrangements (landscape subset)", count: landscapeAll }
+        { page:"arrangements-landscape.html",desc:"Arrangements landscape (subset)", count: arrLandscape },
+        { page:"portrait-all.html",          desc:"Films then arrangements (portrait)", count: portraitAll },
+        { page:"landscape-all.html",         desc:`Films + arrangements landscape (+ ${extraLandscape} manual extra)`, count: landscapeAll }
       ];
 
       els.tbody.innerHTML = rows.map(r => `
@@ -361,9 +369,10 @@
 
       const u1 = filmsData.updated ? `films: ${filmsData.updated}` : `films: (no updated)`;
       const u2 = arrData.updated ? `arr: ${arrData.updated}` : `arr: (no updated)`;
-      // Only show timestamps if we aren't showing another status message
+      const u3 = extraData.generatedAt ? `extra: ${extraData.generatedAt}` : `extra: ${extraLandscape} item(s)`;
+
       if (!els.info.textContent || els.info.textContent.includes("Loading") || els.info.textContent.includes("Applied")) {
-        els.info.textContent = `${u1} | ${u2}`;
+        els.info.textContent = `${u1} | ${u2} | ${u3}`;
       }
     } catch (e) {
       els.tbody.innerHTML = `<tr><td colspan="4">${pill("ERROR","bad")} <span class="mono">${String(e.message || e)}</span></td></tr>`;
@@ -413,7 +422,6 @@
     }
   }
 
-  // Background init (assets folder)
   function preload(url) {
     return new Promise((resolve) => {
       const img = new Image();
@@ -444,28 +452,17 @@
   }
 
   els.applyBtn.addEventListener("click", applyConfig);
-
-  // ✅ never keep password across reloads
   window.addEventListener("beforeunload", () => { els.updateKey.value = ""; });
-
-  // Optional: update suggested durations live when you change seconds-per-poster
   els.posterSeconds.addEventListener("input", () => { renderCounts(); });
 
   (async () => {
-    // Start with UI disabled + empty values to avoid the "12 -> 7" flash
     disableUi(true);
     setInfo("Loading config…");
-
-    // Always clear password on load
     els.updateKey.value = "";
-
-    // Background can load in parallel
     initBackground();
 
-    // Load config FIRST, then set inputs once (no flicker)
     const ok = await reloadConfig();
     if (!ok) {
-      // If config read fails, set defaults once (still no flicker)
       els.posterSeconds.value = DEFAULTS.posterSeconds;
       els.fadeMs.value = DEFAULTS.fadeMs;
       els.refreshSeconds.value = DEFAULTS.manifestRefreshSeconds;
