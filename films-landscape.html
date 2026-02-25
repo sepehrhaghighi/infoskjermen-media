@@ -9,8 +9,11 @@
     .stage { position:relative; width:100%; height:100%; }
     .layer { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; opacity:0; transition: opacity 900ms ease-in-out; will-change: opacity; }
     .layer.show { opacity:1; }
-    #empty { position:fixed; inset:0; display:none; align-items:center; justify-content:center; color:#fff; background:#000; text-align:center; padding:40px;
-      font: 26px/1.2 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+    #empty {
+      position:fixed; inset:0; display:none; align-items:center; justify-content:center;
+      color:#fff; background:#000; text-align:center; padding:40px;
+      font: 26px/1.2 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    }
   </style>
 </head>
 <body>
@@ -131,7 +134,18 @@
       .filter(Boolean)
       .map(url => ({ url, v: baseVersion }));
 
-    items = mergeUniqueItems(films, extraItems);
+    // Order: films -> manual extras
+    const nextItems = mergeUniqueItems(films, extraItems);
+
+    const changed =
+      nextItems.length !== items.length ||
+      nextItems.some((it, i) => it.url !== items[i]?.url || it.v !== items[i]?.v);
+
+    items = nextItems;
+
+    // If list changed, restart so newly added extras appear quickly
+    if (changed) idx = 0;
+
     emptyEl.style.display = items.length ? "none" : "flex";
   }
 
@@ -154,7 +168,10 @@
   }
 
   async function tick() {
-    if (!items.length) { setTimeout(tick, 2000); return; }
+    if (!items.length) {
+      setTimeout(tick, 2000);
+      return;
+    }
     const item = items[idx % items.length];
     idx += 1;
     await preload(item);
