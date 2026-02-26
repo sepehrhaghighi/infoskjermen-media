@@ -7,10 +7,53 @@
   <style>
     html, body { margin:0; height:100%; background:#000; overflow:hidden; }
     .stage { position:relative; width:100%; height:100%; }
-    .layer { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; opacity:0; transition: opacity 900ms ease-in-out; will-change: opacity; }
+    .layer {
+      position:absolute; inset:0; width:100%; height:100%;
+      object-fit:contain; opacity:0;
+      transition: opacity 900ms ease-in-out;
+      will-change: opacity;
+    }
     .layer.show { opacity:1; }
-    #empty { position:fixed; inset:0; display:none; align-items:center; justify-content:center; color:#fff; background:#000; text-align:center; padding:40px;
-      font: 26px/1.2 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+    #empty {
+      position:fixed; inset:0; display:none; align-items:center; justify-content:center;
+      color:#fff; background:#000; text-align:center; padding:40px;
+      font: 26px/1.2 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    }
+
+    .qrWrap{
+      position: fixed;
+      right: 22px;
+      bottom: 22px;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      pointer-events: none;
+    }
+
+    .qrWrap img{
+      width: 122px;
+      height: 122px;
+      object-fit: contain;
+      background: rgba(255,255,255,0.96);
+      padding: 8px;
+      border-radius: 14px;
+      box-shadow:
+        0 10px 26px rgba(0,0,0,0.45),
+        0 2px 8px rgba(0,0,0,0.28);
+    }
+
+    .qrLabel{
+      color: #fff;
+      background: rgba(0,0,0,0.72);
+      padding: 7px 12px;
+      border-radius: 999px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.28);
+      font: 15px/1.2 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      white-space: nowrap;
+      letter-spacing: 0.2px;
+    }
   </style>
 </head>
 <body>
@@ -20,11 +63,22 @@
     <img id="b" class="layer" alt="">
   </div>
 
+  <div id="qrWrap" class="qrWrap">
+    <img
+      src="./assets/QR.jpg"
+      alt="QR code"
+      onerror="window.__qrAvailable=false; this.closest('#qrWrap').style.display='none';"
+    >
+    <div class="qrLabel">Read here / Buy here</div>
+  </div>
+
 <script>
 (async () => {
   const CONFIG_SERVICE_URL = "https://script.google.com/macros/s/AKfycbzfSFnMeg-26QNv802KVleuZWoEPqQE8zU4JwQLO3ikWL-fpYP4SFWTu8Q89jmgXq0YvQ/exec";
   const MANIFEST_URL = "./assets/arrangements.json";
   const FIELD = "landscape";
+
+  window.__qrAvailable = true;
 
   let posterSeconds = 12;
   let fadeMs = 900;
@@ -89,7 +143,15 @@
     B.style.transitionDuration = fadeMs + "ms";
 
     version = data.updated ? ("?v=" + encodeURIComponent(data.updated)) : "";
-    urls = (data.arrangements || []).map(x => x?.[FIELD]).filter(Boolean);
+    const nextUrls = (data.arrangements || []).map(x => x?.[FIELD]).filter(Boolean);
+
+    const changed =
+      nextUrls.length !== urls.length ||
+      nextUrls.some((u, i) => u !== urls[i]);
+
+    urls = nextUrls;
+    if (changed) idx = 0;
+
     emptyEl.style.display = urls.length ? "none" : "flex";
   }
 
@@ -112,7 +174,10 @@
   }
 
   async function tick() {
-    if (!urls.length) { setTimeout(tick, 2000); return; }
+    if (!urls.length) {
+      setTimeout(tick, 2000);
+      return;
+    }
     const url = urls[idx % urls.length];
     idx += 1;
     await preload(url);
@@ -123,9 +188,7 @@
   function scheduleReload() {
     clearTimeout(refreshTimer);
     refreshTimer = setTimeout(async () => {
-      try {
-        await load();
-      } catch {}
+      try { await load(); } catch {}
       scheduleReload();
     }, refreshSeconds * 1000);
   }
