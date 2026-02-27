@@ -163,7 +163,9 @@
   let posterSeconds = 12;
   let fadeMs = 900;
   let refreshSeconds = 300;
+
   let refreshTimer = null;
+  let configPollTimer = null;
 
   let items = []; // { url, v, source, date }
   let idx = 0;
@@ -185,7 +187,7 @@
   function parseDateParts(value) {
     if (!value) return null;
     const m = String(value).match(
-      /^(\\d{4})-(\\d{2})-(\\d{2})\\s+(\\d{2}):(\\d{2})(?::(\\d{2}))?$/
+      /^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})(?::(\d{2}))?$/
     );
     if (!m) return null;
 
@@ -263,22 +265,34 @@
     });
   }
 
-  async function load() {
-    const [cfg, filmsData, arrData] = await Promise.all([
-      loadConfigJSONP(),
-      fetchJson(FILMS_URL),
-      fetchJson(ARR_URL)
-    ]);
-
-    posterSeconds  = numParam("p", cfg.posterSeconds ?? 12);
-    fadeMs         = numParam("fade", cfg.fadeMs ?? 900);
-    refreshSeconds = numParam("r", cfg.manifestRefreshSeconds ?? 300);
-
+  function applyConfigToUi() {
     A.style.transitionDuration = fadeMs + "ms";
     B.style.transitionDuration = fadeMs + "ms";
     dateA.style.transitionDuration = fadeMs + "ms";
     dateB.style.transitionDuration = fadeMs + "ms";
     if (qrWrap) qrWrap.style.transitionDuration = fadeMs + "ms";
+  }
+
+  async function loadConfigOnly() {
+    const cfg = await loadConfigJSONP();
+    const prevRefresh = refreshSeconds;
+
+    posterSeconds  = numParam("p", cfg.posterSeconds ?? 12);
+    fadeMs         = numParam("fade", cfg.fadeMs ?? 900);
+    refreshSeconds = numParam("r", cfg.manifestRefreshSeconds ?? 300);
+
+    applyConfigToUi();
+
+    if (refreshSeconds !== prevRefresh) {
+      scheduleReload();
+    }
+  }
+
+  async function loadData() {
+    const [filmsData, arrData] = await Promise.all([
+      fetchJson(FILMS_URL),
+      fetchJson(ARR_URL)
+    ]);
 
     const v1 = filmsData.updated ? ("?v=" + encodeURIComponent(filmsData.updated)) : "";
     const v2 = arrData.updated ? ("?v=" + encodeURIComponent(arrData.updated)) : "";
@@ -370,6 +384,9 @@
     idx += 1;
     await preload(item);
     swapTo(item);
+
+    // This uses the live posterSeconds value, so config changes apply
+    // without a browser reload (usually from the next slide onward).
     setTimeout(tick, posterSeconds * 1000);
   }
 
@@ -377,15 +394,26 @@
     clearTimeout(refreshTimer);
     refreshTimer = setTimeout(async () => {
       try {
-        await load();
+        await loadData();
       } catch {}
       scheduleReload();
     }, refreshSeconds * 1000);
   }
 
-  await load();
+  function scheduleConfigPoll() {
+    clearTimeout(configPollTimer);
+    configPollTimer = setTimeout(async () => {
+      try {
+        await loadConfigOnly();
+      } catch {}
+      scheduleConfigPoll();
+    }, 1000);
+  }
+
+  await Promise.all([loadConfigOnly(), loadData()]);
   tick();
   scheduleReload();
+  scheduleConfigPoll();
 })();
 </script>
 </body>
