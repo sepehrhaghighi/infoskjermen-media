@@ -145,7 +145,7 @@
   <div id="qrWrap" class="qrWrap">
     <img id="qrImg" class="qrImg" src="./assets/QR.png" alt="QR code" onerror="this.style.opacity='0';">
     <div class="qrText">
-      <div class="qrMain">Less mer - kjøp billett</div>
+      <div class="qrMain">Les mer - Kjøp billett</div>
       <div class="qrSub">www.amotkulturhus.no</div>
     </div>
   </div>
@@ -183,37 +183,58 @@
     return Number.isFinite(n) && n > 0 ? n : fallback;
   }
 
-  function formatArrangementDateTime(begin) {
-    if (!begin) return "";
+  function parseDateParts(value) {
+    if (!value) return null;
 
-    const m = String(begin).match(
+    const m = String(value).match(
       /^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})(?::(\d{2}))?$/
     );
+    if (!m) return null;
 
-    if (!m) return begin;
+    return {
+      year: Number(m[1]),
+      month: Number(m[2]),
+      day: Number(m[3]),
+      hour: Number(m[4]),
+      minute: Number(m[5]),
+      second: Number(m[6] || 0)
+    };
+  }
 
-    const year   = Number(m[1]);
-    const month  = Number(m[2]);
-    const day    = Number(m[3]);
-    const hour   = Number(m[4]);
-    const minute = Number(m[5]);
-    const second = Number(m[6] || 0);
+  function formatArrangementDateTimeRange(begin, end) {
+    const b = parseDateParts(begin);
+    if (!b) return begin || "";
 
-    const d = new Date(year, month - 1, day, hour, minute, second);
-    if (Number.isNaN(d.getTime())) return begin;
+    const beginDate = new Date(b.year, b.month - 1, b.day, b.hour, b.minute, b.second);
+    if (Number.isNaN(beginDate.getTime())) return begin || "";
 
     const dateText = new Intl.DateTimeFormat("nb-NO", {
       day: "numeric",
       month: "long",
       year: "numeric"
-    }).format(d);
+    }).format(beginDate);
 
-    const timeText = new Intl.DateTimeFormat("nb-NO", {
+    const beginTime = new Intl.DateTimeFormat("nb-NO", {
       hour: "2-digit",
       minute: "2-digit"
-    }).format(d);
+    }).format(beginDate);
 
-    return `${dateText} kl. ${timeText}`;
+    const e = parseDateParts(end);
+    if (!e) {
+      return `${dateText} kl. ${beginTime}`;
+    }
+
+    const endDate = new Date(e.year, e.month - 1, e.day, e.hour, e.minute, e.second);
+    if (Number.isNaN(endDate.getTime())) {
+      return `${dateText} kl. ${beginTime}`;
+    }
+
+    const endTime = new Intl.DateTimeFormat("nb-NO", {
+      hour: "2-digit",
+      minute: "2-digit"
+    }).format(endDate);
+
+    return `${dateText} kl. ${beginTime} - ${endTime}`;
   }
 
   async function fetchJson(url) {
@@ -272,7 +293,7 @@
       .filter(x => x?.[FIELD])
       .map(x => ({
         url: x[FIELD],
-        date: formatArrangementDateTime(x.begin)
+        date: formatArrangementDateTimeRange(x.begin, x.end)
       }));
 
     const changed =
