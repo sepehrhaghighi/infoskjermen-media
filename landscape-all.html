@@ -6,19 +6,152 @@
   <title>Landscape – Films + Arrangements</title>
   <style>
     html, body { margin:0; height:100%; background:#000; overflow:hidden; }
-    .stage { position:relative; width:100%; height:100%; }
-    .layer { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; opacity:0; transition: opacity 900ms ease-in-out; will-change: opacity; }
-    .layer.show { opacity:1; }
-    #empty { position:fixed; inset:0; display:none; align-items:center; justify-content:center; color:#fff; background:#000; text-align:center; padding:40px;
-      font: 26px/1.2 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+
+    .stage{
+      position:relative;
+      width:100%;
+      height:100%;
+      z-index:1;
+    }
+
+    .layer{
+      position:absolute;
+      inset:0;
+      width:100%;
+      height:100%;
+      object-fit:contain;
+      opacity:0;
+      transition: opacity 900ms ease-in-out;
+      will-change: opacity;
+    }
+
+    .layer.show{
+      opacity:1;
+    }
+
+    #empty{
+      position:fixed;
+      inset:0;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      color:#fff;
+      background:#000;
+      text-align:center;
+      padding:40px;
+      font:26px/1.2 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      z-index:2000;
+    }
+
+    .qrWrap{
+      position:fixed;
+      right:20px;
+      bottom:20px;
+      z-index:1000;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:10px;
+      pointer-events:none;
+
+      opacity:0;
+      transition: opacity 900ms ease-in-out;
+      will-change: opacity;
+    }
+
+    .qrWrap.show{
+      opacity:1;
+    }
+
+    .qrImg{
+      width:146px;
+      height:146px;
+      object-fit:contain;
+      background:rgba(255,255,255,0.97);
+      padding:10px;
+      border-radius:16px;
+      box-shadow:
+        0 14px 34px rgba(0,0,0,0.50),
+        0 3px 10px rgba(0,0,0,0.30);
+    }
+
+    .qrText{
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:4px;
+      color:#fff;
+      background:rgba(0,0,0,0.74);
+      padding:9px 14px;
+      border-radius:14px;
+      box-shadow:
+        0 10px 24px rgba(0,0,0,0.38),
+        0 2px 8px rgba(0,0,0,0.24);
+      text-align:center;
+      line-height:1.15;
+      white-space:nowrap;
+    }
+
+    .qrMain{
+      font:16px/1.15 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      letter-spacing:0.2px;
+    }
+
+    .qrSub{
+      font:14px/1.15 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      opacity:0.95;
+      letter-spacing:0.15px;
+    }
+
+    .dateLayer{
+      position:fixed;
+      left:22px;
+      bottom:22px;
+      z-index:900;
+      opacity:0;
+      transition: opacity 900ms ease-in-out;
+      will-change: opacity;
+
+      color:#fff;
+      background:rgba(0,0,0,0.74);
+      padding:10px 16px;
+      border-radius:14px;
+      box-shadow:
+        0 10px 26px rgba(0,0,0,0.45),
+        0 2px 8px rgba(0,0,0,0.28);
+
+      font:24px/1.2 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      letter-spacing:0.2px;
+      pointer-events:none;
+      white-space:nowrap;
+      max-width:calc(100vw - 260px);
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
+    .dateLayer.show{
+      opacity:1;
+    }
   </style>
 </head>
 <body>
   <div id="empty">No landscape posters available.</div>
+
   <div class="stage">
     <img id="a" class="layer show" alt="">
     <img id="b" class="layer" alt="">
   </div>
+
+  <div id="qrWrap" class="qrWrap">
+    <img id="qrImg" class="qrImg" src="./assets/QR.png" alt="QR code" onerror="this.style.opacity='0';">
+    <div class="qrText">
+      <div class="qrMain">Les mer - Kjøp billett</div>
+      <div class="qrSub">www.amotkulturhus.no</div>
+    </div>
+  </div>
+
+  <div id="dateA" class="dateLayer"></div>
+  <div id="dateB" class="dateLayer"></div>
 
 <script>
 (async () => {
@@ -33,18 +166,70 @@
   let refreshSeconds = 300;
   let refreshTimer = null;
 
-  let items = []; // {url, v}
+  let items = []; // { url, v, source, date }
   let idx = 0;
   let frontIsA = true;
 
   const emptyEl = document.getElementById("empty");
   const A = document.getElementById("a");
   const B = document.getElementById("b");
+  const dateA = document.getElementById("dateA");
+  const dateB = document.getElementById("dateB");
+  const qrWrap = document.getElementById("qrWrap");
 
   function numParam(name, fallback) {
     const v = new URLSearchParams(location.search).get(name);
     const n = Number(v);
     return Number.isFinite(n) && n > 0 ? n : fallback;
+  }
+
+  function parseDateParts(value) {
+    if (!value) return null;
+    const m = String(value).match(
+      /^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})(?::(\d{2}))?$/
+    );
+    if (!m) return null;
+
+    return {
+      year: Number(m[1]),
+      month: Number(m[2]),
+      day: Number(m[3]),
+      hour: Number(m[4]),
+      minute: Number(m[5]),
+      second: Number(m[6] || 0)
+    };
+  }
+
+  function formatArrangementDateTimeRange(begin, end) {
+    const b = parseDateParts(begin);
+    if (!b) return begin || "";
+
+    const beginDate = new Date(b.year, b.month - 1, b.day, b.hour, b.minute, b.second);
+    if (Number.isNaN(beginDate.getTime())) return begin || "";
+
+    const dateText = new Intl.DateTimeFormat("nb-NO", {
+      day: "numeric",
+      month: "long",
+      year: "numeric"
+    }).format(beginDate);
+
+    const beginTime = new Intl.DateTimeFormat("nb-NO", {
+      hour: "2-digit",
+      minute: "2-digit"
+    }).format(beginDate);
+
+    const e = parseDateParts(end);
+    if (!e) return `${dateText} kl. ${beginTime}`;
+
+    const endDate = new Date(e.year, e.month - 1, e.day, e.hour, e.minute, e.second);
+    if (Number.isNaN(endDate.getTime())) return `${dateText} kl. ${beginTime}`;
+
+    const endTime = new Intl.DateTimeFormat("nb-NO", {
+      hour: "2-digit",
+      minute: "2-digit"
+    }).format(endDate);
+
+    return `${dateText} kl. ${beginTime} - ${endTime}`;
   }
 
   async function fetchJson(url) {
@@ -126,30 +311,50 @@
 
     A.style.transitionDuration = fadeMs + "ms";
     B.style.transitionDuration = fadeMs + "ms";
+    dateA.style.transitionDuration = fadeMs + "ms";
+    dateB.style.transitionDuration = fadeMs + "ms";
+    if (qrWrap) qrWrap.style.transitionDuration = fadeMs + "ms";
 
     const v1 = filmsData.updated ? ("?v=" + encodeURIComponent(filmsData.updated)) : "";
     const v2 = arrData.updated ? ("?v=" + encodeURIComponent(arrData.updated)) : "";
 
     const films = (filmsData.films || [])
-      .map(x => x?.[FIELD])
-      .filter(Boolean)
-      .map(url => ({ url, v: v1 }));
+      .filter(x => x?.[FIELD])
+      .map(x => ({
+        url: x[FIELD],
+        v: v1,
+        source: "film",
+        date: ""
+      }));
+
+    const extras = extraItems.map(it => ({
+      ...it,
+      source: "extra",
+      date: ""
+    }));
 
     const arrs = (arrData.arrangements || [])
-      .map(x => x?.[FIELD])
-      .filter(Boolean)
-      .map(url => ({ url, v: v2 }));
+      .filter(x => x?.[FIELD])
+      .map(x => ({
+        url: x[FIELD],
+        v: v2,
+        source: "arrangement",
+        date: formatArrangementDateTimeRange(x.begin, x.end)
+      }));
 
     // Order: films -> manual extras -> arrangements
-    const nextItems = mergeUniqueItems(films, extraItems.concat(arrs));
+    const nextItems = mergeUniqueItems(films, extras.concat(arrs));
 
     const changed =
       nextItems.length !== items.length ||
-      nextItems.some((it, i) => it.url !== items[i]?.url || it.v !== items[i]?.v);
+      nextItems.some((it, i) =>
+        it.url !== items[i]?.url ||
+        it.v !== items[i]?.v ||
+        it.source !== items[i]?.source ||
+        it.date !== items[i]?.date
+      );
 
     items = nextItems;
-
-    // If the set changed, restart from the beginning so new extras appear quickly
     if (changed) idx = 0;
 
     emptyEl.style.display = items.length ? "none" : "flex";
@@ -165,16 +370,44 @@
   }
 
   function swapTo(item) {
-    const front = frontIsA ? A : B;
-    const back  = frontIsA ? B : A;
-    back.src = item.url + item.v;
-    back.classList.add("show");
-    front.classList.remove("show");
+    const frontImg  = frontIsA ? A : B;
+    const backImg   = frontIsA ? B : A;
+    const frontDate = frontIsA ? dateA : dateB;
+    const backDate  = frontIsA ? dateB : dateA;
+
+    backImg.src = item.url + item.v;
+
+    const showArrangementOverlay = item.source === "arrangement";
+    const text = showArrangementOverlay ? (item.date || "").trim() : "";
+
+    backDate.textContent = text;
+    if (text) {
+      backDate.classList.add("show");
+    } else {
+      backDate.classList.remove("show");
+    }
+
+    backImg.classList.add("show");
+    frontImg.classList.remove("show");
+    frontDate.classList.remove("show");
+
+    if (qrWrap) {
+      if (showArrangementOverlay) {
+        qrWrap.classList.add("show");
+      } else {
+        qrWrap.classList.remove("show");
+      }
+    }
+
     frontIsA = !frontIsA;
   }
 
   async function tick() {
-    if (!items.length) { setTimeout(tick, 2000); return; }
+    if (!items.length) {
+      setTimeout(tick, 2000);
+      return;
+    }
+
     const item = items[idx % items.length];
     idx += 1;
     await preload(item);
