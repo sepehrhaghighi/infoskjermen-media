@@ -10,23 +10,26 @@
 
     .layer{
       position:absolute; inset:0; width:100%; height:100%;
-      object-fit:contain; opacity:0;
+      object-fit:contain;
+      opacity:0;
       transition: opacity 900ms ease-in-out;
       will-change: opacity;
     }
     .layer.show { opacity:1; }
 
     #empty{
-      position:fixed; inset:0; display:none; align-items:center; justify-content:center;
+      position:fixed; inset:0;
+      display:none; align-items:center; justify-content:center;
       color:#fff; background:#000; text-align:center; padding:40px;
       font:26px/1.2 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      z-index:50;
     }
 
     .qrWrap{
       position: fixed;
       right: 22px;
       bottom: 22px;
-      z-index: 20;
+      z-index: 30;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -47,7 +50,7 @@
     }
 
     .qrLabel{
-      color: #fff;
+      color:#fff;
       background: rgba(0,0,0,0.72);
       padding: 7px 12px;
       border-radius: 999px;
@@ -57,22 +60,34 @@
       letter-spacing: 0.2px;
     }
 
-    .dateBadge{
+    .dateLayer{
       position: fixed;
       left: 22px;
       bottom: 22px;
-      z-index: 20;
-      display: none;
+      z-index: 25;
+      opacity: 0;
+      transition: opacity 900ms ease-in-out;
+      will-change: opacity;
+
       color:#fff;
-      background: rgba(0,0,0,0.72);
-      padding: 8px 14px;
-      border-radius: 12px;
+      background: rgba(0,0,0,0.74);
+      padding: 10px 16px;
+      border-radius: 14px;
       box-shadow:
         0 10px 26px rgba(0,0,0,0.45),
         0 2px 8px rgba(0,0,0,0.28);
-      font: 18px/1.2 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+
+      font: 24px/1.2 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
       letter-spacing: 0.2px;
       pointer-events: none;
+      white-space: nowrap;
+      max-width: calc(100vw - 220px);
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .dateLayer.show{
+      opacity: 1;
     }
   </style>
 </head>
@@ -88,12 +103,13 @@
     <img
       src="./assets/QR.jpg"
       alt="QR code"
-      onerror="window.__qrAvailable=false; document.getElementById('qrWrap').style.display='none';"
+      onerror="this.closest('#qrWrap').style.display='none';"
     >
     <div class="qrLabel">Read here / Buy here</div>
   </div>
 
-  <div id="dateBadge" class="dateBadge"></div>
+  <div id="dateA" class="dateLayer"></div>
+  <div id="dateB" class="dateLayer"></div>
 
 <script>
 (async () => {
@@ -101,15 +117,10 @@
   const MANIFEST_URL = "./assets/arrangements.json";
   const FIELD = "landscape";
 
-  window.__qrAvailable = true;
-
   let posterSeconds = 12;
   let fadeMs = 900;
   let refreshSeconds = 300;
-  let qrEnabled = true;
-
   let refreshTimer = null;
-  let configPollTimer = null;
 
   let items = []; // { url, date }
   let idx = 0;
@@ -119,21 +130,13 @@
   const emptyEl = document.getElementById("empty");
   const A = document.getElementById("a");
   const B = document.getElementById("b");
-  const qrWrap = document.getElementById("qrWrap");
-  const dateBadge = document.getElementById("dateBadge");
+  const dateA = document.getElementById("dateA");
+  const dateB = document.getElementById("dateB");
 
   function numParam(name, fallback) {
     const v = new URLSearchParams(location.search).get(name);
     const n = Number(v);
     return Number.isFinite(n) && n > 0 ? n : fallback;
-  }
-
-  function boolCfg(value, fallback = true) {
-    if (value === undefined || value === null || value === "") return fallback;
-    if (typeof value === "boolean") return value;
-    const s = String(value).toLowerCase();
-    if (s === "false" || s === "0" || s === "off" || s === "no") return false;
-    return true;
   }
 
   function formatArrangementDate(begin) {
@@ -182,39 +185,20 @@
     });
   }
 
-  function applyQrUi() {
-    if (!qrWrap) return;
-    if (window.__qrAvailable === false || !qrEnabled) {
-      qrWrap.style.display = "none";
-      return;
-    }
-    qrWrap.style.display = "flex";
-  }
-
-  async function loadConfigOnly() {
-    const cfg = await loadConfigJSONP();
-    const prevRefresh = refreshSeconds;
+  async function load() {
+    const [cfg, data] = await Promise.all([
+      loadConfigJSONP(),
+      fetchJson(MANIFEST_URL)
+    ]);
 
     posterSeconds  = numParam("p", cfg.posterSeconds ?? 12);
     fadeMs         = numParam("fade", cfg.fadeMs ?? 900);
     refreshSeconds = numParam("r", cfg.manifestRefreshSeconds ?? 300);
-    qrEnabled      = boolCfg(cfg.qrEnabled, true);
 
     A.style.transitionDuration = fadeMs + "ms";
     B.style.transitionDuration = fadeMs + "ms";
-
-    applyQrUi();
-
-    if (refreshSeconds !== prevRefresh) {
-      scheduleReload();
-    }
-  }
-
-  async function load() {
-    const [_, data] = await Promise.all([
-      loadConfigOnly(),
-      fetchJson(MANIFEST_URL)
-    ]);
+    dateA.style.transitionDuration = fadeMs + "ms";
+    dateB.style.transitionDuration = fadeMs + "ms";
 
     version = data.updated ? ("?v=" + encodeURIComponent(data.updated)) : "";
 
@@ -248,22 +232,25 @@
   }
 
   function swapTo(item) {
-    if (dateBadge) {
-      const text = (item.date || "").trim();
-      if (text) {
-        dateBadge.textContent = text;
-        dateBadge.style.display = "block";
-      } else {
-        dateBadge.textContent = "";
-        dateBadge.style.display = "none";
-      }
+    const frontImg  = frontIsA ? A : B;
+    const backImg   = frontIsA ? B : A;
+    const frontDate = frontIsA ? dateA : dateB;
+    const backDate  = frontIsA ? dateB : dateA;
+
+    backImg.src = item.url + version;
+
+    const text = (item.date || "").trim();
+    backDate.textContent = text;
+    if (text) {
+      backDate.classList.add("show");
+    } else {
+      backDate.classList.remove("show");
     }
 
-    const front = frontIsA ? A : B;
-    const back  = frontIsA ? B : A;
-    back.src = item.url + version;
-    back.classList.add("show");
-    front.classList.remove("show");
+    backImg.classList.add("show");
+    frontImg.classList.remove("show");
+    frontDate.classList.remove("show");
+
     frontIsA = !frontIsA;
   }
 
@@ -275,8 +262,10 @@
 
     const item = items[idx % items.length];
     idx += 1;
+
     await preload(item);
     swapTo(item);
+
     setTimeout(tick, posterSeconds * 1000);
   }
 
@@ -288,18 +277,9 @@
     }, refreshSeconds * 1000);
   }
 
-  function scheduleConfigPoll() {
-    clearTimeout(configPollTimer);
-    configPollTimer = setTimeout(async () => {
-      try { await loadConfigOnly(); } catch {}
-      scheduleConfigPoll();
-    }, 1000);
-  }
-
   await load();
   tick();
   scheduleReload();
-  scheduleConfigPoll();
 })();
 </script>
 </body>
