@@ -6,7 +6,13 @@
   <title>Arrangements – Landscape</title>
   <style>
     html, body { margin:0; height:100%; background:#000; overflow:hidden; }
-    .stage { position:relative; width:100%; height:100%; }
+
+    .stage{
+      position:relative;
+      width:100%;
+      height:100%;
+      z-index: 1;
+    }
 
     .layer{
       position:absolute; inset:0; width:100%; height:100%;
@@ -22,49 +28,66 @@
       display:none; align-items:center; justify-content:center;
       color:#fff; background:#000; text-align:center; padding:40px;
       font:26px/1.2 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-      z-index:50;
+      z-index: 2000;
     }
 
     .qrWrap{
       position: fixed;
-      right: 22px;
-      bottom: 22px;
-      z-index: 30;
+      right: 20px;
+      bottom: 20px;
+      z-index: 1000;
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
       pointer-events: none;
     }
 
-    .qrWrap img{
-      width: 122px;
-      height: 122px;
+    .qrImg{
+      width: 146px;
+      height: 146px;
       object-fit: contain;
-      background: rgba(255,255,255,0.96);
-      padding: 8px;
-      border-radius: 14px;
+      background: rgba(255,255,255,0.97);
+      padding: 10px;
+      border-radius: 16px;
       box-shadow:
-        0 10px 26px rgba(0,0,0,0.45),
-        0 2px 8px rgba(0,0,0,0.28);
+        0 14px 34px rgba(0,0,0,0.50),
+        0 3px 10px rgba(0,0,0,0.30);
     }
 
-    .qrLabel{
+    .qrText{
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap: 4px;
       color:#fff;
-      background: rgba(0,0,0,0.72);
-      padding: 7px 12px;
-      border-radius: 999px;
-      box-shadow: 0 6px 18px rgba(0,0,0,0.28);
-      font: 15px/1.2 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: rgba(0,0,0,0.74);
+      padding: 9px 14px;
+      border-radius: 14px;
+      box-shadow:
+        0 10px 24px rgba(0,0,0,0.38),
+        0 2px 8px rgba(0,0,0,0.24);
+      text-align:center;
+      line-height:1.15;
       white-space: nowrap;
+    }
+
+    .qrMain{
+      font: 16px/1.15 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
       letter-spacing: 0.2px;
+    }
+
+    .qrSub{
+      font: 14px/1.15 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      opacity: 0.95;
+      letter-spacing: 0.15px;
     }
 
     .dateLayer{
       position: fixed;
       left: 22px;
       bottom: 22px;
-      z-index: 25;
+      z-index: 900;
       opacity: 0;
       transition: opacity 900ms ease-in-out;
       will-change: opacity;
@@ -81,7 +104,7 @@
       letter-spacing: 0.2px;
       pointer-events: none;
       white-space: nowrap;
-      max-width: calc(100vw - 220px);
+      max-width: calc(100vw - 260px);
       overflow: hidden;
       text-overflow: ellipsis;
     }
@@ -100,12 +123,11 @@
   </div>
 
   <div id="qrWrap" class="qrWrap">
-    <img
-      src="./assets/QR.jpg"
-      alt="QR code"
-      onerror="this.closest('#qrWrap').style.display='none';"
-    >
-    <div class="qrLabel">Read here / Buy here</div>
+    <img id="qrImg" class="qrImg" src="./assets/QR.jpg" alt="QR code">
+    <div class="qrText">
+      <div class="qrMain">Read here / Buy here</div>
+      <div class="qrSub">www.amotkultus.no</div>
+    </div>
   </div>
 
   <div id="dateA" class="dateLayer"></div>
@@ -132,6 +154,7 @@
   const B = document.getElementById("b");
   const dateA = document.getElementById("dateA");
   const dateB = document.getElementById("dateB");
+  const qrImg = document.getElementById("qrImg");
 
   function numParam(name, fallback) {
     const v = new URLSearchParams(location.search).get(name);
@@ -276,6 +299,11 @@
       scheduleReload();
     }, refreshSeconds * 1000);
   }
+
+  // Optional: if QR image fails, keep the text panel but dim the broken image
+  qrImg.addEventListener("error", () => {
+    qrImg.style.opacity = "0";
+  });
 
   await load();
   tick();
