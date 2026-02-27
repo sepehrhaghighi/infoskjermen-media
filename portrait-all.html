@@ -167,9 +167,10 @@
   let refreshTimer = null;
   let configPollTimer = null;
 
-  let items = []; // { url, v, source, date }
+  let items = []; // { url, v, date }
   let idx = 0;
   let frontIsA = true;
+  let qrShownOnce = false;
 
   const emptyEl = document.getElementById("empty");
   const A = document.getElementById("a");
@@ -186,6 +187,7 @@
 
   function parseDateParts(value) {
     if (!value) return null;
+
     const m = String(value).match(
       /^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})(?::(\d{2}))?$/
     );
@@ -201,7 +203,7 @@
     };
   }
 
-  function formatArrangementDateTimeRange(begin, end) {
+  function formatDateTimeRange(begin, end) {
     const b = parseDateParts(begin);
     if (!b) return begin || "";
 
@@ -302,8 +304,7 @@
       .map(x => ({
         url: x[FIELD],
         v: v1,
-        source: "film",
-        date: ""
+        date: formatDateTimeRange(x.begin, x.end)
       }));
 
     const arrs = (arrData.arrangements || [])
@@ -311,8 +312,7 @@
       .map(x => ({
         url: x[FIELD],
         v: v2,
-        source: "arrangement",
-        date: formatArrangementDateTimeRange(x.begin, x.end)
+        date: formatDateTimeRange(x.begin, x.end)
       }));
 
     const nextItems = films.concat(arrs);
@@ -322,7 +322,6 @@
       nextItems.some((it, i) =>
         it.url !== items[i]?.url ||
         it.v !== items[i]?.v ||
-        it.source !== items[i]?.source ||
         it.date !== items[i]?.date
       );
 
@@ -349,8 +348,7 @@
 
     backImg.src = item.url + item.v;
 
-    const showArrangementOverlay = item.source === "arrangement";
-    const text = showArrangementOverlay ? (item.date || "").trim() : "";
+    const text = (item.date || "").trim();
 
     backDate.textContent = text;
     if (text) {
@@ -363,12 +361,9 @@
     frontImg.classList.remove("show");
     frontDate.classList.remove("show");
 
-    if (qrWrap) {
-      if (showArrangementOverlay) {
-        qrWrap.classList.add("show");
-      } else {
-        qrWrap.classList.remove("show");
-      }
+    if (!qrShownOnce && qrWrap) {
+      qrWrap.classList.add("show");
+      qrShownOnce = true;
     }
 
     frontIsA = !frontIsA;
@@ -385,8 +380,6 @@
     await preload(item);
     swapTo(item);
 
-    // This uses the live posterSeconds value, so config changes apply
-    // without a browser reload (usually from the next slide onward).
     setTimeout(tick, posterSeconds * 1000);
   }
 
