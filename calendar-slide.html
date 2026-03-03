@@ -11,9 +11,8 @@
       --bg3:#0b4a5b;
       --text:#eaf4ff;
       --muted:#b8d2ea;
-      --soft:#8bb7db;
+      --soft:#9fd5ff;
       --line:rgba(255,255,255,0.08);
-      --panel:rgba(7,16,30,0.34);
     }
 
     *{ box-sizing:border-box; }
@@ -37,20 +36,20 @@
       height:100%;
       padding:40px 44px 34px 44px;
       display:grid;
-      grid-template-columns: minmax(0, 1fr) 320px;
-      grid-template-rows: auto 1fr;
+      grid-template-columns:minmax(0, 1fr) 320px;
+      grid-template-rows:auto 1fr;
       gap:22px 28px;
     }
 
     .headline{
       grid-column:1 / 2;
       align-self:end;
-      font-size: clamp(34px, 2.8vw, 54px);
-      font-weight:700;
-      letter-spacing:-0.02em;
-      line-height:1.04;
-      text-shadow: 0 4px 16px rgba(0,0,0,0.18);
       margin:0;
+      font-size:clamp(34px, 2.8vw, 54px);
+      font-weight:700;
+      line-height:1.04;
+      letter-spacing:-0.02em;
+      text-shadow:0 4px 16px rgba(0,0,0,0.18);
     }
 
     .updated{
@@ -68,11 +67,12 @@
       flex-direction:column;
       gap:10px;
       padding-right:8px;
+      overflow:hidden;
     }
 
     .eventRow{
       display:grid;
-      grid-template-columns: 96px minmax(0, 1fr);
+      grid-template-columns:96px minmax(0, 1fr);
       gap:18px;
       align-items:start;
       min-height:70px;
@@ -80,10 +80,8 @@
 
     .dateCell{
       padding-top:2px;
-      color:#d7f0ff;
-      text-align:left;
       line-height:1;
-      user-select:none;
+      color:#d7f0ff;
     }
 
     .dateTop{
@@ -107,7 +105,7 @@
       font-weight:700;
       letter-spacing:0.08em;
       text-transform:uppercase;
-      color:#9fd5ff;
+      color:var(--soft);
       opacity:0.95;
     }
 
@@ -122,7 +120,7 @@
 
     .eventTitle{
       margin:0;
-      font-size: clamp(24px, 2vw, 36px);
+      font-size:clamp(24px, 2vw, 36px);
       font-weight:400;
       line-height:1.08;
       letter-spacing:-0.02em;
@@ -219,6 +217,75 @@
       text-align:center;
       padding:40px;
     }
+
+    @media (orientation: portrait) {
+      .wrap{
+        padding:26px 24px 22px 24px;
+        grid-template-columns:1fr;
+        grid-template-rows:auto auto 1fr;
+        gap:16px;
+      }
+
+      .headline{
+        grid-column:1 / 2;
+        font-size:clamp(28px, 5vw, 42px);
+      }
+
+      .list{
+        grid-column:1 / 2;
+        grid-row:3 / 4;
+        gap:8px;
+      }
+
+      .eventRow{
+        grid-template-columns:72px minmax(0, 1fr);
+        gap:14px;
+        min-height:52px;
+      }
+
+      .dateTop{ font-size:16px; }
+      .dateMonth{ font-size:11px; margin-top:4px; }
+      .dateWeekday{ font-size:12px; margin-top:4px; }
+
+      .eventTitle{
+        font-size:clamp(16px, 3vw, 24px);
+        -webkit-line-clamp:1;
+      }
+
+      .eventMeta{
+        margin-top:3px;
+        font-size:13px;
+      }
+
+      .side{
+        grid-column:1 / 2;
+        grid-row:2 / 3;
+        min-height:110px;
+        border-radius:20px;
+      }
+
+      .sideInner{
+        padding:18px 18px 16px 18px;
+        flex-direction:row;
+        align-items:center;
+      }
+
+      .brandText{
+        font-size:14px;
+        line-height:1.28;
+      }
+
+      .brandText strong{
+        margin-bottom:5px;
+        font-size:18px;
+      }
+
+      .logoWrap{
+        width:72px;
+        height:72px;
+        flex:0 0 auto;
+      }
+    }
   </style>
 </head>
 <body>
@@ -242,7 +309,7 @@
         </div>
 
         <div class="logoWrap">
-          <img src="./assets/logo.png" alt="Logo" onerror="this.style.display='none';">
+          <img src="./assets/logo.jpg" alt="Logo" onerror="this.style.display='none';">
         </div>
       </div>
     </aside>
@@ -250,8 +317,7 @@
 
 <script>
 (async () => {
-  const EVENTS_URL = "./assets/info-events.json";
-  const MAX_LINES = 7;
+  const EVENTS_URL = "https://script.google.com/macros/s/AKfycbzAZcL1xlb8HiQS00GznH1eZ748HFGNlWcaO5EU7enQXNDemoHeqpsyKsALGcOF_FTKyg/exec";
   const REFRESH_MS = 5 * 60 * 1000;
 
   const els = {
@@ -265,10 +331,21 @@
   const WEEKDAYS = ["SØN", "MAN", "TIR", "ONS", "TOR", "FRE", "LØR"];
   const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAI", "JUN", "JUL", "AUG", "SEP", "OKT", "NOV", "DES"];
 
+  let lastData = null;
+
+  function isLandscape() {
+    return window.innerWidth >= window.innerHeight;
+  }
+
+  function maxEvents() {
+    return isLandscape() ? 7 : 30;
+  }
+
   function parseDateTime(value) {
     if (!value) return null;
     const m = String(value).match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})(?::(\d{2}))?$/);
     if (!m) return null;
+
     const d = new Date(
       Number(m[1]),
       Number(m[2]) - 1,
@@ -277,6 +354,7 @@
       Number(m[5]),
       Number(m[6] || 0)
     );
+
     return Number.isNaN(d.getTime()) ? null : d;
   }
 
@@ -320,7 +398,7 @@
       .filter(ev => ev.title && ev.begin)
       .filter(ev => !ev.end || ev.end >= now)
       .sort((a, b) => a.begin - b.begin)
-      .slice(0, MAX_LINES);
+      .slice(0, maxEvents());
   }
 
   function renderDateCell(date, repeated) {
@@ -374,29 +452,41 @@
     return r.json();
   }
 
+  function render(data) {
+    const events = normalizeEvents(data);
+
+    els.headline.textContent = data.title || "Dette kan du oppleve i Åmot kulturhus";
+    els.updated.textContent = data.updated ? formatUpdated(data.updated) : "";
+
+    if (!events.length) {
+      els.app.style.display = "none";
+      els.empty.style.display = "flex";
+      return;
+    }
+
+    els.empty.style.display = "none";
+    els.app.style.display = "grid";
+    renderEvents(events);
+  }
+
   async function load() {
     try {
-      const data = await fetchJson(EVENTS_URL);
-      const events = normalizeEvents(data);
-
-      els.headline.textContent = data.title || "Dette kan du oppleve i Åmot kulturhus";
-      els.updated.textContent = data.updated ? formatUpdated(data.updated) : "";
-
-      if (!events.length) {
-        els.app.style.display = "none";
-        els.empty.style.display = "flex";
+      lastData = await fetchJson(EVENTS_URL);
+      render(lastData);
+    } catch (err) {
+      if (lastData) {
+        render(lastData);
         return;
       }
-
-      els.empty.style.display = "none";
-      els.app.style.display = "grid";
-      renderEvents(events);
-    } catch (err) {
       els.app.style.display = "none";
       els.empty.style.display = "flex";
       els.empty.textContent = "Kunne ikke laste kalenderdata.";
     }
   }
+
+  window.addEventListener("resize", () => {
+    if (lastData) render(lastData);
+  });
 
   await load();
   setInterval(() => { load().catch(() => {}); }, REFRESH_MS);
