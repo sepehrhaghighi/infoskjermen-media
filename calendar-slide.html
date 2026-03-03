@@ -289,9 +289,9 @@
   </style>
 </head>
 <body>
-  <div id="empty" class="empty">Ingen kommende hendelser.</div>
+  <div id="empty" class="empty">Kunne ikke laste kalenderdata.</div>
 
-  <div id="app" class="wrap">
+  <div id="app" class="wrap" style="display:none;">
     <div>
       <h1 id="headline" class="headline">Dette kan du oppleve i Åmot kulturhus</h1>
       <div id="updated" class="updated"></div>
@@ -415,6 +415,15 @@
     `;
   }
 
+  function escapeHtml(text) {
+    return String(text)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+  }
+
   function renderEvents(events) {
     let lastDateKey = "";
 
@@ -437,21 +446,6 @@
     }).join("");
   }
 
-  function escapeHtml(text) {
-    return String(text)
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#39;");
-  }
-
-  async function fetchJson(url) {
-    const r = await fetch(url, { cache: "no-store" });
-    if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
-    return r.json();
-  }
-
   function render(data) {
     const events = normalizeEvents(data);
 
@@ -461,6 +455,7 @@
     if (!events.length) {
       els.app.style.display = "none";
       els.empty.style.display = "flex";
+      els.empty.textContent = "Ingen kommende hendelser.";
       return;
     }
 
@@ -469,9 +464,39 @@
     renderEvents(events);
   }
 
+  function loadEventsJSONP(timeoutMs = 7000) {
+    return new Promise((resolve, reject) => {
+      const cbName = "__calcb_" + Math.random().toString(16).slice(2);
+      let finished = false;
+
+      window[cbName] = (data) => finish(null, data || {});
+
+      const s = document.createElement("script");
+      s.src = EVENTS_URL + "?callback=" + cbName + "&_=" + Date.now();
+      s.onerror = () => finish(new Error("Calendar script failed to load"));
+      document.head.appendChild(s);
+
+      const t = setTimeout(() => finish(new Error("Calendar load timeout")), timeoutMs);
+
+      function cleanup() {
+        clearTimeout(t);
+        try { delete window[cbName]; } catch {}
+        s.remove();
+      }
+
+      function finish(err, data) {
+        if (finished) return;
+        finished = true;
+        cleanup();
+        if (err) reject(err);
+        else resolve(data);
+      }
+    });
+  }
+
   async function load() {
     try {
-      lastData = await fetchJson(EVENTS_URL);
+      lastData = await loadEventsJSONP();
       render(lastData);
     } catch (err) {
       if (lastData) {
