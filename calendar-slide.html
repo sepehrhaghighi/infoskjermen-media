@@ -316,7 +316,7 @@
 
 <script>
 (function () {
-  var EVENTS_URL = "https://script.google.com/macros/s/AKfycbzAZcL1xlb8HiQS00GznH1eZ748HFGNlWcaO5EU7enQXNDemoHeqpsyKsALGcOF_FTKyg/exec";
+  var EVENTS_URL = "https://script.google.com/macros/s/AKfycbzWYkczmmUW_cNhNd6NYoozKYlMH9XXp95DNo-JrCSI172oSjYPPL13AQ1feoktAKy6kQ/exec";
   var REFRESH_MS = 5 * 60 * 1000;
   var LOAD_TIMEOUT_MS = 10000;
 
@@ -503,7 +503,7 @@
     var s = document.createElement("script");
     s.id = "calendarFeedScript";
     s.async = true;
-    s.src = EVENTS_URL + "?callback=__calendarFeedLoaded&_=" + Date.now();
+    s.src = EVENTS_URL + "?_=" + Date.now();
 
     s.onerror = function () {
       clearTimeout(loadTimer);
