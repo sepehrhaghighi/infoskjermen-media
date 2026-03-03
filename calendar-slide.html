@@ -9,9 +9,6 @@
       --text:#eaf4ff;
       --muted:#d5e6f7;
       --soft:#cfe7ff;
-      --line:rgba(255,255,255,0.10);
-      --panelBgTop:rgba(8,18,34,0.18);
-      --panelBgBottom:rgba(7,14,30,0.30);
     }
 
     *{ box-sizing:border-box; }
@@ -33,26 +30,23 @@
         #3124dd 100%
       );
       color:var(--text);
-      font-family: system-ui, -apple-system, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
     }
 
     .wrap{
       position:relative;
       width:100%;
       height:100%;
-      padding:24px 38px 138px 38px; /* bottom space for floating logo + QR */
+      padding:20px 36px 132px 36px; /* bottom room for logo + QR block */
       display:grid;
-      grid-template-columns:minmax(0, 1fr) 340px;
       grid-template-rows:auto 1fr;
-      gap:14px 34px;
+      gap:8px;
     }
 
     .headlineWrap{
-      grid-column:1 / 2;
-      grid-row:1 / 2;
-      width:min(100%, 880px);
+      width:min(100%, 1120px);
       justify-self:center;
-      align-self:start; /* keep title at top */
+      align-self:start;
       min-width:0;
     }
 
@@ -66,23 +60,21 @@
     }
 
     .list{
-      grid-column:1 / 2;
-      grid-row:2 / 3;
-      width:min(100%, 880px);
+      width:min(100%, 1120px);
       min-width:0;
       justify-self:center;
       display:flex;
       flex-direction:column;
-      gap:8px;
+      gap:6px;
       overflow:hidden;
     }
 
     .eventRow{
       display:grid;
-      grid-template-columns:96px minmax(0, 1fr);
+      grid-template-columns:92px minmax(0, 1fr);
       gap:18px;
       align-items:start;
-      min-height:64px;
+      min-height:60px;
     }
 
     .dateCell{
@@ -150,59 +142,12 @@
       text-shadow:0 2px 8px rgba(0,0,0,0.08);
     }
 
-    .side{
-      grid-column:2 / 3;
-      grid-row:1 / 2;
-      align-self:start;
-      position:relative;
-      border-radius:24px;
-      background:linear-gradient(180deg, var(--panelBgTop), var(--panelBgBottom));
-      border:1px solid var(--line);
-      box-shadow:
-        inset 0 1px 0 rgba(255,255,255,0.04),
-        0 14px 30px rgba(0,0,0,0.10);
-      overflow:hidden;
-      backdrop-filter: blur(4px);
-      min-height:160px;
-    }
-
-    .sideGlow{
-      position:absolute;
-      inset:auto -60px -90px auto;
-      width:220px;
-      height:220px;
-      background:radial-gradient(circle, rgba(255,255,255,0.08), transparent 62%);
-      pointer-events:none;
-    }
-
-    .sideInner{
-      position:relative;
-      z-index:1;
-      padding:20px 22px 18px 22px;
-    }
-
-    .brandText{
-      font-size:16px;
-      line-height:1.45;
-      color:var(--muted);
-    }
-
-    .brandText strong{
-      display:block;
-      margin-bottom:8px;
-      font-size:22px;
-      color:var(--text);
-      font-weight:700;
-      letter-spacing:-0.01em;
-    }
-
-    /* Logo bottom-left of the whole screen */
     .screenLogo{
       position:absolute;
-      left:28px;
-      bottom:22px;
-      width:92px;
-      height:92px;
+      left:26px;
+      bottom:18px;
+      width:88px;
+      height:88px;
       display:flex;
       align-items:flex-end;
       justify-content:flex-start;
@@ -218,11 +163,10 @@
       filter:drop-shadow(0 4px 12px rgba(0,0,0,0.18));
     }
 
-    /* QR block bottom-right of the whole screen */
     .screenCta{
       position:absolute;
-      right:28px;
-      bottom:18px;
+      right:26px;
+      bottom:14px;
       display:flex;
       flex-direction:column;
       align-items:center;
@@ -268,7 +212,7 @@
 
     .siteLink{
       font-size:14px;
-      line-height:1.22;
+      line-height:1.2;
       color:var(--soft);
       font-weight:700;
       text-shadow:0 2px 8px rgba(0,0,0,0.08);
@@ -290,15 +234,12 @@
 
     @media (orientation: portrait) {
       .wrap{
-        padding:20px 20px 126px 20px;
-        grid-template-columns:1fr;
-        grid-template-rows:auto auto 1fr;
-        gap:12px;
+        padding:18px 18px 122px 18px;
+        gap:8px;
       }
 
-      .headlineWrap{
-        grid-column:1 / 2;
-        grid-row:1 / 2;
+      .headlineWrap,
+      .list{
         width:100%;
       }
 
@@ -307,16 +248,13 @@
       }
 
       .list{
-        grid-column:1 / 2;
-        grid-row:3 / 4;
-        width:100%;
-        gap:8px;
+        gap:6px;
       }
 
       .eventRow{
         grid-template-columns:72px minmax(0, 1fr);
         gap:14px;
-        min-height:52px;
+        min-height:50px;
       }
 
       .dateTop{ font-size:16px; }
@@ -333,38 +271,17 @@
         font-size:13px;
       }
 
-      .side{
-        grid-column:1 / 2;
-        grid-row:2 / 3;
-        min-height:112px;
-        border-radius:18px;
-      }
-
-      .sideInner{
-        padding:15px 16px;
-      }
-
-      .brandText{
-        font-size:13px;
-        line-height:1.35;
-      }
-
-      .brandText strong{
-        margin-bottom:5px;
-        font-size:18px;
-      }
-
       .screenLogo{
-        left:18px;
-        bottom:14px;
-        width:58px;
-        height:58px;
+        left:16px;
+        bottom:12px;
+        width:56px;
+        height:56px;
       }
 
       .screenCta{
-        right:16px;
-        bottom:12px;
-        width:128px;
+        right:14px;
+        bottom:10px;
+        width:126px;
         gap:6px;
       }
 
@@ -382,7 +299,7 @@
 
       .siteLink{
         font-size:11px;
-        line-height:1.16;
+        line-height:1.14;
       }
     }
   </style>
@@ -396,17 +313,6 @@
     </div>
 
     <div id="list" class="list"></div>
-
-    <aside class="side">
-      <div class="sideGlow"></div>
-      <div class="sideInner">
-        <div class="brandText">
-          <strong>Velkommen</strong>
-          Kommende program vises her fortløpende.<br>
-          Billetter og mer informasjon finner du på nettsiden.
-        </div>
-      </div>
-    </aside>
 
     <div class="screenLogo">
       <img src="./assets/logo.jpg" alt="Logo" onerror="this.style.display='none';">
@@ -427,7 +333,7 @@
 <script>
 (function () {
   var EVENTS_URL = "https://script.google.com/macros/s/AKfycbzWYkczmmUW_cNhNd6NYoozKYlMH9XXp95DNo-JrCSI172oSjYPPL13AQ1feoktAKy6kQ/exec";
-  var REFRESH_MS = 5 * 60 * 1000; // 5 minutter
+  var REFRESH_MS = 5 * 60 * 1000;
   var LOAD_TIMEOUT_MS = 10000;
 
   var els = {
