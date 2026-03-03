@@ -1,521 +1,161 @@
-<!doctype html>
-<html lang="no">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Kalenderslide</title>
-  <style>
-    :root{
-      --bg1:#08263f;
-      --bg2:#0a2f66;
-      --bg3:#0b4a5b;
-      --text:#eaf4ff;
-      --muted:#b8d2ea;
-      --soft:#9fd5ff;
-      --line:rgba(255,255,255,0.08);
-    }
+const ICS_URL = 'https://calendar.google.com/calendar/ical/2be647771ecee6ed081baac45985a30286da39d8debbde7eb3a7e23af1110303%40group.calendar.google.com/private-5b40b5eb03345f30795e55e26864bf95/basic.ics';
+const OUTPUT_TZ = 'Europe/Oslo';
 
-    *{ box-sizing:border-box; }
+function doGet() {
+  const ics = UrlFetchApp.fetch(ICS_URL, {
+    muteHttpExceptions: false,
+    followRedirects: true
+  }).getContentText();
 
-    html, body{
-      margin:0;
-      width:100%;
-      height:100%;
-      overflow:hidden;
-      background:
-        radial-gradient(1100px 700px at 12% 18%, rgba(0,193,125,0.28), transparent 45%),
-        radial-gradient(900px 700px at 78% 82%, rgba(56,102,255,0.30), transparent 42%),
-        linear-gradient(130deg, var(--bg3) 0%, var(--bg1) 38%, var(--bg2) 100%);
-      color:var(--text);
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-    }
+  const now = new Date();
 
-    .wrap{
-      position:relative;
-      width:100%;
-      height:100%;
-      padding:40px 44px 34px 44px;
-      display:grid;
-      grid-template-columns:minmax(0, 1fr) 320px;
-      grid-template-rows:auto 1fr;
-      gap:22px 28px;
-    }
+  const events = parseIcsEvents_(ics)
+    .filter(ev => ev.status !== 'CANCELLED')
+    .filter(ev => ev.beginDate)
+    .filter(ev => {
+      const end = ev.endDate || ev.beginDate;
+      return end >= now;
+    })
+    .sort((a, b) => a.beginDate - b.beginDate)
+    .slice(0, 120)
+    .map(ev => ({
+      title: ev.title || '',
+      begin: formatDateTime_(ev.beginDate),
+      end: formatDateTime_(ev.endDate),
+      place: ev.location || ''
+    }));
 
-    .headline{
-      grid-column:1 / 2;
-      align-self:end;
-      margin:0;
-      font-size:clamp(34px, 2.8vw, 54px);
-      font-weight:700;
-      line-height:1.04;
-      letter-spacing:-0.02em;
-      text-shadow:0 4px 16px rgba(0,0,0,0.18);
-    }
-
-    .updated{
-      margin-top:8px;
-      font-size:14px;
-      color:var(--muted);
-      opacity:0.9;
-    }
-
-    .list{
-      grid-column:1 / 2;
-      grid-row:2 / 3;
-      min-width:0;
-      display:flex;
-      flex-direction:column;
-      gap:10px;
-      padding-right:8px;
-      overflow:hidden;
-    }
-
-    .eventRow{
-      display:grid;
-      grid-template-columns:96px minmax(0, 1fr);
-      gap:18px;
-      align-items:start;
-      min-height:70px;
-    }
-
-    .dateCell{
-      padding-top:2px;
-      line-height:1;
-      color:#d7f0ff;
-    }
-
-    .dateTop{
-      font-size:20px;
-      font-weight:700;
-      letter-spacing:-0.02em;
-    }
-
-    .dateMonth{
-      margin-top:5px;
-      font-size:14px;
-      font-weight:700;
-      letter-spacing:0.08em;
-      text-transform:uppercase;
-      opacity:0.92;
-    }
-
-    .dateWeekday{
-      margin-top:6px;
-      font-size:15px;
-      font-weight:700;
-      letter-spacing:0.08em;
-      text-transform:uppercase;
-      color:var(--soft);
-      opacity:0.95;
-    }
-
-    .dateSpacer{
-      visibility:hidden;
-    }
-
-    .eventCard{
-      min-width:0;
-      padding-top:2px;
-    }
-
-    .eventTitle{
-      margin:0;
-      font-size:clamp(24px, 2vw, 36px);
-      font-weight:400;
-      line-height:1.08;
-      letter-spacing:-0.02em;
-      color:var(--text);
-
-      display:-webkit-box;
-      -webkit-line-clamp:2;
-      -webkit-box-orient:vertical;
-      overflow:hidden;
-    }
-
-    .eventMeta{
-      margin-top:5px;
-      font-size:18px;
-      line-height:1.2;
-      color:var(--muted);
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-    }
-
-    .side{
-      grid-column:2 / 3;
-      grid-row:1 / 3;
-      position:relative;
-      border-radius:26px;
-      background:linear-gradient(180deg, rgba(9,18,34,0.28), rgba(7,16,30,0.42));
-      border:1px solid var(--line);
-      box-shadow:
-        inset 0 1px 0 rgba(255,255,255,0.04),
-        0 14px 40px rgba(0,0,0,0.18);
-      overflow:hidden;
-    }
-
-    .sideGlow{
-      position:absolute;
-      inset:auto -50px -90px auto;
-      width:220px;
-      height:220px;
-      background:radial-gradient(circle, rgba(82,128,255,0.24), transparent 60%);
-      pointer-events:none;
-    }
-
-    .sideInner{
-      position:absolute;
-      inset:0;
-      padding:28px;
-      display:flex;
-      flex-direction:column;
-      justify-content:space-between;
-      gap:18px;
-    }
-
-    .brandText{
-      font-size:18px;
-      line-height:1.35;
-      color:var(--muted);
-    }
-
-    .brandText strong{
-      display:block;
-      margin-bottom:8px;
-      font-size:22px;
-      color:var(--text);
-      font-weight:700;
-      letter-spacing:-0.01em;
-    }
-
-    .logoWrap{
-      align-self:flex-end;
-      width:116px;
-      height:116px;
-      display:flex;
-      align-items:flex-end;
-      justify-content:flex-end;
-    }
-
-    .logoWrap img{
-      max-width:100%;
-      max-height:100%;
-      object-fit:contain;
-      filter: drop-shadow(0 4px 14px rgba(0,0,0,0.22));
-    }
-
-    .empty{
-      display:none;
-      align-items:center;
-      justify-content:center;
-      width:100%;
-      height:100%;
-      font-size:32px;
-      font-weight:600;
-      color:var(--text);
-      text-align:center;
-      padding:40px;
-    }
-
-    @media (orientation: portrait) {
-      .wrap{
-        padding:26px 24px 22px 24px;
-        grid-template-columns:1fr;
-        grid-template-rows:auto auto 1fr;
-        gap:16px;
-      }
-
-      .headline{
-        grid-column:1 / 2;
-        font-size:clamp(28px, 5vw, 42px);
-      }
-
-      .list{
-        grid-column:1 / 2;
-        grid-row:3 / 4;
-        gap:8px;
-      }
-
-      .eventRow{
-        grid-template-columns:72px minmax(0, 1fr);
-        gap:14px;
-        min-height:52px;
-      }
-
-      .dateTop{ font-size:16px; }
-      .dateMonth{ font-size:11px; margin-top:4px; }
-      .dateWeekday{ font-size:12px; margin-top:4px; }
-
-      .eventTitle{
-        font-size:clamp(16px, 3vw, 24px);
-        -webkit-line-clamp:1;
-      }
-
-      .eventMeta{
-        margin-top:3px;
-        font-size:13px;
-      }
-
-      .side{
-        grid-column:1 / 2;
-        grid-row:2 / 3;
-        min-height:110px;
-        border-radius:20px;
-      }
-
-      .sideInner{
-        padding:18px 18px 16px 18px;
-        flex-direction:row;
-        align-items:center;
-      }
-
-      .brandText{
-        font-size:14px;
-        line-height:1.28;
-      }
-
-      .brandText strong{
-        margin-bottom:5px;
-        font-size:18px;
-      }
-
-      .logoWrap{
-        width:72px;
-        height:72px;
-        flex:0 0 auto;
-      }
-    }
-  </style>
-</head>
-<body>
-  <div id="empty" class="empty">Kunne ikke laste kalenderdata.</div>
-
-  <div id="app" class="wrap" style="display:none;">
-    <div>
-      <h1 id="headline" class="headline">Dette kan du oppleve i Åmot kulturhus</h1>
-      <div id="updated" class="updated"></div>
-    </div>
-
-    <div id="list" class="list"></div>
-
-    <aside class="side">
-      <div class="sideGlow"></div>
-      <div class="sideInner">
-        <div class="brandText">
-          <strong>Velkommen</strong>
-          Kommende program vises her fortløpende.<br>
-          Billetter og mer informasjon finner du på nettsiden.
-        </div>
-
-        <div class="logoWrap">
-          <img src="./assets/logo.jpg" alt="Logo" onerror="this.style.display='none';">
-        </div>
-      </div>
-    </aside>
-  </div>
-
-<script>
-(async () => {
-  const EVENTS_URL = "https://script.google.com/macros/s/AKfycbzAZcL1xlb8HiQS00GznH1eZ748HFGNlWcaO5EU7enQXNDemoHeqpsyKsALGcOF_FTKyg/exec";
-  const REFRESH_MS = 5 * 60 * 1000;
-
-  const els = {
-    app: document.getElementById("app"),
-    empty: document.getElementById("empty"),
-    list: document.getElementById("list"),
-    headline: document.getElementById("headline"),
-    updated: document.getElementById("updated")
+  const payload = {
+    updated: formatDateTime_(new Date()),
+    title: 'Dette kan du oppleve i Åmot kulturhus',
+    events
   };
 
-  const WEEKDAYS = ["SØN", "MAN", "TIR", "ONS", "TOR", "FRE", "LØR"];
-  const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAI", "JUN", "JUL", "AUG", "SEP", "OKT", "NOV", "DES"];
+  return ContentService
+    .createTextOutput(JSON.stringify(payload))
+    .setMimeType(ContentService.MimeType.JSON);
+}
 
-  let lastData = null;
+function parseIcsEvents_(icsText) {
+  const text = unfoldIcs_(icsText);
+  const blocks = text
+    .split('BEGIN:VEVENT')
+    .slice(1)
+    .map(part => part.split('END:VEVENT')[0]);
 
-  function isLandscape() {
-    return window.innerWidth >= window.innerHeight;
-  }
+  return blocks
+    .map(parseEventBlock_)
+    .filter(Boolean);
+}
 
-  function maxEvents() {
-    return isLandscape() ? 7 : 30;
-  }
+function unfoldIcs_(text) {
+  return String(text).replace(/\r?\n[ \t]/g, '');
+}
 
-  function parseDateTime(value) {
-    if (!value) return null;
-    const m = String(value).match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})(?::(\d{2}))?$/);
-    if (!m) return null;
+function parseEventBlock_(block) {
+  const lines = String(block)
+    .split(/\r?\n/)
+    .map(s => s.trim())
+    .filter(Boolean);
 
-    const d = new Date(
-      Number(m[1]),
-      Number(m[2]) - 1,
-      Number(m[3]),
-      Number(m[4]),
-      Number(m[5]),
-      Number(m[6] || 0)
-    );
+  const fields = {};
 
-    return Number.isNaN(d.getTime()) ? null : d;
-  }
+  for (const line of lines) {
+    const idx = line.indexOf(':');
+    if (idx < 0) continue;
 
-  function timeText(d) {
-    return new Intl.DateTimeFormat("nb-NO", {
-      hour: "2-digit",
-      minute: "2-digit"
-    }).format(d);
-  }
+    const left = line.slice(0, idx);
+    const value = line.slice(idx + 1);
 
-  function makeDateKey(d) {
-    return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-  }
+    const name = left.split(';')[0].toUpperCase();
 
-  function formatUpdated(value) {
-    const d = parseDateTime(String(value).replace("T", " ").replace("Z", ""));
-    if (!d) return "";
-    return "Oppdatert " + new Intl.DateTimeFormat("nb-NO", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit"
-    }).format(d);
-  }
-
-  function normalizeEvents(data) {
-    const now = new Date();
-
-    return (Array.isArray(data.events) ? data.events : [])
-      .map(ev => {
-        const begin = parseDateTime(ev.begin);
-        const end = parseDateTime(ev.end);
-        return {
-          title: String(ev.title || "").trim(),
-          place: String(ev.place || ev.location || "").trim(),
-          begin,
-          end
-        };
-      })
-      .filter(ev => ev.title && ev.begin)
-      .filter(ev => !ev.end || ev.end >= now)
-      .sort((a, b) => a.begin - b.begin)
-      .slice(0, maxEvents());
-  }
-
-  function renderDateCell(date, repeated) {
-    if (repeated) {
-      return `<div class="dateCell dateSpacer"><div class="dateTop">00.</div><div class="dateMonth">JAN</div><div class="dateWeekday">MAN</div></div>`;
-    }
-
-    return `
-      <div class="dateCell">
-        <div class="dateTop">${date.getDate()}.</div>
-        <div class="dateMonth">${MONTHS[date.getMonth()]}</div>
-        <div class="dateWeekday">${WEEKDAYS[date.getDay()]}</div>
-      </div>
-    `;
-  }
-
-  function escapeHtml(text) {
-    return String(text)
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#39;");
-  }
-
-  function renderEvents(events) {
-    let lastDateKey = "";
-
-    els.list.innerHTML = events.map(ev => {
-      const key = makeDateKey(ev.begin);
-      const repeated = key === lastDateKey;
-      lastDateKey = key;
-
-      const meta = `${timeText(ev.begin)}${ev.end ? ` - ${timeText(ev.end)}` : ""}${ev.place ? ` ${ev.place}` : ""}`;
-
-      return `
-        <div class="eventRow">
-          ${renderDateCell(ev.begin, repeated)}
-          <div class="eventCard">
-            <h2 class="eventTitle">${escapeHtml(ev.title)}</h2>
-            <div class="eventMeta">${escapeHtml(meta)}</div>
-          </div>
-        </div>
-      `;
-    }).join("");
-  }
-
-  function render(data) {
-    const events = normalizeEvents(data);
-
-    els.headline.textContent = data.title || "Dette kan du oppleve i Åmot kulturhus";
-    els.updated.textContent = data.updated ? formatUpdated(data.updated) : "";
-
-    if (!events.length) {
-      els.app.style.display = "none";
-      els.empty.style.display = "flex";
-      els.empty.textContent = "Ingen kommende hendelser.";
-      return;
-    }
-
-    els.empty.style.display = "none";
-    els.app.style.display = "grid";
-    renderEvents(events);
-  }
-
-  function loadEventsJSONP(timeoutMs = 7000) {
-    return new Promise((resolve, reject) => {
-      const cbName = "__calcb_" + Math.random().toString(16).slice(2);
-      let finished = false;
-
-      window[cbName] = (data) => finish(null, data || {});
-
-      const s = document.createElement("script");
-      s.src = EVENTS_URL + "?callback=" + cbName + "&_=" + Date.now();
-      s.onerror = () => finish(new Error("Calendar script failed to load"));
-      document.head.appendChild(s);
-
-      const t = setTimeout(() => finish(new Error("Calendar load timeout")), timeoutMs);
-
-      function cleanup() {
-        clearTimeout(t);
-        try { delete window[cbName]; } catch {}
-        s.remove();
-      }
-
-      function finish(err, data) {
-        if (finished) return;
-        finished = true;
-        cleanup();
-        if (err) reject(err);
-        else resolve(data);
-      }
+    if (!fields[name]) fields[name] = [];
+    fields[name].push({
+      rawKey: left,
+      value
     });
   }
 
-  async function load() {
-    try {
-      lastData = await loadEventsJSONP();
-      render(lastData);
-    } catch (err) {
-      if (lastData) {
-        render(lastData);
-        return;
-      }
-      els.app.style.display = "none";
-      els.empty.style.display = "flex";
-      els.empty.textContent = "Kunne ikke laste kalenderdata.";
-    }
+  const status = getValue_(fields, 'STATUS');
+  const summary = getValue_(fields, 'SUMMARY');
+  const location = getValue_(fields, 'LOCATION');
+  const dtStart = getEntry_(fields, 'DTSTART');
+  const dtEnd = getEntry_(fields, 'DTEND');
+
+  const beginDate = parseIcsDate_(dtStart);
+  let endDate = parseIcsDate_(dtEnd);
+
+  if (!beginDate) return null;
+
+  if (!endDate) {
+    endDate = new Date(beginDate.getTime());
   }
 
-  window.addEventListener("resize", () => {
-    if (lastData) render(lastData);
-  });
+  return {
+    status: status || '',
+    title: unescapeIcsText_(summary || ''),
+    location: unescapeIcsText_(location || ''),
+    beginDate,
+    endDate
+  };
+}
 
-  await load();
-  setInterval(() => { load().catch(() => {}); }, REFRESH_MS);
-})();
-</script>
-</body>
-</html>
+function getEntry_(fields, key) {
+  return fields[key] && fields[key].length ? fields[key][0] : null;
+}
+
+function getValue_(fields, key) {
+  const entry = getEntry_(fields, key);
+  return entry ? entry.value : '';
+}
+
+function parseIcsDate_(entry) {
+  if (!entry || !entry.value) return null;
+
+  const rawKey = entry.rawKey || '';
+  const value = String(entry.value).trim();
+
+  if (/VALUE=DATE/i.test(rawKey) || /^\d{8}$/.test(value)) {
+    const year = Number(value.slice(0, 4));
+    const month = Number(value.slice(4, 6));
+    const day = Number(value.slice(6, 8));
+    const d = new Date(year, month - 1, day, 0, 0, 0);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+
+  if (/^\d{8}T\d{6}Z$/.test(value)) {
+    const year = Number(value.slice(0, 4));
+    const month = Number(value.slice(4, 6));
+    const day = Number(value.slice(6, 8));
+    const hour = Number(value.slice(9, 11));
+    const minute = Number(value.slice(11, 13));
+    const second = Number(value.slice(13, 15));
+    return new Date(Date.UTC(year, month - 1, day, hour, minute, second));
+  }
+
+  if (/^\d{8}T\d{6}$/.test(value)) {
+    const year = Number(value.slice(0, 4));
+    const month = Number(value.slice(4, 6));
+    const day = Number(value.slice(6, 8));
+    const hour = Number(value.slice(9, 11));
+    const minute = Number(value.slice(11, 13));
+    const second = Number(value.slice(13, 15));
+    const d = new Date(year, month - 1, day, hour, minute, second);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+
+  return null;
+}
+
+function formatDateTime_(dateObj) {
+  if (!dateObj) return '';
+  return Utilities.formatDate(dateObj, OUTPUT_TZ, 'yyyy-MM-dd HH:mm:ss');
+}
+
+function unescapeIcsText_(text) {
+  return String(text)
+    .replace(/\\\\/g, '\\')
+    .replace(/\\n/gi, '\n')
+    .replace(/\\,/g, ',')
+    .replace(/\\;/g, ';');
+}
