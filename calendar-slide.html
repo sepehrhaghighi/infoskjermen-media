@@ -33,25 +33,26 @@
         #3124dd 100%
       );
       color:var(--text);
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      font-family: system-ui, -apple-system, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
     }
 
     .wrap{
       position:relative;
       width:100%;
       height:100%;
-      padding:34px 38px 150px 38px; /* bottom space for floating logo + QR */
+      padding:24px 38px 138px 38px; /* bottom space for floating logo + QR */
       display:grid;
       grid-template-columns:minmax(0, 1fr) 340px;
       grid-template-rows:auto 1fr;
-      gap:20px 34px;
+      gap:14px 34px;
     }
 
     .headlineWrap{
       grid-column:1 / 2;
+      grid-row:1 / 2;
       width:min(100%, 880px);
       justify-self:center;
-      align-self:end;
+      align-self:start; /* keep title at top */
       min-width:0;
     }
 
@@ -72,7 +73,7 @@
       justify-self:center;
       display:flex;
       flex-direction:column;
-      gap:10px;
+      gap:8px;
       overflow:hidden;
     }
 
@@ -81,7 +82,7 @@
       grid-template-columns:96px minmax(0, 1fr);
       gap:18px;
       align-items:start;
-      min-height:70px;
+      min-height:64px;
     }
 
     .dateCell{
@@ -139,7 +140,7 @@
     }
 
     .eventMeta{
-      margin-top:5px;
+      margin-top:4px;
       font-size:18px;
       line-height:1.2;
       color:var(--muted);
@@ -162,7 +163,7 @@
         0 14px 30px rgba(0,0,0,0.10);
       overflow:hidden;
       backdrop-filter: blur(4px);
-      min-height:180px;
+      min-height:160px;
     }
 
     .sideGlow{
@@ -177,7 +178,7 @@
     .sideInner{
       position:relative;
       z-index:1;
-      padding:22px 22px 20px 22px;
+      padding:20px 22px 18px 22px;
     }
 
     .brandText{
@@ -195,11 +196,11 @@
       letter-spacing:-0.01em;
     }
 
-    /* Floating logo: bottom-left of whole screen */
+    /* Logo bottom-left of the whole screen */
     .screenLogo{
       position:absolute;
       left:28px;
-      bottom:24px;
+      bottom:22px;
       width:92px;
       height:92px;
       display:flex;
@@ -217,46 +218,18 @@
       filter:drop-shadow(0 4px 12px rgba(0,0,0,0.18));
     }
 
-    /* Floating CTA: bottom-right of whole screen */
+    /* QR block bottom-right of the whole screen */
     .screenCta{
       position:absolute;
       right:28px;
-      bottom:20px;
+      bottom:18px;
       display:flex;
-      align-items:flex-end;
-      gap:14px;
+      flex-direction:column;
+      align-items:center;
+      gap:8px;
       z-index:3;
-      max-width:min(42vw, 360px);
+      width:170px;
       pointer-events:none;
-    }
-
-    .screenCtaInfo{
-      text-align:right;
-      max-width:170px;
-      min-width:0;
-      padding-bottom:4px;
-    }
-
-    .ctaText{
-      font-size:16px;
-      line-height:1.2;
-      color:var(--text);
-      font-weight:700;
-      margin-bottom:6px;
-      text-shadow:0 2px 10px rgba(0,0,0,0.10);
-    }
-
-    .siteLink{
-      font-size:14px;
-      line-height:1.22;
-      color:var(--soft);
-      font-weight:700;
-      text-shadow:0 2px 8px rgba(0,0,0,0.08);
-    }
-
-    .siteLink span{
-      word-break:normal;
-      overflow-wrap:normal;
     }
 
     .qrWrap{
@@ -279,6 +252,28 @@
       display:block;
     }
 
+    .screenCtaInfo{
+      width:100%;
+      text-align:center;
+    }
+
+    .ctaText{
+      font-size:16px;
+      line-height:1.2;
+      color:var(--text);
+      font-weight:700;
+      margin-bottom:5px;
+      text-shadow:0 2px 10px rgba(0,0,0,0.10);
+    }
+
+    .siteLink{
+      font-size:14px;
+      line-height:1.22;
+      color:var(--soft);
+      font-weight:700;
+      text-shadow:0 2px 8px rgba(0,0,0,0.08);
+    }
+
     .empty{
       display:flex;
       align-items:center;
@@ -295,14 +290,15 @@
 
     @media (orientation: portrait) {
       .wrap{
-        padding:22px 20px 132px 20px;
+        padding:20px 20px 126px 20px;
         grid-template-columns:1fr;
         grid-template-rows:auto auto 1fr;
-        gap:14px;
+        gap:12px;
       }
 
       .headlineWrap{
         grid-column:1 / 2;
+        grid-row:1 / 2;
         width:100%;
       }
 
@@ -340,12 +336,12 @@
       .side{
         grid-column:1 / 2;
         grid-row:2 / 3;
-        min-height:120px;
+        min-height:112px;
         border-radius:18px;
       }
 
       .sideInner{
-        padding:16px;
+        padding:15px 16px;
       }
 
       .brandText{
@@ -366,25 +362,10 @@
       }
 
       .screenCta{
-        right:18px;
+        right:16px;
         bottom:12px;
-        gap:10px;
-        max-width:calc(100vw - 110px);
-      }
-
-      .screenCtaInfo{
-        max-width:120px;
-        padding-bottom:2px;
-      }
-
-      .ctaText{
-        font-size:12px;
-        margin-bottom:4px;
-      }
-
-      .siteLink{
-        font-size:11px;
-        line-height:1.18;
+        width:128px;
+        gap:6px;
       }
 
       .qrWrap{
@@ -392,6 +373,16 @@
         height:82px;
         border-radius:10px;
         padding:5px;
+      }
+
+      .ctaText{
+        font-size:12px;
+        margin-bottom:3px;
+      }
+
+      .siteLink{
+        font-size:11px;
+        line-height:1.16;
       }
     }
   </style>
@@ -417,23 +408,18 @@
       </div>
     </aside>
 
-    <!-- Logo on the left side of the screen -->
     <div class="screenLogo">
-      <!-- Change filename if needed -->
       <img src="./assets/logo.jpg" alt="Logo" onerror="this.style.display='none';">
     </div>
 
-    <!-- QR + CTA on the bottom-right of the screen -->
     <div class="screenCta">
-      <div class="screenCtaInfo">
-        <div class="ctaText">Les mer - Kjøp her</div>
-        <div class="siteLink">
-          <span>www.<wbr>amotkulturhus.<wbr>no</span>
-        </div>
-      </div>
-
       <div class="qrWrap">
         <img src="./assets/QR.png" alt="QR-kode" onerror="this.style.display='none'; this.parentNode.style.display='none';">
+      </div>
+
+      <div class="screenCtaInfo">
+        <div class="ctaText">Les mer - Kjøp her</div>
+        <div class="siteLink">www.amotkulturhus.no</div>
       </div>
     </div>
   </div>
