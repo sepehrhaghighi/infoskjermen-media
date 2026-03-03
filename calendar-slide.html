@@ -37,50 +37,47 @@
       position:relative;
       width:100%;
       height:100%;
-      padding:20px 36px 132px 36px; /* bottom room for logo + QR block */
+      padding:40px 44px 132px 44px; /* bottom room for logo + QR block */
       display:grid;
+      grid-template-columns:minmax(0, 1fr) 320px; /* keeps original placement feel */
       grid-template-rows:auto 1fr;
-      gap:8px;
-    }
-
-    .headlineWrap{
-      width:min(100%, 1120px);
-      justify-self:center;
-      align-self:start;
-      min-width:0;
+      gap:16px 28px;
     }
 
     .headline{
+      grid-column:1 / 2;
+      align-self:end;
       margin:0;
       font-size:clamp(34px, 2.8vw, 54px);
       font-weight:700;
       line-height:1.04;
       letter-spacing:-0.02em;
-      text-shadow:0 4px 16px rgba(0,0,0,0.14);
+      text-shadow:0 4px 16px rgba(0,0,0,0.16);
     }
 
     .list{
-      width:min(100%, 1120px);
+      grid-column:1 / 2;
+      grid-row:2 / 3;
       min-width:0;
-      justify-self:center;
       display:flex;
       flex-direction:column;
-      gap:6px;
+      gap:8px;
+      padding-right:8px;
       overflow:hidden;
     }
 
     .eventRow{
       display:grid;
-      grid-template-columns:92px minmax(0, 1fr);
+      grid-template-columns:96px minmax(0, 1fr);
       gap:18px;
       align-items:start;
-      min-height:60px;
+      min-height:66px;
     }
 
     .dateCell{
       padding-top:2px;
       line-height:1;
-      color:#f1fbff;
+      color:#eef9ff;
     }
 
     .dateTop{
@@ -95,7 +92,7 @@
       font-weight:700;
       letter-spacing:0.08em;
       text-transform:uppercase;
-      opacity:0.95;
+      opacity:0.94;
     }
 
     .dateWeekday{
@@ -105,7 +102,7 @@
       letter-spacing:0.08em;
       text-transform:uppercase;
       color:var(--soft);
-      opacity:0.95;
+      opacity:0.96;
     }
 
     .dateSpacer{
@@ -144,10 +141,10 @@
 
     .screenLogo{
       position:absolute;
-      left:26px;
-      bottom:18px;
-      width:88px;
-      height:88px;
+      left:24px;
+      bottom:16px;
+      width:86px;
+      height:86px;
       display:flex;
       align-items:flex-end;
       justify-content:flex-start;
@@ -165,20 +162,20 @@
 
     .screenCta{
       position:absolute;
-      right:26px;
-      bottom:14px;
+      right:24px;
+      bottom:12px;
       display:flex;
       flex-direction:column;
       align-items:center;
       gap:8px;
+      width:168px;
       z-index:3;
-      width:170px;
       pointer-events:none;
     }
 
     .qrWrap{
-      width:112px;
-      height:112px;
+      width:108px;
+      height:108px;
       border-radius:14px;
       background:rgba(255,255,255,0.97);
       padding:8px;
@@ -186,7 +183,6 @@
       align-items:center;
       justify-content:center;
       box-shadow:0 6px 18px rgba(0,0,0,0.16);
-      flex:0 0 auto;
     }
 
     .qrWrap img{
@@ -216,6 +212,7 @@
       color:var(--soft);
       font-weight:700;
       text-shadow:0 2px 8px rgba(0,0,0,0.08);
+      overflow-wrap:anywhere;
     }
 
     .empty{
@@ -234,27 +231,28 @@
 
     @media (orientation: portrait) {
       .wrap{
-        padding:18px 18px 122px 18px;
-        gap:8px;
-      }
-
-      .headlineWrap,
-      .list{
-        width:100%;
+        padding:24px 20px 118px 20px;
+        grid-template-columns:1fr;
+        grid-template-rows:auto 1fr;
+        gap:12px;
       }
 
       .headline{
+        grid-column:1 / 2;
         font-size:clamp(28px, 5vw, 42px);
       }
 
       .list{
+        grid-column:1 / 2;
+        grid-row:2 / 3;
         gap:6px;
+        padding-right:0;
       }
 
       .eventRow{
         grid-template-columns:72px minmax(0, 1fr);
         gap:14px;
-        min-height:50px;
+        min-height:52px;
       }
 
       .dateTop{ font-size:16px; }
@@ -308,9 +306,7 @@
   <div id="empty" class="empty">Laster kalenderdata…</div>
 
   <div id="app" class="wrap" style="display:none;">
-    <div class="headlineWrap">
-      <h1 id="headline" class="headline">Dette kan du oppleve i Åmot kulturhus</h1>
-    </div>
+    <h1 id="headline" class="headline">Dette kan du oppleve i Åmot kulturhus</h1>
 
     <div id="list" class="list"></div>
 
@@ -333,7 +329,7 @@
 <script>
 (function () {
   var EVENTS_URL = "https://script.google.com/macros/s/AKfycbzWYkczmmUW_cNhNd6NYoozKYlMH9XXp95DNo-JrCSI172oSjYPPL13AQ1feoktAKy6kQ/exec";
-  var REFRESH_MS = 5 * 60 * 1000;
+  var REFRESH_MS = 5 * 60 * 1000; // 5 minutter
   var LOAD_TIMEOUT_MS = 10000;
 
   var els = {
