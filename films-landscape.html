@@ -5,22 +5,73 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Films – Landscape</title>
   <style>
-    html, body { margin:0; height:100%; background:#000; overflow:hidden; }
-    .stage { position:relative; width:100%; height:100%; }
-    .layer { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; opacity:0; transition: opacity 900ms ease-in-out; will-change: opacity; }
-    .layer.show { opacity:1; }
+    html, body {
+      margin:0;
+      height:100%;
+      background:#000;
+      overflow:hidden;
+    }
+
+    .stage {
+      position:relative;
+      width:100%;
+      height:100%;
+      background:#000;
+    }
+
+    .layer {
+      position:absolute;
+      inset:0;
+      opacity:0;
+      transition: opacity 900ms ease-in-out;
+      will-change: opacity;
+      background:#000;
+    }
+
+    .layer.show {
+      opacity:1;
+    }
+
+    .mediaImg,
+    .mediaFrame {
+      position:absolute;
+      inset:0;
+      width:100%;
+      height:100%;
+      display:block;
+      border:0;
+      background:#000;
+    }
+
+    .mediaImg {
+      object-fit:contain;
+    }
+
+    .mediaFrame {
+      border:0;
+    }
+
     #empty {
-      position:fixed; inset:0; display:none; align-items:center; justify-content:center;
-      color:#fff; background:#000; text-align:center; padding:40px;
+      position:fixed;
+      inset:0;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      color:#fff;
+      background:#000;
+      text-align:center;
+      padding:40px;
       font: 26px/1.2 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      z-index:10;
     }
   </style>
 </head>
 <body>
   <div id="empty">No film landscape posters available.</div>
+
   <div class="stage">
-    <img id="a" class="layer show" alt="">
-    <img id="b" class="layer" alt="">
+    <div id="a" class="layer show"></div>
+    <div id="b" class="layer"></div>
   </div>
 
 <script>
@@ -28,14 +79,25 @@
   const CONFIG_SERVICE_URL = "https://script.google.com/macros/s/AKfycbzfSFnMeg-26QNv802KVleuZWoEPqQE8zU4JwQLO3ikWL-fpYP4SFWTu8Q89jmgXq0YvQ/exec";
   const MANIFEST_URL = "./assets/films.json";
   const EXTRA_MANIFEST_URL = "./assets/landscape_extra/manifest.json";
+
+  /* Change this if your calendar page filename/path is different */
+  const CALENDAR_SLIDE_URL = "./calendar-slide.html";
+
   const FIELD = "landscape";
 
   let posterSeconds = 12;
+  let calendarSlideSeconds = 0; /* 0 = disabled */
   let fadeMs = 900;
   let refreshSeconds = 300;
   let refreshTimer = null;
+  let tickTimer = null;
 
-  let items = []; // { url, v }
+  /*
+    items:
+    { kind: "image", url, v, seconds }
+    { kind: "calendar", url, seconds }
+  */
+  let items = [];
   let idx = 0;
   let frontIsA = true;
 
@@ -43,10 +105,16 @@
   const A = document.getElementById("a");
   const B = document.getElementById("b");
 
-  function numParam(name, fallback) {
+  function positiveParam(name, fallback) {
     const v = new URLSearchParams(location.search).get(name);
     const n = Number(v);
     return Number.isFinite(n) && n > 0 ? n : fallback;
+  }
+
+  function nonNegativeParam(name, fallback) {
+    const v = new URLSearchParams(location.search).get(name);
+    const n = Number(v);
+    return Number.isFinite(n) && n >= 0 ? n : fallback;
   }
 
   async function fetchJson(url) {
@@ -67,8 +135,10 @@
       const rawItems = Array.isArray(m.items) ? m.items : [];
       return rawItems
         .map(it => ({
+          kind: "image",
           url: normalizeExtraUrl(it?.url || ""),
-          v: it?.v ? ("?v=" + encodeURIComponent(it.v)) : ""
+          v: it?.v ? ("?v=" + encodeURIComponent(it.v)) : "",
+          seconds: posterSeconds
         }))
         .filter(it => it.url);
     } catch {
@@ -79,6 +149,7 @@
   function mergeUniqueItems(primary, extra) {
     const seen = new Set(primary.map(it => it.url));
     const out = primary.slice();
+
     for (const it of extra) {
       if (it.url && !seen.has(it.url)) {
         seen.add(it.url);
@@ -104,7 +175,12 @@
       s.onerror = () => { cleanup(); resolve({}); };
       document.head.appendChild(s);
 
-      const t = setTimeout(() => { if (!done) { cleanup(); resolve({}); } }, timeoutMs);
+      const t = setTimeout(() => {
+        if (!done) {
+          cleanup();
+          resolve({});
+        }
+      }, timeoutMs);
 
       function cleanup() {
         clearTimeout(t);
@@ -114,69 +190,135 @@
     });
   }
 
+  function itemsChanged(nextItems) {
+    if (nextItems.length !== items.length) return true;
+
+    for (let i = 0; i < nextItems.length; i += 1) {
+      const a = nextItems[i];
+      const b = items[i];
+      if (!b) return true;
+      if (a.kind !== b.kind) return true;
+      if (a.url !== b.url) return true;
+      if ((a.v || "") !== (b.v || "")) return true;
+      if ((a.seconds || 0) !== (b.seconds || 0)) return true;
+    }
+    return false;
+  }
+
   async function load() {
-    const [cfg, data, extraItems] = await Promise.all([
+    const [cfg, data] = await Promise.all([
       loadConfigJSONP(),
-      fetchJson(MANIFEST_URL),
-      loadManualExtras(EXTRA_MANIFEST_URL)
+      fetchJson(MANIFEST_URL)
     ]);
 
-    posterSeconds  = numParam("p", cfg.posterSeconds ?? 12);
-    fadeMs         = numParam("fade", cfg.fadeMs ?? 900);
-    refreshSeconds = numParam("r", cfg.manifestRefreshSeconds ?? 300);
+    posterSeconds = positiveParam("p", cfg.posterSeconds ?? 12);
+    fadeMs = positiveParam("fade", cfg.fadeMs ?? 900);
+    refreshSeconds = positiveParam("r", cfg.manifestRefreshSeconds ?? 300);
+    calendarSlideSeconds = nonNegativeParam("cal", cfg.calendarSlideSeconds ?? 0);
 
     A.style.transitionDuration = fadeMs + "ms";
     B.style.transitionDuration = fadeMs + "ms";
 
     const baseVersion = data.updated ? ("?v=" + encodeURIComponent(data.updated)) : "";
+
     const films = (data.films || [])
       .map(x => x?.[FIELD])
       .filter(Boolean)
-      .map(url => ({ url, v: baseVersion }));
+      .map(url => ({
+        kind: "image",
+        url,
+        v: baseVersion,
+        seconds: posterSeconds
+      }));
 
-    // Order: films -> manual extras
-    const nextItems = mergeUniqueItems(films, extraItems);
+    const extraItems = await loadManualExtras(EXTRA_MANIFEST_URL);
 
-    const changed =
-      nextItems.length !== items.length ||
-      nextItems.some((it, i) => it.url !== items[i]?.url || it.v !== items[i]?.v);
+    let nextItems = mergeUniqueItems(films, extraItems);
 
+    if (calendarSlideSeconds > 0) {
+      nextItems.push({
+        kind: "calendar",
+        url: CALENDAR_SLIDE_URL,
+        seconds: calendarSlideSeconds
+      });
+    }
+
+    const changed = itemsChanged(nextItems);
     items = nextItems;
 
-    // If list changed, restart so newly added extras appear quickly
-    if (changed) idx = 0;
+    if (changed) {
+      idx = 0;
+    }
 
     emptyEl.style.display = items.length ? "none" : "flex";
   }
 
   async function preload(item) {
-    await new Promise(resolve => {
-      const img = new Image();
-      img.onload = resolve;
-      img.onerror = resolve;
-      img.src = item.url + item.v;
-    });
+    if (!item) return;
+
+    if (item.kind === "image") {
+      await new Promise(resolve => {
+        const img = new Image();
+        img.onload = resolve;
+        img.onerror = resolve;
+        img.src = item.url + (item.v || "");
+      });
+      return;
+    }
+
+    /* No preload needed for calendar iframe */
+    return;
+  }
+
+  function clearLayer(el) {
+    while (el.firstChild) el.removeChild(el.firstChild);
+  }
+
+  function setLayerContent(el, item) {
+    clearLayer(el);
+
+    if (item.kind === "calendar") {
+      const frame = document.createElement("iframe");
+      frame.className = "mediaFrame";
+      frame.setAttribute("title", "Calendar slide");
+      frame.setAttribute("loading", "eager");
+      frame.setAttribute("referrerpolicy", "no-referrer");
+      frame.src = item.url;
+      el.appendChild(frame);
+      return;
+    }
+
+    const img = document.createElement("img");
+    img.className = "mediaImg";
+    img.alt = "";
+    img.src = item.url + (item.v || "");
+    el.appendChild(img);
   }
 
   function swapTo(item) {
     const front = frontIsA ? A : B;
-    const back  = frontIsA ? B : A;
-    back.src = item.url + item.v;
+    const back = frontIsA ? B : A;
+
+    setLayerContent(back, item);
     back.classList.add("show");
     front.classList.remove("show");
+
     frontIsA = !frontIsA;
   }
 
   async function tick() {
     if (!items.length) {
-      setTimeout(tick, 2000);
+      tickTimer = setTimeout(tick, 2000);
       return;
     }
+
     const item = items[idx % items.length];
     idx += 1;
+
     await preload(item);
     swapTo(item);
-    setTimeout(tick, posterSeconds * 1000);
+
+    tickTimer = setTimeout(tick, (item.seconds || posterSeconds) * 1000);
   }
 
   function scheduleReload() {
