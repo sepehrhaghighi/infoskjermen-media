@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="no">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Skjermplanlegger</title>
+  <style>
+    html, body{
+      margin:0;
+      width:100%;
+      height:100%;
+      overflow:hidden;
+      background:#000;
+      font-family:system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    .screen{
+      position:fixed;
+      inset:0;
+      width:100%;
+      height:100%;
+      border:0;
+      display:none;
+      background:#000;
+    }
+
+    .screen.active{
+      display:block;
+    }
+
+    .fallback{
+      position:fixed;
+      inset:0;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      text-align:center;
+      padding:32px;
+      color:#fff;
+      background:#111;
+      z-index:10;
+    }
+
+    .fallback.active{
+      display:flex;
+    }
+
+    .fallbackInner{
+      max-width:680px;
+      line-height:1.45;
+    }
+
+    .fallback a{
+      color:#9fd5ff;
+      word-break:break-all;
+    }
+  </style>
+</head>
+<body>
+  <!-- Daytime: Infoskjermen -->
+  <iframe
+    id="dayFrame"
+    class="screen"
+    title="Infoskjermen"
+    referrerpolicy="no-referrer"
+  ></iframe>
+
+  <!-- Evening / night: your calendar slide -->
+  <iframe
+    id="calendarFrame"
+    class="screen"
+    title="Kalenderslide"
+  ></iframe>
+
+  <div id="fallback" class="fallback">
+    <div class="fallbackInner">
+      <p><strong>Kunne ikke laste siden i innebygd visning.</strong></p>
+      <p>
+        Hvis Infoskjermen ikke tillater innebygging i iframe, åpne denne lenken direkte:
+      </p>
+      <p>
+        <a id="fallbackLink" href="#" target="_blank" rel="noopener noreferrer"></a>
+      </p>
+    </div>
+  </div>
+
+  <script>
+  (function () {
+    /* ===== SETTINGS ===== */
+    var DAY_URL = "https://app.infoskjermen.no/uuid/21c8d3d2-453b-4837-95aa-b24b666f8974";
+    var CALENDAR_URL = "./calendar-slide.html"; // save your current calendar page as this file
+    var CHECK_EVERY_MS = 30 * 1000;             // re-check time every 30 sec
+    var RELOAD_ON_SWITCH = true;                // reload the target page when mode changes
+    /* ==================== */
+
+    var els = {
+      dayFrame: document.getElementById("dayFrame"),
+      calendarFrame: document.getElementById("calendarFrame"),
+      fallback: document.getElementById("fallback"),
+      fallbackLink: document.getElementById("fallbackLink")
+    };
+
+    var currentMode = null;
+    var dayEverLoaded = false;
+    var calendarEverLoaded = false;
+
+    els.fallbackLink.href = DAY_URL;
+    els.fallbackLink.textContent = DAY_URL;
+
+    function withCacheBust(url) {
+      var sep = url.indexOf("?") === -1 ? "?" : "&";
+      return url + sep + "_=" + Date.now();
+    }
+
+    function getModeForNow() {
+      var now = new Date(); // uses the device/browser local time
+      var h = now.getHours();
+      var m = now.getMinutes();
+      var totalMinutes = (h * 60) + m;
+
+      var dayStart = 8 * 60;        // 08:00
+      var dayEnd = (15 * 60) + 30;  // 15:30
+
+      if (totalMinutes >= dayStart && totalMinutes < dayEnd) {
+        return "day";
+      }
+      return "calendar";
+    }
+
+    function showMode(mode) {
+      currentMode = mode;
+
+      els.dayFrame.classList.toggle("active", mode === "day");
+      els.calendarFrame.classList.toggle("active", mode === "calendar");
+      els.fallback.classList.remove("active");
+
+      if (mode === "day") {
+        if (!dayEverLoaded || RELOAD_ON_SWITCH) {
+          els.dayFrame.src = withCacheBust(DAY_URL);
+          dayEverLoaded = true;
+        }
+      } else {
+        if (!calendarEverLoaded || RELOAD_ON_SWITCH) {
+          els.calendarFrame.src = withCacheBust(CALENDAR_URL);
+          calendarEverLoaded = true;
+        }
+      }
+    }
+
+    function refreshIfNeeded() {
+      var nextMode = getModeForNow();
+      if (nextMode !== currentMode) {
+        showMode(nextMode);
+      }
+    }
+
+    /* Basic iframe failure fallback for the daytime screen */
+    els.dayFrame.addEventListener("error", function () {
+      if (currentMode === "day") {
+        els.fallback.classList.add("active");
+      }
+    });
+
+    /* Initial load */
+    showMode(getModeForNow());
+
+    /* Keep switching automatically */
+    setInterval(refreshIfNeeded, CHECK_EVERY_MS);
+
+    /* Re-check when tab/window becomes visible again */
+    document.addEventListener("visibilitychange", function () {
+      if (!document.hidden) refreshIfNeeded();
+    });
+
+    window.addEventListener("focus", refreshIfNeeded);
+  })();
+  </script>
+</body>
+</html>
