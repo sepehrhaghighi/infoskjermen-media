@@ -184,9 +184,10 @@
   const FIELD = "landscape";
 
   let posterSeconds = 12;
-  let arrangementsCalendarSlideSeconds = 0;
+  let calendarSlideSeconds = 0;
   let fadeMs = 900;
   let refreshSeconds = 300;
+
   let refreshTimer = null;
   let tickTimer = null;
 
@@ -322,6 +323,7 @@
       if ((a.date || "") !== (b.date || "")) return true;
       if ((a.seconds || 0) !== (b.seconds || 0)) return true;
     }
+
     return false;
   }
 
@@ -332,10 +334,7 @@
     ]);
 
     posterSeconds = positiveParam("p", cfg.posterSeconds ?? 12);
-    arrangementsCalendarSlideSeconds = nonNegativeParam(
-      "acal",
-      cfg.arrangementsCalendarSlideSeconds ?? 0
-    );
+    calendarSlideSeconds = nonNegativeParam("cal", cfg.calendarSlideSeconds ?? 0);
     fadeMs = positiveParam("fade", cfg.fadeMs ?? 900);
     refreshSeconds = positiveParam("r", cfg.manifestRefreshSeconds ?? 300);
 
@@ -356,11 +355,11 @@
         seconds: posterSeconds
       }));
 
-    if (arrangementsCalendarSlideSeconds > 0) {
+    if (calendarSlideSeconds > 0) {
       nextItems.push({
         kind: "calendar",
         url: CALENDAR_SLIDE_URL,
-        seconds: arrangementsCalendarSlideSeconds
+        seconds: calendarSlideSeconds
       });
     }
 
@@ -382,10 +381,7 @@
         img.onerror = resolve;
         img.src = item.url + version;
       });
-      return;
     }
-
-    return;
   }
 
   function clearLayer(el) {
