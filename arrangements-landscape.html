@@ -58,7 +58,7 @@
     }
     .dateLayer.show{ opacity:1; }
 
-    /* Calendar scene (same as films) */
+    /* Calendar scene */
     #calendarScene {
       position:absolute; inset:0;
       display:none;
@@ -186,8 +186,12 @@
   const MANIFEST_URL = "./assets/arrangements.json";
   const FIELD = "landscape";
 
-  // Calendar feed JSONP
+  // Calendar feed (this feed calls window.__calendarFeedLoaded(data))
   const EVENTS_URL = "https://script.google.com/macros/s/AKfycbzWYkczmmUW_cNhNd6NYoozKYlMH9XXp95DNo-JrCSI172oSjYPPL13AQ1feoktAKy6kQ/exec";
+
+  // How often calendar appears among posters
+  const CAL_FIRST_AFTER_POSTERS = 1;  // show once early (easy to verify)
+  const CAL_EVERY_POSTERS = 10;       // then every 10 posters
 
   let posterSeconds = 12;
   let calendarSlideSeconds = 0;
@@ -247,9 +251,7 @@
       s.onerror = () => { cleanup(); resolve({}); };
       document.head.appendChild(s);
 
-      const t = setTimeout(() => {
-        if (!done) { cleanup(); resolve({}); }
-      }, timeoutMs);
+      const t = setTimeout(() => { if (!done) { cleanup(); resolve({}); } }, timeoutMs);
 
       function cleanup() {
         clearTimeout(t);
@@ -396,36 +398,78 @@
     calEls.app.style.display = "block";
   }
 
+  // IMPORTANT: this supports BOTH styles:
+  // 1) feed calls window.__calendarFeedLoaded(data) (your working calendar page)
+  // 2) feed calls provided callback (if you later add it)
   function loadCalendarOnce(timeoutMs = 9000) {
     return new Promise((resolve) => {
-      let done = false;
+      let finished = false;
       const cbName = "__calcb_" + Math.random().toString(16).slice(2);
 
-      window[cbName] = (data) => {
-        done = true;
+      function finish(ok) {
+        if (finished) return;
+        finished = true;
         cleanup();
+        resolve(!!ok);
+      }
+
+      // Callback style (optional)
+      window[cbName] = (data) => {
         renderCalendar(data || {});
-        resolve(true);
+        finish(true);
+      };
+
+      // Legacy style (your current feed)
+      const prevLegacy = window.__calendarFeedLoaded;
+      window.__calendarFeedLoaded = (data) => {
+        renderCalendar(data || {});
+        finish(true);
       };
 
       const s = document.createElement("script");
+      // Try callback param (won’t hurt if ignored)
       s.src = EVENTS_URL + "?callback=" + cbName + "&_=" + Date.now();
-      s.onerror = () => { cleanup(); resolve(false); };
+      s.onerror = () => finish(false);
       document.head.appendChild(s);
 
-      const t = setTimeout(() => {
-        if (!done) { cleanup(); resolve(false); }
-      }, timeoutMs);
+      const t = setTimeout(() => finish(false), timeoutMs);
 
       function cleanup() {
         clearTimeout(t);
         try { delete window[cbName]; } catch {}
+        // restore legacy callback
+        window.__calendarFeedLoaded = prevLegacy;
         s.remove();
       }
     });
   }
 
   /* ---------- Slideshow ---------- */
+
+  function interleaveCalendar(list) {
+    if (calendarSlideSeconds <= 0) return list;
+
+    const out = [];
+    let postersSeen = 0;
+
+    for (const it of list) {
+      out.push(it);
+
+      if (it.kind === "poster") {
+        postersSeen += 1;
+
+        if (postersSeen === CAL_FIRST_AFTER_POSTERS) {
+          out.push({ kind:"calendar", seconds: calendarSlideSeconds });
+        }
+
+        if (postersSeen % CAL_EVERY_POSTERS === 0) {
+          out.push({ kind:"calendar", seconds: calendarSlideSeconds });
+        }
+      }
+    }
+
+    return out;
+  }
 
   async function load() {
     const [cfg, data] = await Promise.all([ loadConfigJSONP(), fetchJson(MANIFEST_URL) ]);
@@ -452,9 +496,7 @@
         seconds: posterSeconds
       }));
 
-    if (calendarSlideSeconds > 0) {
-      nextItems.push({ kind:"calendar", seconds: calendarSlideSeconds });
-    }
+    nextItems = interleaveCalendar(nextItems);
 
     const changed = itemsChanged(nextItems);
     items = nextItems;
@@ -519,12 +561,17 @@
       calEls.empty.style.display = "flex";
       calEls.app.style.display = "none";
 
-      await loadCalendarOnce();
+      const ok = await loadCalendarOnce();
+      if (!ok) {
+        calEls.empty.textContent = "Kunne ikke laste kalenderdata.";
+        calEls.empty.style.display = "flex";
+        calEls.app.style.display = "none";
+      }
 
       setTimeout(() => {
         showPosterScene();
         tick();
-      }, (item.seconds || 15) * 1000);
+      }, Math.max(3, (item.seconds || 15)) * 1000);
 
       return;
     }
@@ -532,7 +579,7 @@
     showPosterScene();
     await preloadPoster(item);
     swapToPoster(item);
-    setTimeout(tick, (item.seconds || posterSeconds) * 1000);
+    setTimeout(tick, Math.max(1, (item.seconds || posterSeconds)) * 1000);
   }
 
   function scheduleReload() {
