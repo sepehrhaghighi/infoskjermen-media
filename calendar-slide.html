@@ -9,7 +9,6 @@
       --text:#eaf4ff;
       --muted:#d5e6f7;
       --soft:#cfe7ff;
-      --cardBg:rgba(8,18,34,0.28);
       --cardBorder:rgba(255,255,255,0.12);
     }
 
@@ -39,10 +38,9 @@
       position:relative;
       width:100%;
       height:100%;
-      padding:40px 44px 132px 44px;
+      padding:40px 44px 124px 44px;
     }
 
-    /* title + dates + event text move together */
     .mainContent{
       width:calc(100% - 120px);
       height:100%;
@@ -50,8 +48,8 @@
       min-width:0;
       display:grid;
       grid-template-rows:auto 1fr;
-      gap:22px;                 /* a bit more space between title and list */
-      transform:translateY(8px);/* nudge whole block slightly downward */
+      gap:24px;                  /* more space between title and list */
+      transform:translateY(6px); /* slight downward nudge */
     }
 
     .headline{
@@ -67,7 +65,7 @@
       min-width:0;
       display:flex;
       flex-direction:column;
-      gap:8px;
+      gap:6px;
       padding-right:8px;
       overflow:hidden;
     }
@@ -77,7 +75,7 @@
       grid-template-columns:96px minmax(0, 1fr);
       gap:18px;
       align-items:start;
-      min-height:66px;
+      min-height:56px; /* tighter so rows do not get clipped */
     }
 
     .dateCell{
@@ -117,12 +115,12 @@
 
     .eventCard{
       min-width:0;
-      padding-top:2px;
+      padding-top:1px;
     }
 
     .eventTitle{
       margin:0;
-      font-size:clamp(24px, 2vw, 36px);
+      font-size:clamp(22px, 1.95vw, 34px);
       font-weight:400;
       line-height:1.08;
       letter-spacing:-0.02em;
@@ -135,9 +133,9 @@
     }
 
     .eventMeta{
-      margin-top:4px;
-      font-size:18px;
-      line-height:1.2;
+      margin-top:3px;
+      font-size:17px;
+      line-height:1.18;
       color:var(--muted);
       white-space:nowrap;
       overflow:hidden;
@@ -147,10 +145,10 @@
 
     .screenLogo{
       position:absolute;
-      left:20px;
-      bottom:12px;
-      width:98px;   /* slightly bigger */
-      height:98px;  /* slightly bigger */
+      left:16px;
+      bottom:8px;
+      width:142px;   /* larger to balance QR + text stack */
+      height:142px;
       display:flex;
       align-items:flex-end;
       justify-content:flex-start;
@@ -174,7 +172,7 @@
       flex-direction:column;
       align-items:center;
       gap:8px;
-      width:168px;
+      width:176px;
       z-index:3;
       pointer-events:none;
     }
@@ -204,17 +202,17 @@
     }
 
     .ctaText{
-      font-size:16px;
+      font-size:15px;
       line-height:1.2;
       color:var(--text);
       font-weight:700;
-      margin-bottom:5px;
+      margin-bottom:4px;
       text-shadow:0 2px 10px rgba(0,0,0,0.10);
     }
 
     .siteLink{
-      font-size:14px;
-      line-height:1.2;
+      font-size:13px;
+      line-height:1.18;
       color:var(--soft);
       font-weight:700;
       text-shadow:0 2px 8px rgba(0,0,0,0.08);
@@ -224,8 +222,8 @@
     .weatherCard{
       position:absolute;
       top:18px;
-      right:18px;
-      width:210px;
+      right:56px; /* moved a bit toward center */
+      width:220px;
       padding:12px 12px 10px;
       border-radius:16px;
       background:linear-gradient(180deg, rgba(8,18,34,0.34), rgba(7,16,30,0.24));
@@ -267,7 +265,7 @@
     .weatherRows{
       display:flex;
       flex-direction:column;
-      gap:6px;
+      gap:4px;
     }
 
     .weatherRow{
@@ -275,8 +273,8 @@
       grid-template-columns:52px 28px 1fr;
       gap:8px;
       align-items:center;
-      min-height:28px;
-      padding:2px 0;
+      min-height:24px;
+      padding:1px 0;
     }
 
     .weatherDay{
@@ -287,7 +285,7 @@
     }
 
     .weatherIcon{
-      font-size:18px;
+      font-size:17px;
       text-align:center;
       line-height:1;
     }
@@ -364,8 +362,8 @@
       .screenLogo{
         left:14px;
         bottom:10px;
-        width:62px;
-        height:62px;
+        width:68px;
+        height:68px;
       }
 
       .screenCta{
@@ -411,7 +409,7 @@
       <div class="weatherHead">
         <div>
           <div class="weatherTitle">Vær</div>
-          <div class="weatherSub">Sirdal • 3 dager</div>
+          <div class="weatherSub">Rena • 7 dager</div>
         </div>
         <div id="weatherNow" class="weatherNow">☁️</div>
       </div>
@@ -442,8 +440,8 @@
   var REFRESH_MS = 5 * 60 * 1000;
   var LOAD_TIMEOUT_MS = 10000;
 
-  /* Approximate Sirdal coordinates for the weather card. Adjust if you want a more exact point. */
-  var WEATHER_API_URL = "https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=58.8619&lon=6.8133&altitude=291";
+  /* Rena, Åmot, Innlandet (approx.) */
+  var WEATHER_API_URL = "https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=61.1348&lon=11.3641&altitude=223";
   var WEATHER_REFRESH_MS = 30 * 60 * 1000;
 
   var els = {
@@ -463,7 +461,6 @@
   var lastData = null;
   var loadTimer = null;
   var callbackFired = false;
-  var weatherTimer = null;
   var resizeTimer = null;
 
   function isLandscape() {
@@ -471,7 +468,15 @@
   }
 
   function maxEvents() {
-    return isLandscape() ? 7 : 18;
+    if (!isLandscape()) return 18;
+
+    /* Fit as many rows as possible without clipping, capped at 7 */
+    var available = window.innerHeight - 40 - 124 - 72; /* top pad, bottom pad, approx title space */
+    var perRow = 56;
+    var gap = 6;
+    var fit = Math.floor((available + gap) / (perRow + gap));
+
+    return Math.max(4, Math.min(7, fit));
   }
 
   function parseDateTime(value) {
@@ -707,7 +712,7 @@
       .sort(function (a, b) {
         return dayMap[a].date - dayMap[b].date;
       })
-      .slice(0, 3)
+      .slice(0, 7)
       .map(function (key) {
         var d = dayMap[key].date;
         return {
@@ -810,7 +815,7 @@
   loadWeather();
 
   setInterval(loadCalendar, REFRESH_MS);
-  weatherTimer = setInterval(loadWeather, WEATHER_REFRESH_MS);
+  setInterval(loadWeather, WEATHER_REFRESH_MS);
 })();
 </script>
 </body>
