@@ -116,7 +116,7 @@
       border-radius: 12px;
     }
     .tableWrap table{
-      min-width: 720px;
+      min-width: 760px;
     }
     @media (max-width: 700px){
       th, td{ padding: 8px 6px; }
@@ -135,6 +135,9 @@
       <div class="row">
         <label>Seconds per poster
           <input id="posterSeconds" type="number" min="1" placeholder="12">
+        </label>
+        <label>Calendar slide (sec, 0=off)
+          <input id="calendarSlideSeconds" type="number" min="0" placeholder="0">
         </label>
         <label>Fade (ms)
           <input id="fadeMs" type="number" min="0" placeholder="900">
@@ -160,7 +163,7 @@
     <div class="card">
       <div class="muted small" style="margin-bottom:10px;">
         Counts are based on <span class="mono">assets/films.json</span>, <span class="mono">assets/arrangements.json</span>, and <span class="mono">assets/landscape_extra/manifest.json</span>.
-        Suggested duration = count × seconds-per-poster.
+        Suggested duration = count × seconds-per-poster, plus calendar slide time where enabled.
       </div>
 
       <div class="tableWrap">
@@ -188,6 +191,7 @@
         <a href="./arrangements-landscape.html" target="_blank">arrangements-landscape</a>
         <a href="./portrait-all.html" target="_blank">portrait-all</a>
         <a href="./landscape-all.html" target="_blank">landscape-all</a>
+        <a href="./calendar-slide.html" target="_blank">calendar-slide</a>
       </div>
     </div>
   </div>
@@ -200,10 +204,16 @@
   const EXTRA_URL = "./assets/landscape_extra/manifest.json";
   const BG_REL    = "./assets/status-bg.jpg";
 
-  const DEFAULTS = { posterSeconds: 12, fadeMs: 900, manifestRefreshSeconds: 300 };
+  const DEFAULTS = {
+    posterSeconds: 12,
+    calendarSlideSeconds: 0,
+    fadeMs: 900,
+    manifestRefreshSeconds: 300
+  };
 
   const els = {
     posterSeconds: document.getElementById("posterSeconds"),
+    calendarSlideSeconds: document.getElementById("calendarSlideSeconds"),
     fadeMs: document.getElementById("fadeMs"),
     refreshSeconds: document.getElementById("refreshSeconds"),
     updateKey: document.getElementById("updateKey"),
@@ -217,12 +227,13 @@
 
   function disableUi(disabled) {
     els.posterSeconds.disabled = disabled;
+    els.calendarSlideSeconds.disabled = disabled;
     els.fadeMs.disabled = disabled;
     els.refreshSeconds.disabled = disabled;
     els.applyBtn.disabled = disabled;
   }
 
-  function pill(text, cls="ok") {
+  function pill(text, cls = "ok") {
     return `<span class="pill ${cls}">${text}</span>`;
   }
 
@@ -230,7 +241,7 @@
     seconds = Math.max(0, Math.round(seconds));
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
-    return `${m}:${String(s).padStart(2,'0')}`;
+    return `${m}:${String(s).padStart(2, "0")}`;
   }
 
   async function fetchJson(url) {
@@ -246,7 +257,9 @@
 
   function normalizeCfg(raw) {
     if (!raw) return {};
-    if (typeof raw === "string") { try { return JSON.parse(raw); } catch { return {}; } }
+    if (typeof raw === "string") {
+      try { return JSON.parse(raw); } catch { return {}; }
+    }
     if (raw.data && typeof raw.data === "object") return raw.data;
     if (raw.config && typeof raw.config === "object") return raw.config;
     return raw;
@@ -255,7 +268,12 @@
   function isMeaningfulCfg(raw) {
     const cfg = normalizeCfg(raw);
     const refresh = cfg.manifestRefreshSeconds ?? cfg.refreshSeconds;
-    return (cfg.posterSeconds != null) || (cfg.fadeMs != null) || (refresh != null);
+    return (
+      cfg.posterSeconds != null ||
+      cfg.calendarSlideSeconds != null ||
+      cfg.fadeMs != null ||
+      refresh != null
+    );
   }
 
   function loadConfigJSONP(extraParams = {}, timeoutMs = 7000) {
@@ -264,12 +282,17 @@
       let called = false;
       let finished = false;
 
-      window[cbName] = (cfg) => { called = true; finish(cfg || {}); };
+      window[cbName] = (cfg) => {
+        called = true;
+        finish(cfg || {});
+      };
 
       const params = new URLSearchParams({
         callback: cbName,
         _: String(Date.now()),
-        ...Object.fromEntries(Object.entries(extraParams).filter(([,v]) => v != null && String(v).length > 0))
+        ...Object.fromEntries(
+          Object.entries(extraParams).filter(([, v]) => v != null && String(v).length > 0)
+        )
       });
 
       const s = document.createElement("script");
@@ -284,13 +307,16 @@
 
       document.head.appendChild(s);
 
-      const t = setTimeout(() => { if (!finished) finish({}); }, timeoutMs);
+      const t = setTimeout(() => {
+        if (!finished) finish({});
+      }, timeoutMs);
 
       function cleanup() {
         clearTimeout(t);
         try { delete window[cbName]; } catch {}
         s.remove();
       }
+
       function finish(val) {
         if (finished) return;
         finished = true;
@@ -305,15 +331,17 @@
     const refresh = cfg.manifestRefreshSeconds ?? cfg.refreshSeconds;
 
     if (cfg.posterSeconds != null) els.posterSeconds.value = cfg.posterSeconds;
+    if (cfg.calendarSlideSeconds != null) els.calendarSlideSeconds.value = cfg.calendarSlideSeconds;
     if (cfg.fadeMs != null) els.fadeMs.value = cfg.fadeMs;
     if (refresh != null) els.refreshSeconds.value = refresh;
   }
 
   function readUiConfig() {
     return {
-      posterSeconds: safeNumber(els.posterSeconds.value) ?? DEFAULTS.posterSeconds,
-      fadeMs: safeNumber(els.fadeMs.value) ?? DEFAULTS.fadeMs,
-      manifestRefreshSeconds: safeNumber(els.refreshSeconds.value) ?? DEFAULTS.manifestRefreshSeconds,
+      posterSeconds: Math.max(1, safeNumber(els.posterSeconds.value) ?? DEFAULTS.posterSeconds),
+      calendarSlideSeconds: Math.max(0, safeNumber(els.calendarSlideSeconds.value) ?? DEFAULTS.calendarSlideSeconds),
+      fadeMs: Math.max(0, safeNumber(els.fadeMs.value) ?? DEFAULTS.fadeMs),
+      manifestRefreshSeconds: Math.max(30, safeNumber(els.refreshSeconds.value) ?? DEFAULTS.manifestRefreshSeconds),
     };
   }
 
@@ -326,7 +354,9 @@
   }
 
   async function renderCounts() {
-    const posterSeconds = safeNumber(els.posterSeconds.value) ?? DEFAULTS.posterSeconds;
+    const posterSeconds = Math.max(1, safeNumber(els.posterSeconds.value) ?? DEFAULTS.posterSeconds);
+    const calendarSlideSeconds = Math.max(0, safeNumber(els.calendarSlideSeconds.value) ?? DEFAULTS.calendarSlideSeconds);
+
     els.tbody.innerHTML = `<tr><td colspan="4" class="muted">Loading…</td></tr>`;
 
     try {
@@ -345,25 +375,68 @@
       const arrPortrait        = countField(arrs, "poster");
       const arrLandscape       = countField(arrs, "landscape");
 
-      const filmsLandscape = filmsLandscapeBase + extraLandscape;
-      const portraitAll    = filmsPortrait + arrPortrait;
-      const landscapeAll   = filmsLandscapeBase + arrLandscape + extraLandscape;
+      const filmsLandscapeImageCount = filmsLandscapeBase + extraLandscape;
+      const filmsLandscapeTotalCount = filmsLandscapeImageCount + (calendarSlideSeconds > 0 ? 1 : 0);
+
+      const portraitAll  = filmsPortrait + arrPortrait;
+      const landscapeAll = filmsLandscapeBase + arrLandscape + extraLandscape;
 
       const rows = [
-        { page:"films-portrait.html",        desc:"Films portrait (poster)", count: filmsPortrait },
-        { page:"films-landscape.html",       desc:`Films landscape (subset + ${extraLandscape} manual extra)`, count: filmsLandscape },
-        { page:"arrangements-portrait.html", desc:"Arrangements portrait (poster)", count: arrPortrait },
-        { page:"arrangements-landscape.html",desc:"Arrangements landscape (subset)", count: arrLandscape },
-        { page:"portrait-all.html",          desc:"Films then arrangements (portrait)", count: portraitAll },
-        { page:"landscape-all.html",         desc:`Films + arrangements landscape (+ ${extraLandscape} manual extra)`, count: landscapeAll }
+        {
+          page:"films-portrait.html",
+          desc:"Films portrait (poster)",
+          count: filmsPortrait,
+          seconds: filmsPortrait * posterSeconds
+        },
+        {
+          page:"films-landscape.html",
+          desc:`Films landscape (subset + ${extraLandscape} manual extra${calendarSlideSeconds > 0 ? " + calendar slide" : ""})`,
+          count: filmsLandscapeTotalCount,
+          seconds: (filmsLandscapeImageCount * posterSeconds) + calendarSlideSeconds
+        },
+        {
+          page:"(inside films-landscape)",
+          desc:"Calendar slide only (0 = disabled)",
+          count: calendarSlideSeconds > 0 ? 1 : 0,
+          seconds: calendarSlideSeconds
+        },
+        {
+          page:"arrangements-portrait.html",
+          desc:"Arrangements portrait (poster)",
+          count: arrPortrait,
+          seconds: arrPortrait * posterSeconds
+        },
+        {
+          page:"arrangements-landscape.html",
+          desc:"Arrangements landscape (subset)",
+          count: arrLandscape,
+          seconds: arrLandscape * posterSeconds
+        },
+        {
+          page:"portrait-all.html",
+          desc:"Films then arrangements (portrait)",
+          count: portraitAll,
+          seconds: portraitAll * posterSeconds
+        },
+        {
+          page:"landscape-all.html",
+          desc:`Films + arrangements landscape (+ ${extraLandscape} manual extra)`,
+          count: landscapeAll,
+          seconds: landscapeAll * posterSeconds
+        }
       ];
 
       els.tbody.innerHTML = rows.map(r => `
         <tr>
-          <td>${pill("ok","ok")} <a href="./${r.page}" target="_blank">${r.page}</a></td>
+          <td>
+            ${r.page.startsWith("(")
+              ? `${pill("ok","ok")} <span class="mono">${r.page}</span>`
+              : `${pill("ok","ok")} <a href="./${r.page}" target="_blank">${r.page}</a>`
+            }
+          </td>
           <td class="muted">${r.desc}</td>
           <td class="right mono">${r.count}</td>
-          <td class="right mono">${fmtDuration(r.count * posterSeconds)}</td>
+          <td class="right mono">${fmtDuration(r.seconds)}</td>
         </tr>
       `).join("");
 
@@ -371,7 +444,11 @@
       const u2 = arrData.updated ? `arr: ${arrData.updated}` : `arr: (no updated)`;
       const u3 = extraData.generatedAt ? `extra: ${extraData.generatedAt}` : `extra: ${extraLandscape} item(s)`;
 
-      if (!els.info.textContent || els.info.textContent.includes("Loading") || els.info.textContent.includes("Applied")) {
+      if (
+        !els.info.textContent ||
+        els.info.textContent.includes("Loading") ||
+        els.info.textContent.includes("Applied")
+      ) {
         els.info.textContent = `${u1} | ${u2} | ${u3}`;
       }
     } catch (e) {
@@ -390,11 +467,16 @@
 
   async function applyConfig() {
     const key = (els.updateKey.value || "").trim();
-    if (!key) { setInfo("Update key is required."); return; }
+    if (!key) {
+      setInfo("Update key is required.");
+      return;
+    }
 
     const cfg = readUiConfig();
+
     const body = new URLSearchParams({
       posterSeconds: String(cfg.posterSeconds),
+      calendarSlideSeconds: String(cfg.calendarSlideSeconds),
       fadeMs: String(cfg.fadeMs),
       manifestRefreshSeconds: String(cfg.manifestRefreshSeconds),
     }).toString();
@@ -453,7 +535,9 @@
 
   els.applyBtn.addEventListener("click", applyConfig);
   window.addEventListener("beforeunload", () => { els.updateKey.value = ""; });
-  els.posterSeconds.addEventListener("input", () => { renderCounts(); });
+
+  els.posterSeconds.addEventListener("input", renderCounts);
+  els.calendarSlideSeconds.addEventListener("input", renderCounts);
 
   (async () => {
     disableUi(true);
@@ -464,6 +548,7 @@
     const ok = await reloadConfig();
     if (!ok) {
       els.posterSeconds.value = DEFAULTS.posterSeconds;
+      els.calendarSlideSeconds.value = DEFAULTS.calendarSlideSeconds;
       els.fadeMs.value = DEFAULTS.fadeMs;
       els.refreshSeconds.value = DEFAULTS.manifestRefreshSeconds;
       setInfo("Using defaults (config read failed).");
