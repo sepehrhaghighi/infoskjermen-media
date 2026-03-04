@@ -180,7 +180,7 @@
 (async () => {
   const CONFIG_SERVICE_URL = "https://script.google.com/macros/s/AKfycbyeAHLzvmNUTGn_FWr8fTr1GDHVocivJG7M6Fpe6Lfcm0MjIQ-KjLZIhmkiNc7q00HLHA/exec";
   const MANIFEST_URL = "./assets/arrangements.json";
-  const CALENDAR_SLIDE_URL = "./calendar-slide.html";
+  const CALENDAR_SLIDE_URL = "https://sepehrhaghighi.github.io/infoskjermen-media/calendar-slide.html";
   const FIELD = "landscape";
 
   let posterSeconds = 12;
@@ -397,7 +397,7 @@
       frame.setAttribute("title", "Calendar slide");
       frame.setAttribute("loading", "eager");
       frame.setAttribute("referrerpolicy", "no-referrer");
-      frame.src = item.url;
+      frame.src = item.url + (item.url.indexOf("?") === -1 ? "?_=" : "&_=") + Date.now();
       el.appendChild(frame);
       return;
     }
