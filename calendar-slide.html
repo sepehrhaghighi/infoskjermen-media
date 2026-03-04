@@ -9,6 +9,8 @@
       --text:#eaf4ff;
       --muted:#d5e6f7;
       --soft:#cfe7ff;
+      --cardBg:rgba(8,18,34,0.28);
+      --cardBorder:rgba(255,255,255,0.12);
     }
 
     *{ box-sizing:border-box; }
@@ -48,7 +50,8 @@
       min-width:0;
       display:grid;
       grid-template-rows:auto 1fr;
-      gap:16px;
+      gap:22px;                 /* a bit more space between title and list */
+      transform:translateY(8px);/* nudge whole block slightly downward */
     }
 
     .headline{
@@ -144,10 +147,10 @@
 
     .screenLogo{
       position:absolute;
-      left:24px;
-      bottom:16px;
-      width:86px;
-      height:86px;
+      left:20px;
+      bottom:12px;
+      width:98px;   /* slightly bigger */
+      height:98px;  /* slightly bigger */
       display:flex;
       align-items:flex-end;
       justify-content:flex-start;
@@ -218,6 +221,92 @@
       overflow-wrap:anywhere;
     }
 
+    .weatherCard{
+      position:absolute;
+      top:18px;
+      right:18px;
+      width:210px;
+      padding:12px 12px 10px;
+      border-radius:16px;
+      background:linear-gradient(180deg, rgba(8,18,34,0.34), rgba(7,16,30,0.24));
+      border:1px solid var(--cardBorder);
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.04),
+        0 10px 28px rgba(0,0,0,0.14);
+      backdrop-filter:blur(6px);
+      z-index:4;
+    }
+
+    .weatherHead{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom:8px;
+    }
+
+    .weatherTitle{
+      font-size:14px;
+      font-weight:700;
+      color:var(--text);
+      line-height:1.2;
+    }
+
+    .weatherSub{
+      font-size:11px;
+      color:var(--muted);
+      line-height:1.2;
+      opacity:0.95;
+    }
+
+    .weatherNow{
+      font-size:24px;
+      line-height:1;
+    }
+
+    .weatherRows{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+    }
+
+    .weatherRow{
+      display:grid;
+      grid-template-columns:52px 28px 1fr;
+      gap:8px;
+      align-items:center;
+      min-height:28px;
+      padding:2px 0;
+    }
+
+    .weatherDay{
+      font-size:12px;
+      font-weight:700;
+      color:var(--text);
+      opacity:0.95;
+    }
+
+    .weatherIcon{
+      font-size:18px;
+      text-align:center;
+      line-height:1;
+    }
+
+    .weatherTemps{
+      font-size:12px;
+      color:var(--muted);
+      text-align:right;
+      font-weight:700;
+    }
+
+    .weatherLoading,
+    .weatherError{
+      font-size:12px;
+      color:var(--muted);
+      line-height:1.35;
+      text-align:left;
+    }
+
     .empty{
       display:flex;
       align-items:center;
@@ -239,7 +328,8 @@
 
       .mainContent{
         width:calc(100% - 16px);
-        gap:12px;
+        gap:16px;
+        transform:translateY(4px);
       }
 
       .headline{
@@ -272,10 +362,10 @@
       }
 
       .screenLogo{
-        left:16px;
-        bottom:12px;
-        width:56px;
-        height:56px;
+        left:14px;
+        bottom:10px;
+        width:62px;
+        height:62px;
       }
 
       .screenCta{
@@ -301,6 +391,10 @@
         font-size:11px;
         line-height:1.14;
       }
+
+      .weatherCard{
+        display:none !important; /* landscape only */
+      }
     }
   </style>
 </head>
@@ -311,6 +405,19 @@
     <div class="mainContent">
       <h1 id="headline" class="headline">Dette kan du oppleve i Åmot kulturhus</h1>
       <div id="list" class="list"></div>
+    </div>
+
+    <div id="weatherCard" class="weatherCard" aria-label="Værkort">
+      <div class="weatherHead">
+        <div>
+          <div class="weatherTitle">Vær</div>
+          <div class="weatherSub">Sirdal • 3 dager</div>
+        </div>
+        <div id="weatherNow" class="weatherNow">☁️</div>
+      </div>
+      <div id="weatherBody" class="weatherRows">
+        <div class="weatherLoading">Laster vær…</div>
+      </div>
     </div>
 
     <div class="screenLogo">
@@ -335,19 +442,29 @@
   var REFRESH_MS = 5 * 60 * 1000;
   var LOAD_TIMEOUT_MS = 10000;
 
+  /* Approximate Sirdal coordinates for the weather card. Adjust if you want a more exact point. */
+  var WEATHER_API_URL = "https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=58.8619&lon=6.8133&altitude=291";
+  var WEATHER_REFRESH_MS = 30 * 60 * 1000;
+
   var els = {
     app: document.getElementById("app"),
     empty: document.getElementById("empty"),
     list: document.getElementById("list"),
-    headline: document.getElementById("headline")
+    headline: document.getElementById("headline"),
+    weatherCard: document.getElementById("weatherCard"),
+    weatherBody: document.getElementById("weatherBody"),
+    weatherNow: document.getElementById("weatherNow")
   };
 
   var WEEKDAYS = ["SØN", "MAN", "TIR", "ONS", "TOR", "FRE", "LØR"];
   var MONTHS = ["JAN", "FEB", "MAR", "APR", "MAI", "JUN", "JUL", "AUG", "SEP", "OKT", "NOV", "DES"];
+  var SHORT_DAYS = ["Søn", "Man", "Tir", "Ons", "Tor", "Fre", "Lør"];
 
   var lastData = null;
   var loadTimer = null;
   var callbackFired = false;
+  var weatherTimer = null;
+  var resizeTimer = null;
 
   function isLandscape() {
     return window.innerWidth >= window.innerHeight;
@@ -490,6 +607,159 @@
     els.empty.textContent = "Kunne ikke laste kalenderdata.";
   }
 
+  function weatherIcon(symbolCode) {
+    var s = String(symbolCode || "").toLowerCase();
+
+    if (s.indexOf("clearsky") !== -1) return "☀️";
+    if (s.indexOf("fair") !== -1) return "🌤️";
+    if (s.indexOf("partlycloudy") !== -1) return "⛅";
+    if (s.indexOf("cloudy") !== -1) return "☁️";
+    if (s.indexOf("fog") !== -1) return "🌫️";
+    if (s.indexOf("heavyrain") !== -1) return "🌧️";
+    if (s.indexOf("rain") !== -1) return "🌦️";
+    if (s.indexOf("heavysleet") !== -1) return "🌨️";
+    if (s.indexOf("sleet") !== -1) return "🌨️";
+    if (s.indexOf("heavysnow") !== -1) return "❄️";
+    if (s.indexOf("snow") !== -1) return "❄️";
+    if (s.indexOf("thunder") !== -1) return "⛈️";
+    return "🌤️";
+  }
+
+  function renderWeatherError() {
+    els.weatherNow.textContent = "🌦️";
+    els.weatherBody.innerHTML = '<div class="weatherError">Vær utilgjengelig akkurat nå.</div>';
+  }
+
+  function renderWeatherCard(rows, currentSymbol) {
+    els.weatherNow.textContent = weatherIcon(currentSymbol);
+
+    if (!rows.length) {
+      renderWeatherError();
+      return;
+    }
+
+    var html = rows.map(function (row) {
+      return '' +
+        '<div class="weatherRow">' +
+          '<div class="weatherDay">' + escapeHtml(row.day) + '</div>' +
+          '<div class="weatherIcon">' + escapeHtml(weatherIcon(row.symbol)) + '</div>' +
+          '<div class="weatherTemps">' + escapeHtml(row.max + '° / ' + row.min + '°') + '</div>' +
+        '</div>';
+    }).join("");
+
+    els.weatherBody.innerHTML = '<div class="weatherRows">' + html + '</div>';
+  }
+
+  function buildWeatherRows(apiData) {
+    var series = (((apiData || {}).properties || {}).timeseries) || [];
+    var now = new Date();
+    var dayMap = {};
+    var currentSymbol = "";
+    var i;
+
+    if (!series.length) {
+      return { rows: [], currentSymbol: "" };
+    }
+
+    for (i = 0; i < series.length; i += 1) {
+      var item = series[i];
+      var t = new Date(item.time);
+      if (Number.isNaN(t.getTime()) || t < now) continue;
+
+      var instant = item.data && item.data.instant && item.data.instant.details
+        ? item.data.instant.details
+        : null;
+      if (!instant) continue;
+
+      if (!currentSymbol) {
+        var currentSummary = (item.data.next_1_hours || item.data.next_6_hours || item.data.next_12_hours || {}).summary;
+        currentSymbol = currentSummary && currentSummary.symbol_code ? currentSummary.symbol_code : "";
+      }
+
+      var key = makeDateKey(t);
+      if (!dayMap[key]) {
+        dayMap[key] = {
+          date: new Date(t.getFullYear(), t.getMonth(), t.getDate()),
+          min: null,
+          max: null,
+          symbol: "",
+          bestHourDistance: Infinity
+        };
+      }
+
+      var temp = instant.air_temperature;
+      if (typeof temp === "number") {
+        dayMap[key].min = dayMap[key].min === null ? temp : Math.min(dayMap[key].min, temp);
+        dayMap[key].max = dayMap[key].max === null ? temp : Math.max(dayMap[key].max, temp);
+      }
+
+      var summary = (item.data.next_6_hours || item.data.next_1_hours || item.data.next_12_hours || {}).summary;
+      var symbol = summary && summary.symbol_code ? summary.symbol_code : "";
+      var hourDistance = Math.abs((t.getHours() + (t.getMinutes() / 60)) - 12);
+
+      if (symbol && hourDistance < dayMap[key].bestHourDistance) {
+        dayMap[key].symbol = symbol;
+        dayMap[key].bestHourDistance = hourDistance;
+      }
+    }
+
+    var rows = Object.keys(dayMap)
+      .sort(function (a, b) {
+        return dayMap[a].date - dayMap[b].date;
+      })
+      .slice(0, 3)
+      .map(function (key) {
+        var d = dayMap[key].date;
+        return {
+          day: SHORT_DAYS[d.getDay()],
+          min: Math.round(dayMap[key].min === null ? 0 : dayMap[key].min),
+          max: Math.round(dayMap[key].max === null ? 0 : dayMap[key].max),
+          symbol: dayMap[key].symbol || currentSymbol || "partlycloudy_day"
+        };
+      });
+
+    return {
+      rows: rows,
+      currentSymbol: currentSymbol || (rows[0] ? rows[0].symbol : "")
+    };
+  }
+
+  function loadWeather() {
+    if (!els.weatherCard) return;
+
+    if (!isLandscape()) {
+      els.weatherCard.style.display = "none";
+      return;
+    }
+
+    els.weatherCard.style.display = "block";
+    els.weatherBody.innerHTML = '<div class="weatherLoading">Laster vær…</div>';
+
+    fetch(WEATHER_API_URL, {
+      method: "GET",
+      headers: {
+        "Accept": "application/json"
+      },
+      cache: "no-store"
+    })
+      .then(function (res) {
+        if (!res.ok) throw new Error("Weather request failed");
+        return res.json();
+      })
+      .then(function (json) {
+        var parsed = buildWeatherRows(json);
+        renderWeatherCard(parsed.rows, parsed.currentSymbol);
+      })
+      .catch(function () {
+        renderWeatherError();
+      });
+  }
+
+  function refreshLayout() {
+    if (lastData) render(lastData);
+    loadWeather();
+  }
+
   window.__calendarFeedLoaded = function (data) {
     callbackFired = true;
     clearTimeout(loadTimer);
@@ -528,7 +798,8 @@
   }
 
   window.addEventListener("resize", function () {
-    if (lastData) render(lastData);
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(refreshLayout, 120);
   });
 
   els.empty.textContent = "Laster kalenderdata…";
@@ -536,7 +807,10 @@
   els.app.style.display = "none";
 
   loadCalendar();
+  loadWeather();
+
   setInterval(loadCalendar, REFRESH_MS);
+  weatherTimer = setInterval(loadWeather, WEATHER_REFRESH_MS);
 })();
 </script>
 </body>
