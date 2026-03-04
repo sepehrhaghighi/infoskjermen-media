@@ -61,7 +61,7 @@
       background:#000;
       text-align:center;
       padding:40px;
-      font: 26px/1.2 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      font:26px/1.2 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
       z-index:10;
     }
   </style>
@@ -76,19 +76,17 @@
 
 <script>
 (async () => {
-  const CONFIG_SERVICE_URL = "https://script.google.com/macros/s/AKfycbzfSFnMeg-26QNv802KVleuZWoEPqQE8zU4JwQLO3ikWL-fpYP4SFWTu8Q89jmgXq0YvQ/exec";
+  const CONFIG_SERVICE_URL = "https://script.google.com/macros/s/AKfycbyeAHLzvmNUTGn_FWr8fTr1GDHVocivJG7M6Fpe6Lfcm0MjIQ-KjLZIhmkiNc7q00HLHA/exec";
   const MANIFEST_URL = "./assets/films.json";
   const EXTRA_MANIFEST_URL = "./assets/landscape_extra/manifest.json";
-
-  /* Change this if your calendar page filename/path is different */
   const CALENDAR_SLIDE_URL = "./calendar-slide.html";
-
   const FIELD = "landscape";
 
   let posterSeconds = 12;
-  let calendarSlideSeconds = 0; /* 0 = disabled */
+  let calendarSlideSeconds = 0;
   let fadeMs = 900;
   let refreshSeconds = 300;
+
   let refreshTimer = null;
   let tickTimer = null;
 
@@ -156,6 +154,7 @@
         out.push(it);
       }
     }
+
     return out;
   }
 
@@ -202,6 +201,7 @@
       if ((a.v || "") !== (b.v || "")) return true;
       if ((a.seconds || 0) !== (b.seconds || 0)) return true;
     }
+
     return false;
   }
 
@@ -212,9 +212,9 @@
     ]);
 
     posterSeconds = positiveParam("p", cfg.posterSeconds ?? 12);
+    calendarSlideSeconds = nonNegativeParam("cal", cfg.calendarSlideSeconds ?? 0);
     fadeMs = positiveParam("fade", cfg.fadeMs ?? 900);
     refreshSeconds = positiveParam("r", cfg.manifestRefreshSeconds ?? 300);
-    calendarSlideSeconds = nonNegativeParam("cal", cfg.calendarSlideSeconds ?? 0);
 
     A.style.transitionDuration = fadeMs + "ms";
     B.style.transitionDuration = fadeMs + "ms";
@@ -246,9 +246,7 @@
     const changed = itemsChanged(nextItems);
     items = nextItems;
 
-    if (changed) {
-      idx = 0;
-    }
+    if (changed) idx = 0;
 
     emptyEl.style.display = items.length ? "none" : "flex";
   }
@@ -263,11 +261,7 @@
         img.onerror = resolve;
         img.src = item.url + (item.v || "");
       });
-      return;
     }
-
-    /* No preload needed for calendar iframe */
-    return;
   }
 
   function clearLayer(el) {
@@ -297,7 +291,7 @@
 
   function swapTo(item) {
     const front = frontIsA ? A : B;
-    const back = frontIsA ? B : A;
+    const back  = frontIsA ? B : A;
 
     setLayerContent(back, item);
     back.classList.add("show");
