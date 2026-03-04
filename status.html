@@ -59,7 +59,7 @@
     label{ display:flex; gap:8px; align-items:center; }
 
     input[type="number"], input[type="password"]{
-      width: 140px;
+      width: 150px;
       padding: 6px 8px;
       border-radius: 10px;
       border:1px solid #2b2b2b;
@@ -137,12 +137,8 @@
           <input id="posterSeconds" type="number" min="1" placeholder="12">
         </label>
 
-        <label>Films landscape calendar (sec, 0=off)
+        <label>Calendar slide (sec, 0=off)
           <input id="calendarSlideSeconds" type="number" min="0" placeholder="0">
-        </label>
-
-        <label>Arrangements landscape calendar (sec, 0=off)
-          <input id="arrangementsCalendarSlideSeconds" type="number" min="0" placeholder="0">
         </label>
 
         <label>Fade (ms)
@@ -163,7 +159,9 @@
       </div>
 
       <div class="muted small" style="margin-top:10px;">
-        Apply updates the shared config in Drive. All slideshow pages pick it up automatically.
+        Apply updates the shared config in Drive. The same calendar slide time is used by both
+        <span class="mono">films-landscape.html</span> and
+        <span class="mono">arrangements-landscape.html</span>.
       </div>
     </div>
 
@@ -214,7 +212,6 @@
   const DEFAULTS = {
     posterSeconds: 12,
     calendarSlideSeconds: 0,
-    arrangementsCalendarSlideSeconds: 0,
     fadeMs: 900,
     manifestRefreshSeconds: 300
   };
@@ -222,7 +219,6 @@
   const els = {
     posterSeconds: document.getElementById("posterSeconds"),
     calendarSlideSeconds: document.getElementById("calendarSlideSeconds"),
-    arrangementsCalendarSlideSeconds: document.getElementById("arrangementsCalendarSlideSeconds"),
     fadeMs: document.getElementById("fadeMs"),
     refreshSeconds: document.getElementById("refreshSeconds"),
     updateKey: document.getElementById("updateKey"),
@@ -237,7 +233,6 @@
   function disableUi(disabled) {
     els.posterSeconds.disabled = disabled;
     els.calendarSlideSeconds.disabled = disabled;
-    els.arrangementsCalendarSlideSeconds.disabled = disabled;
     els.fadeMs.disabled = disabled;
     els.refreshSeconds.disabled = disabled;
     els.applyBtn.disabled = disabled;
@@ -281,7 +276,6 @@
     return (
       cfg.posterSeconds != null ||
       cfg.calendarSlideSeconds != null ||
-      cfg.arrangementsCalendarSlideSeconds != null ||
       cfg.fadeMs != null ||
       refresh != null
     );
@@ -343,7 +337,6 @@
 
     if (cfg.posterSeconds != null) els.posterSeconds.value = cfg.posterSeconds;
     if (cfg.calendarSlideSeconds != null) els.calendarSlideSeconds.value = cfg.calendarSlideSeconds;
-    if (cfg.arrangementsCalendarSlideSeconds != null) els.arrangementsCalendarSlideSeconds.value = cfg.arrangementsCalendarSlideSeconds;
     if (cfg.fadeMs != null) els.fadeMs.value = cfg.fadeMs;
     if (refresh != null) els.refreshSeconds.value = refresh;
   }
@@ -352,7 +345,6 @@
     return {
       posterSeconds: Math.max(1, safeNumber(els.posterSeconds.value) ?? DEFAULTS.posterSeconds),
       calendarSlideSeconds: Math.max(0, safeNumber(els.calendarSlideSeconds.value) ?? DEFAULTS.calendarSlideSeconds),
-      arrangementsCalendarSlideSeconds: Math.max(0, safeNumber(els.arrangementsCalendarSlideSeconds.value) ?? DEFAULTS.arrangementsCalendarSlideSeconds),
       fadeMs: Math.max(0, safeNumber(els.fadeMs.value) ?? DEFAULTS.fadeMs),
       manifestRefreshSeconds: Math.max(30, safeNumber(els.refreshSeconds.value) ?? DEFAULTS.manifestRefreshSeconds)
     };
@@ -368,8 +360,7 @@
 
   async function renderCounts() {
     const posterSeconds = Math.max(1, safeNumber(els.posterSeconds.value) ?? DEFAULTS.posterSeconds);
-    const filmsCalendarSeconds = Math.max(0, safeNumber(els.calendarSlideSeconds.value) ?? DEFAULTS.calendarSlideSeconds);
-    const arrangementsCalendarSeconds = Math.max(0, safeNumber(els.arrangementsCalendarSlideSeconds.value) ?? DEFAULTS.arrangementsCalendarSlideSeconds);
+    const calendarSlideSeconds = Math.max(0, safeNumber(els.calendarSlideSeconds.value) ?? DEFAULTS.calendarSlideSeconds);
 
     els.tbody.innerHTML = `<tr><td colspan="4" class="muted">Loading…</td></tr>`;
 
@@ -390,10 +381,10 @@
       const arrLandscape       = countField(arrs, "landscape");
 
       const filmsLandscapeImageCount = filmsLandscapeBase + extraLandscape;
-      const filmsLandscapeTotalCount = filmsLandscapeImageCount + (filmsCalendarSeconds > 0 ? 1 : 0);
+      const filmsLandscapeTotalCount = filmsLandscapeImageCount + (calendarSlideSeconds > 0 ? 1 : 0);
 
       const arrangementsLandscapeImageCount = arrLandscape;
-      const arrangementsLandscapeTotalCount = arrangementsLandscapeImageCount + (arrangementsCalendarSeconds > 0 ? 1 : 0);
+      const arrangementsLandscapeTotalCount = arrangementsLandscapeImageCount + (calendarSlideSeconds > 0 ? 1 : 0);
 
       const portraitAll  = filmsPortrait + arrPortrait;
       const landscapeAll = filmsLandscapeBase + arrLandscape + extraLandscape;
@@ -407,15 +398,9 @@
         },
         {
           page:"films-landscape.html",
-          desc:`Films landscape (subset + ${extraLandscape} manual extra${filmsCalendarSeconds > 0 ? " + calendar slide" : ""})`,
+          desc:`Films landscape (subset + ${extraLandscape} manual extra${calendarSlideSeconds > 0 ? " + calendar slide" : ""})`,
           count: filmsLandscapeTotalCount,
-          seconds: (filmsLandscapeImageCount * posterSeconds) + filmsCalendarSeconds
-        },
-        {
-          page:"(inside films-landscape)",
-          desc:"Calendar slide only (0 = disabled)",
-          count: filmsCalendarSeconds > 0 ? 1 : 0,
-          seconds: filmsCalendarSeconds
+          seconds: (filmsLandscapeImageCount * posterSeconds) + calendarSlideSeconds
         },
         {
           page:"arrangements-portrait.html",
@@ -425,15 +410,9 @@
         },
         {
           page:"arrangements-landscape.html",
-          desc:`Arrangements landscape (subset${arrangementsCalendarSeconds > 0 ? " + calendar slide" : ""})`,
+          desc:`Arrangements landscape (subset${calendarSlideSeconds > 0 ? " + calendar slide" : ""})`,
           count: arrangementsLandscapeTotalCount,
-          seconds: (arrangementsLandscapeImageCount * posterSeconds) + arrangementsCalendarSeconds
-        },
-        {
-          page:"(inside arrangements-landscape)",
-          desc:"Calendar slide only (0 = disabled)",
-          count: arrangementsCalendarSeconds > 0 ? 1 : 0,
-          seconds: arrangementsCalendarSeconds
+          seconds: (arrangementsLandscapeImageCount * posterSeconds) + calendarSlideSeconds
         },
         {
           page:"portrait-all.html",
@@ -451,12 +430,7 @@
 
       els.tbody.innerHTML = rows.map(r => `
         <tr>
-          <td>
-            ${r.page.startsWith("(")
-              ? `${pill("ok","ok")} <span class="mono">${r.page}</span>`
-              : `${pill("ok","ok")} <a href="./${r.page}" target="_blank">${r.page}</a>`
-            }
-          </td>
+          <td>${pill("ok","ok")} <a href="./${r.page}" target="_blank">${r.page}</a></td>
           <td class="muted">${r.desc}</td>
           <td class="right mono">${r.count}</td>
           <td class="right mono">${fmtDuration(r.seconds)}</td>
@@ -496,7 +470,6 @@
     const body = new URLSearchParams({
       posterSeconds: String(cfg.posterSeconds),
       calendarSlideSeconds: String(cfg.calendarSlideSeconds),
-      arrangementsCalendarSlideSeconds: String(cfg.arrangementsCalendarSlideSeconds),
       fadeMs: String(cfg.fadeMs),
       manifestRefreshSeconds: String(cfg.manifestRefreshSeconds)
     }).toString();
@@ -558,7 +531,6 @@
 
   els.posterSeconds.addEventListener("input", renderCounts);
   els.calendarSlideSeconds.addEventListener("input", renderCounts);
-  els.arrangementsCalendarSlideSeconds.addEventListener("input", renderCounts);
 
   (async () => {
     disableUi(true);
@@ -570,7 +542,6 @@
     if (!ok) {
       els.posterSeconds.value = DEFAULTS.posterSeconds;
       els.calendarSlideSeconds.value = DEFAULTS.calendarSlideSeconds;
-      els.arrangementsCalendarSlideSeconds.value = DEFAULTS.arrangementsCalendarSlideSeconds;
       els.fadeMs.value = DEFAULTS.fadeMs;
       els.refreshSeconds.value = DEFAULTS.manifestRefreshSeconds;
       setInfo("Using defaults (config read failed).");
