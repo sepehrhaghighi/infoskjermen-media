@@ -37,7 +37,7 @@
     .wrap{
       position: relative;
       z-index: 2;
-      max-width: 980px;
+      max-width: 1040px;
       margin: 24px auto;
       padding: 0 16px;
     }
@@ -116,7 +116,7 @@
       border-radius: 12px;
     }
     .tableWrap table{
-      min-width: 760px;
+      min-width: 860px;
     }
     @media (max-width: 700px){
       th, td{ padding: 8px 6px; }
@@ -136,12 +136,19 @@
         <label>Seconds per poster
           <input id="posterSeconds" type="number" min="1" placeholder="12">
         </label>
-        <label>Calendar slide (sec, 0=off)
+
+        <label>Films landscape calendar (sec, 0=off)
           <input id="calendarSlideSeconds" type="number" min="0" placeholder="0">
         </label>
+
+        <label>Arrangements landscape calendar (sec, 0=off)
+          <input id="arrangementsCalendarSlideSeconds" type="number" min="0" placeholder="0">
+        </label>
+
         <label>Fade (ms)
           <input id="fadeMs" type="number" min="0" placeholder="900">
         </label>
+
         <label>Refresh (sec)
           <input id="refreshSeconds" type="number" min="30" placeholder="300">
         </label>
@@ -198,7 +205,7 @@
 
 <script>
 (() => {
-  const CONFIG_SERVICE_URL = "https://script.google.com/macros/s/AKfycbzfSFnMeg-26QNv802KVleuZWoEPqQE8zU4JwQLO3ikWL-fpYP4SFWTu8Q89jmgXq0YvQ/exec";
+  const CONFIG_SERVICE_URL = "https://script.google.com/macros/s/AKfycbyeAHLzvmNUTGn_FWr8fTr1GDHVocivJG7M6Fpe6Lfcm0MjIQ-KjLZIhmkiNc7q00HLHA/exec";
   const FILMS_URL = "./assets/films.json";
   const ARR_URL   = "./assets/arrangements.json";
   const EXTRA_URL = "./assets/landscape_extra/manifest.json";
@@ -207,6 +214,7 @@
   const DEFAULTS = {
     posterSeconds: 12,
     calendarSlideSeconds: 0,
+    arrangementsCalendarSlideSeconds: 0,
     fadeMs: 900,
     manifestRefreshSeconds: 300
   };
@@ -214,13 +222,14 @@
   const els = {
     posterSeconds: document.getElementById("posterSeconds"),
     calendarSlideSeconds: document.getElementById("calendarSlideSeconds"),
+    arrangementsCalendarSlideSeconds: document.getElementById("arrangementsCalendarSlideSeconds"),
     fadeMs: document.getElementById("fadeMs"),
     refreshSeconds: document.getElementById("refreshSeconds"),
     updateKey: document.getElementById("updateKey"),
     applyBtn: document.getElementById("applyBtn"),
     tbody: document.getElementById("tbody"),
     info: document.getElementById("info"),
-    bgLayer: document.getElementById("bgLayer"),
+    bgLayer: document.getElementById("bgLayer")
   };
 
   function setInfo(msg) { els.info.textContent = msg || ""; }
@@ -228,6 +237,7 @@
   function disableUi(disabled) {
     els.posterSeconds.disabled = disabled;
     els.calendarSlideSeconds.disabled = disabled;
+    els.arrangementsCalendarSlideSeconds.disabled = disabled;
     els.fadeMs.disabled = disabled;
     els.refreshSeconds.disabled = disabled;
     els.applyBtn.disabled = disabled;
@@ -271,6 +281,7 @@
     return (
       cfg.posterSeconds != null ||
       cfg.calendarSlideSeconds != null ||
+      cfg.arrangementsCalendarSlideSeconds != null ||
       cfg.fadeMs != null ||
       refresh != null
     );
@@ -332,6 +343,7 @@
 
     if (cfg.posterSeconds != null) els.posterSeconds.value = cfg.posterSeconds;
     if (cfg.calendarSlideSeconds != null) els.calendarSlideSeconds.value = cfg.calendarSlideSeconds;
+    if (cfg.arrangementsCalendarSlideSeconds != null) els.arrangementsCalendarSlideSeconds.value = cfg.arrangementsCalendarSlideSeconds;
     if (cfg.fadeMs != null) els.fadeMs.value = cfg.fadeMs;
     if (refresh != null) els.refreshSeconds.value = refresh;
   }
@@ -340,8 +352,9 @@
     return {
       posterSeconds: Math.max(1, safeNumber(els.posterSeconds.value) ?? DEFAULTS.posterSeconds),
       calendarSlideSeconds: Math.max(0, safeNumber(els.calendarSlideSeconds.value) ?? DEFAULTS.calendarSlideSeconds),
+      arrangementsCalendarSlideSeconds: Math.max(0, safeNumber(els.arrangementsCalendarSlideSeconds.value) ?? DEFAULTS.arrangementsCalendarSlideSeconds),
       fadeMs: Math.max(0, safeNumber(els.fadeMs.value) ?? DEFAULTS.fadeMs),
-      manifestRefreshSeconds: Math.max(30, safeNumber(els.refreshSeconds.value) ?? DEFAULTS.manifestRefreshSeconds),
+      manifestRefreshSeconds: Math.max(30, safeNumber(els.refreshSeconds.value) ?? DEFAULTS.manifestRefreshSeconds)
     };
   }
 
@@ -355,7 +368,8 @@
 
   async function renderCounts() {
     const posterSeconds = Math.max(1, safeNumber(els.posterSeconds.value) ?? DEFAULTS.posterSeconds);
-    const calendarSlideSeconds = Math.max(0, safeNumber(els.calendarSlideSeconds.value) ?? DEFAULTS.calendarSlideSeconds);
+    const filmsCalendarSeconds = Math.max(0, safeNumber(els.calendarSlideSeconds.value) ?? DEFAULTS.calendarSlideSeconds);
+    const arrangementsCalendarSeconds = Math.max(0, safeNumber(els.arrangementsCalendarSlideSeconds.value) ?? DEFAULTS.arrangementsCalendarSlideSeconds);
 
     els.tbody.innerHTML = `<tr><td colspan="4" class="muted">Loading…</td></tr>`;
 
@@ -376,7 +390,10 @@
       const arrLandscape       = countField(arrs, "landscape");
 
       const filmsLandscapeImageCount = filmsLandscapeBase + extraLandscape;
-      const filmsLandscapeTotalCount = filmsLandscapeImageCount + (calendarSlideSeconds > 0 ? 1 : 0);
+      const filmsLandscapeTotalCount = filmsLandscapeImageCount + (filmsCalendarSeconds > 0 ? 1 : 0);
+
+      const arrangementsLandscapeImageCount = arrLandscape;
+      const arrangementsLandscapeTotalCount = arrangementsLandscapeImageCount + (arrangementsCalendarSeconds > 0 ? 1 : 0);
 
       const portraitAll  = filmsPortrait + arrPortrait;
       const landscapeAll = filmsLandscapeBase + arrLandscape + extraLandscape;
@@ -390,15 +407,15 @@
         },
         {
           page:"films-landscape.html",
-          desc:`Films landscape (subset + ${extraLandscape} manual extra${calendarSlideSeconds > 0 ? " + calendar slide" : ""})`,
+          desc:`Films landscape (subset + ${extraLandscape} manual extra${filmsCalendarSeconds > 0 ? " + calendar slide" : ""})`,
           count: filmsLandscapeTotalCount,
-          seconds: (filmsLandscapeImageCount * posterSeconds) + calendarSlideSeconds
+          seconds: (filmsLandscapeImageCount * posterSeconds) + filmsCalendarSeconds
         },
         {
           page:"(inside films-landscape)",
           desc:"Calendar slide only (0 = disabled)",
-          count: calendarSlideSeconds > 0 ? 1 : 0,
-          seconds: calendarSlideSeconds
+          count: filmsCalendarSeconds > 0 ? 1 : 0,
+          seconds: filmsCalendarSeconds
         },
         {
           page:"arrangements-portrait.html",
@@ -408,9 +425,15 @@
         },
         {
           page:"arrangements-landscape.html",
-          desc:"Arrangements landscape (subset)",
-          count: arrLandscape,
-          seconds: arrLandscape * posterSeconds
+          desc:`Arrangements landscape (subset${arrangementsCalendarSeconds > 0 ? " + calendar slide" : ""})`,
+          count: arrangementsLandscapeTotalCount,
+          seconds: (arrangementsLandscapeImageCount * posterSeconds) + arrangementsCalendarSeconds
+        },
+        {
+          page:"(inside arrangements-landscape)",
+          desc:"Calendar slide only (0 = disabled)",
+          count: arrangementsCalendarSeconds > 0 ? 1 : 0,
+          seconds: arrangementsCalendarSeconds
         },
         {
           page:"portrait-all.html",
@@ -444,11 +467,7 @@
       const u2 = arrData.updated ? `arr: ${arrData.updated}` : `arr: (no updated)`;
       const u3 = extraData.generatedAt ? `extra: ${extraData.generatedAt}` : `extra: ${extraLandscape} item(s)`;
 
-      if (
-        !els.info.textContent ||
-        els.info.textContent.includes("Loading") ||
-        els.info.textContent.includes("Applied")
-      ) {
+      if (!els.info.textContent || els.info.textContent.includes("Loading") || els.info.textContent.includes("Applied")) {
         els.info.textContent = `${u1} | ${u2} | ${u3}`;
       }
     } catch (e) {
@@ -477,8 +496,9 @@
     const body = new URLSearchParams({
       posterSeconds: String(cfg.posterSeconds),
       calendarSlideSeconds: String(cfg.calendarSlideSeconds),
+      arrangementsCalendarSlideSeconds: String(cfg.arrangementsCalendarSlideSeconds),
       fadeMs: String(cfg.fadeMs),
-      manifestRefreshSeconds: String(cfg.manifestRefreshSeconds),
+      manifestRefreshSeconds: String(cfg.manifestRefreshSeconds)
     }).toString();
 
     const url = CONFIG_SERVICE_URL + "?key=" + encodeURIComponent(key);
@@ -520,7 +540,7 @@
     const candidates = [
       new URL(BG_REL, location.href).href,
       new URL("/" + repo + "/assets/status-bg.jpg", location.origin).href,
-      new URL("/assets/status-bg.jpg", location.origin).href,
+      new URL("/assets/status-bg.jpg", location.origin).href
     ];
 
     for (const c of candidates) {
@@ -538,6 +558,7 @@
 
   els.posterSeconds.addEventListener("input", renderCounts);
   els.calendarSlideSeconds.addEventListener("input", renderCounts);
+  els.arrangementsCalendarSlideSeconds.addEventListener("input", renderCounts);
 
   (async () => {
     disableUi(true);
@@ -549,6 +570,7 @@
     if (!ok) {
       els.posterSeconds.value = DEFAULTS.posterSeconds;
       els.calendarSlideSeconds.value = DEFAULTS.calendarSlideSeconds;
+      els.arrangementsCalendarSlideSeconds.value = DEFAULTS.arrangementsCalendarSlideSeconds;
       els.fadeMs.value = DEFAULTS.fadeMs;
       els.refreshSeconds.value = DEFAULTS.manifestRefreshSeconds;
       setInfo("Using defaults (config read failed).");
