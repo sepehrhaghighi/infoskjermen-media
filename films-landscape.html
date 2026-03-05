@@ -1,164 +1,120 @@
 <!doctype html>
-<html>
+<html lang="no">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Films – Landscape</title>
   <style>
-    html, body {
-      margin:0;
-      height:100%;
-      background:#000;
-      overflow:hidden;
-    }
+    html, body { margin:0; height:100%; background:#000; overflow:hidden; }
+    .stage { position:relative; width:100%; height:100%; }
 
-    .stage {
-      position:relative;
-      width:100%;
-      height:100%;
-      background:#000;
-    }
-
+    /* Poster layers */
     .layer {
-      position:absolute;
-      inset:0;
+      position:absolute; inset:0;
+      width:100%; height:100%;
+      object-fit:contain;
       opacity:0;
       transition: opacity 900ms ease-in-out;
       will-change: opacity;
+    }
+    .layer.show { opacity:1; }
+
+    /* Calendar iframe scene */
+    #calendarScene{
+      position:absolute; inset:0;
+      display:none;
       background:#000;
     }
-
-    .layer.show {
-      opacity:1;
-    }
-
-    .mediaImg,
-    .mediaFrame {
-      position:absolute;
-      inset:0;
-      width:100%;
-      height:100%;
-      display:block;
+    #calendarFrame{
+      position:absolute; inset:0;
+      width:100%; height:100%;
       border:0;
       background:#000;
-    }
-
-    .mediaImg {
-      object-fit:contain;
-    }
-
-    .mediaFrame {
-      border:0;
     }
 
     #empty {
-      position:fixed;
-      inset:0;
-      display:none;
-      align-items:center;
-      justify-content:center;
-      color:#fff;
-      background:#000;
-      text-align:center;
-      padding:40px;
-      font:26px/1.2 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-      z-index:10;
+      position:fixed; inset:0; display:none; align-items:center; justify-content:center;
+      color:#fff; background:#000; text-align:center; padding:40px;
+      font: 26px/1.2 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      z-index:2000;
     }
   </style>
 </head>
 <body>
   <div id="empty">No film landscape posters available.</div>
 
-  <div class="stage">
-    <div id="a" class="layer show"></div>
-    <div id="b" class="layer"></div>
+  <div class="stage" id="posterScene">
+    <img id="a" class="layer show" alt="">
+    <img id="b" class="layer" alt="">
+  </div>
+
+  <div id="calendarScene">
+    <iframe id="calendarFrame" title="Kalenderslide" referrerpolicy="no-referrer"></iframe>
   </div>
 
 <script>
 (async () => {
+  // === IMPORTANT: keep this exactly as your current working deployment ===
   const CONFIG_SERVICE_URL = "https://script.google.com/macros/s/AKfycbyeAHLzvmNUTGn_FWr8fTr1GDHVocivJG7M6Fpe6Lfcm0MjIQ-KjLZIhmkiNc7q00HLHA/exec";
+
+  // Your existing films manifest
   const MANIFEST_URL = "./assets/films.json";
-  const EXTRA_MANIFEST_URL = "./assets/landscape_extra/manifest.json";
-  const CALENDAR_SLIDE_URL = "https://sepehrhaghighi.github.io/infoskjermen-media/calendar-slide.html";
   const FIELD = "landscape";
 
+  // Your working calendar page
+  const CALENDAR_URL = "https://sepehrhaghighi.github.io/infoskjermen-media/calendar-slide.html";
+
   let posterSeconds = 12;
-  let calendarSlideSeconds = 0;
+  let calendarSeconds = 0;     // 0 => disabled
   let fadeMs = 900;
   let refreshSeconds = 300;
 
-  let refreshTimer = null;
-  let tickTimer = null;
-
-  /*
-    items:
-    { kind: "image", url, v, seconds }
-    { kind: "calendar", url, seconds }
-  */
-  let items = [];
+  let items = [];              // { kind:'calendar', seconds } or { kind:'poster', url, v, seconds }
   let idx = 0;
   let frontIsA = true;
+  let refreshTimer = null;
+  let lastCalendarLoadMs = 0;
 
   const emptyEl = document.getElementById("empty");
   const A = document.getElementById("a");
   const B = document.getElementById("b");
+  const posterScene = document.getElementById("posterScene");
+  const calendarScene = document.getElementById("calendarScene");
+  const calendarFrame = document.getElementById("calendarFrame");
 
+  function numParam(name, fallback) {
+    const v = new URLSearchParams(location.search).get(name);
+    const n = Number(v);
+    return Number.isFinite(n) ? n : fallback;
+  }
   function positiveParam(name, fallback) {
-    const v = new URLSearchParams(location.search).get(name);
-    const n = Number(v);
-    return Number.isFinite(n) && n > 0 ? n : fallback;
+    const n = numParam(name, null);
+    return (n != null && n > 0) ? n : fallback;
   }
-
   function nonNegativeParam(name, fallback) {
-    const v = new URLSearchParams(location.search).get(name);
-    const n = Number(v);
-    return Number.isFinite(n) && n >= 0 ? n : fallback;
+    const n = numParam(name, null);
+    return (n != null && n >= 0) ? n : fallback;
   }
 
-  async function fetchJson(url) {
-    const r = await fetch(url, { cache: "no-store" });
-    if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
-    return await r.json();
-  }
-
-  function normalizeExtraUrl(url) {
-    if (!url) return "";
-    if (url.startsWith("/assets/")) return "." + url;
-    return url;
-  }
-
-  async function loadManualExtras(manifestUrl) {
-    try {
-      const m = await fetchJson(manifestUrl);
-      const rawItems = Array.isArray(m.items) ? m.items : [];
-      return rawItems
-        .map(it => ({
-          kind: "image",
-          url: normalizeExtraUrl(it?.url || ""),
-          v: it?.v ? ("?v=" + encodeURIComponent(it.v)) : "",
-          seconds: posterSeconds
-        }))
-        .filter(it => it.url);
-    } catch {
-      return [];
+  function readCalendarSecondsFromCfg(cfg) {
+    // Accept several possible names so you don’t get stuck on a mismatch.
+    const candidates = [
+      cfg?.calendarSeconds,
+      cfg?.calendarSlideSeconds,
+      cfg?.calendarTimeSeconds,
+      cfg?.calendarDurationSeconds,
+      cfg?.calendar,
+      cfg?.calSeconds,
+      cfg?.cal
+    ];
+    for (const v of candidates) {
+      const n = Number(v);
+      if (Number.isFinite(n) && n >= 0) return n;
     }
+    return 0;
   }
 
-  function mergeUniqueItems(primary, extra) {
-    const seen = new Set(primary.map(it => it.url));
-    const out = primary.slice();
-
-    for (const it of extra) {
-      if (it.url && !seen.has(it.url)) {
-        seen.add(it.url);
-        out.push(it);
-      }
-    }
-
-    return out;
-  }
-
-  function loadConfigJSONP(timeoutMs = 4000) {
+  function loadConfigJSONP(timeoutMs = 5000) {
     return new Promise((resolve) => {
       const cbName = "__cfgcb_" + Math.random().toString(16).slice(2);
       let done = false;
@@ -175,10 +131,7 @@
       document.head.appendChild(s);
 
       const t = setTimeout(() => {
-        if (!done) {
-          cleanup();
-          resolve({});
-        }
+        if (!done) { cleanup(); resolve({}); }
       }, timeoutMs);
 
       function cleanup() {
@@ -189,20 +142,15 @@
     });
   }
 
-  function itemsChanged(nextItems) {
-    if (nextItems.length !== items.length) return true;
+  async function fetchJson(url) {
+    const r = await fetch(url, { cache: "no-store" });
+    if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+    return await r.json();
+  }
 
-    for (let i = 0; i < nextItems.length; i += 1) {
-      const a = nextItems[i];
-      const b = items[i];
-      if (!b) return true;
-      if (a.kind !== b.kind) return true;
-      if (a.url !== b.url) return true;
-      if ((a.v || "") !== (b.v || "")) return true;
-      if ((a.seconds || 0) !== (b.seconds || 0)) return true;
-    }
-
-    return false;
+  function signatureFromPosters(posters) {
+    // Only URLs affect cycling; ignore the version so index won’t reset on every refresh.
+    return posters.map(p => p.url).join("|");
   }
 
   async function load() {
@@ -211,121 +159,105 @@
       fetchJson(MANIFEST_URL)
     ]);
 
-    posterSeconds = positiveParam("p", cfg.posterSeconds ?? 12);
-    calendarSlideSeconds = nonNegativeParam("cal", cfg.calendarSlideSeconds ?? 0);
-    fadeMs = positiveParam("fade", cfg.fadeMs ?? 900);
+    posterSeconds  = positiveParam("p", cfg.posterSeconds ?? 12);
+    fadeMs         = positiveParam("fade", cfg.fadeMs ?? 900);
     refreshSeconds = positiveParam("r", cfg.manifestRefreshSeconds ?? 300);
+
+    // config calendar seconds, but allow URL override: ?cal=30
+    calendarSeconds = nonNegativeParam("cal", readCalendarSecondsFromCfg(cfg));
 
     A.style.transitionDuration = fadeMs + "ms";
     B.style.transitionDuration = fadeMs + "ms";
 
     const baseVersion = data.updated ? ("?v=" + encodeURIComponent(data.updated)) : "";
-
-    const films = (data.films || [])
+    const posters = (data.films || [])
       .map(x => x?.[FIELD])
       .filter(Boolean)
-      .map(url => ({
-        kind: "image",
-        url,
-        v: baseVersion,
-        seconds: posterSeconds
-      }));
+      .map(url => ({ kind:"poster", url, v: baseVersion, seconds: posterSeconds }));
 
-    const extraItems = await loadManualExtras(EXTRA_MANIFEST_URL);
+    const nextItems = [];
+    if (calendarSeconds > 0) nextItems.push({ kind:"calendar", seconds: calendarSeconds });
+    nextItems.push(...posters);
 
-    let nextItems = mergeUniqueItems(films, extraItems);
+    const prevSig = signatureFromPosters(items.filter(x => x.kind === "poster"));
+    const nextSig = signatureFromPosters(posters);
+    const postersChanged = prevSig !== nextSig;
 
-    if (calendarSlideSeconds > 0) {
-      nextItems.push({
-        kind: "calendar",
-        url: CALENDAR_SLIDE_URL,
-        seconds: calendarSlideSeconds
-      });
-    }
-
-    const changed = itemsChanged(nextItems);
     items = nextItems;
 
-    if (changed) idx = 0;
+    // Only reset when the poster list actually changed
+    if (postersChanged) idx = 0;
 
-    emptyEl.style.display = items.length ? "none" : "flex";
+    emptyEl.style.display = posters.length ? "none" : "flex";
   }
 
-  async function preload(item) {
-    if (!item) return;
+  async function preloadPoster(item) {
+    await new Promise(resolve => {
+      const img = new Image();
+      img.onload = resolve;
+      img.onerror = resolve;
+      img.src = item.url + (item.v || "");
+    });
+  }
 
-    if (item.kind === "image") {
-      await new Promise(resolve => {
-        const img = new Image();
-        img.onload = resolve;
-        img.onerror = resolve;
-        img.src = item.url + (item.v || "");
-      });
+  function showPosterScene() {
+    calendarScene.style.display = "none";
+    posterScene.style.display = "block";
+  }
+
+  function ensureCalendarLoaded() {
+    const now = Date.now();
+    // Reload calendar iframe if it’s “old” (keeps it fresh without reloading every time)
+    if (!calendarFrame.src || (now - lastCalendarLoadMs) > 2 * 60 * 1000) {
+      calendarFrame.src = CALENDAR_URL + "?v=" + now;
+      lastCalendarLoadMs = now;
     }
   }
 
-  function clearLayer(el) {
-    while (el.firstChild) el.removeChild(el.firstChild);
+  function showCalendarScene() {
+    posterScene.style.display = "none";
+    calendarScene.style.display = "block";
+    ensureCalendarLoaded();
   }
 
-  function setLayerContent(el, item) {
-    clearLayer(el);
-
-    if (item.kind === "calendar") {
-      const frame = document.createElement("iframe");
-      frame.className = "mediaFrame";
-      frame.setAttribute("title", "Calendar slide");
-      frame.setAttribute("loading", "eager");
-      frame.setAttribute("referrerpolicy", "no-referrer");
-      frame.src = item.url + (item.url.indexOf("?") === -1 ? "?_=" : "&_=") + Date.now();
-      el.appendChild(frame);
-      return;
-    }
-
-    const img = document.createElement("img");
-    img.className = "mediaImg";
-    img.alt = "";
-    img.src = item.url + (item.v || "");
-    el.appendChild(img);
-  }
-
-  function swapTo(item) {
+  function swapToPoster(item) {
     const front = frontIsA ? A : B;
     const back  = frontIsA ? B : A;
 
-    setLayerContent(back, item);
+    back.src = item.url + (item.v || "");
     back.classList.add("show");
     front.classList.remove("show");
-
     frontIsA = !frontIsA;
   }
 
   async function tick() {
-    if (!items.length) {
-      tickTimer = setTimeout(tick, 2000);
-      return;
-    }
+    if (!items.length) { setTimeout(tick, 2000); return; }
 
     const item = items[idx % items.length];
     idx += 1;
 
-    await preload(item);
-    swapTo(item);
+    if (item.kind === "calendar") {
+      showCalendarScene();
+      setTimeout(() => { showPosterScene(); tick(); }, (item.seconds || 15) * 1000);
+      return;
+    }
 
-    tickTimer = setTimeout(tick, (item.seconds || posterSeconds) * 1000);
+    showPosterScene();
+    await preloadPoster(item);
+    swapToPoster(item);
+    setTimeout(tick, (item.seconds || posterSeconds) * 1000);
   }
 
   function scheduleReload() {
     clearTimeout(refreshTimer);
     refreshTimer = setTimeout(async () => {
-      try {
-        await load();
-      } catch {}
+      try { await load(); } catch {}
       scheduleReload();
     }, refreshSeconds * 1000);
   }
 
   await load();
+  showPosterScene();
   tick();
   scheduleReload();
 })();
