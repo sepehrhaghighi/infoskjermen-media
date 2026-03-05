@@ -1,24 +1,16 @@
 <!doctype html>
-<html lang="no">
+<html lang="nb">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Kalenderslide</title>
+  <title>Kalender – Slide</title>
   <style>
-    :root{
-      --text:#eaf4ff;
-      --muted:#d5e6f7;
-      --soft:#cfe7ff;
-      --cardBorder:rgba(255,255,255,0.12);
-    }
+    html, body { margin:0; height:100%; background:#000; overflow:hidden; }
 
-    *{ box-sizing:border-box; }
-
-    html, body{
-      margin:0;
-      width:100%;
-      height:100%;
-      overflow:hidden;
+    /* Background */
+    body{
+      color:#eaf4ff;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
       background: linear-gradient(
         90deg,
         #4ed347 0%,
@@ -30,14 +22,13 @@
         #2c37c2 86%,
         #3124dd 100%
       );
-      color:var(--text);
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
     }
 
     .wrap{
       position:relative;
       width:100%;
       height:100%;
+      box-sizing:border-box;
       padding:40px 44px 124px 44px;
     }
 
@@ -48,13 +39,13 @@
       min-width:0;
       display:grid;
       grid-template-rows:auto 1fr;
-      gap:30px;                  /* more space between title and list */
-      transform:translateY(6px); /* slight downward nudge */
+      gap:28px;
+      transform:translateY(6px);
     }
 
     .headline{
       margin:0;
-      font-size:clamp(36px, 3vw, 58px);
+      font-size:clamp(36px, 3.0vw, 58px);
       font-weight:700;
       line-height:1.04;
       letter-spacing:-0.02em;
@@ -65,66 +56,31 @@
       min-width:0;
       display:flex;
       flex-direction:column;
-      gap:6px;
+      gap:7px;
       padding-right:8px;
       overflow:hidden;
     }
 
     .eventRow{
       display:grid;
-      grid-template-columns:96px minmax(0, 1fr);
+      grid-template-columns:104px minmax(0, 1fr);
       gap:18px;
       align-items:start;
-      min-height:62px;
+      min-height:58px;
     }
 
-    .dateCell{
-      padding-top:2px;
-      line-height:1;
-      color:#eef9ff;
-    }
-
-    .dateTop{
-      font-size:22px;
-      font-weight:700;
-      letter-spacing:-0.02em;
-    }
-
-    .dateMonth{
-      margin-top:5px;
-      font-size:15px;
-      font-weight:700;
-      letter-spacing:0.08em;
-      text-transform:uppercase;
-      opacity:0.94;
-    }
-
-    .dateWeekday{
-      margin-top:6px;
-      font-size:16px;
-      font-weight:700;
-      letter-spacing:0.08em;
-      text-transform:uppercase;
-      color:var(--soft);
-      opacity:0.96;
-    }
-
-    .dateSpacer{
-      visibility:hidden;
-    }
-
-    .eventCard{
-      min-width:0;
-      padding-top:1px;
-    }
+    .dateCell{ padding-top:2px; line-height:1; color:#eef9ff; }
+    .dateTop{ font-size:22px; font-weight:800; letter-spacing:-0.02em; }
+    .dateMonth{ margin-top:5px; font-size:15px; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; opacity:0.94; }
+    .dateWeekday{ margin-top:6px; font-size:16px; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; color:#cfe7ff; opacity:0.96; }
+    .dateSpacer{ visibility:hidden; }
 
     .eventTitle{
       margin:0;
-      font-size:clamp(24px, 2.1vw, 36px);
-      font-weight:400;
+      font-size:clamp(24px, 2.05vw, 38px);
+      font-weight:450;
       line-height:1.08;
       letter-spacing:-0.02em;
-      color:var(--text);
       display:-webkit-box;
       -webkit-line-clamp:2;
       -webkit-box-orient:vertical;
@@ -133,10 +89,10 @@
     }
 
     .eventMeta{
-      margin-top:3px;
-      font-size:18px;
+      margin-top:4px;
+      font-size:19px;
       line-height:1.18;
-      color:var(--muted);
+      color:#d5e6f7;
       white-space:nowrap;
       overflow:hidden;
       text-overflow:ellipsis;
@@ -151,11 +107,9 @@
       height:142px;
       display:flex;
       align-items:flex-end;
-      justify-content:flex-start;
       z-index:3;
       pointer-events:none;
     }
-
     .screenLogo img{
       max-width:100%;
       max-height:100%;
@@ -189,233 +143,48 @@
       box-shadow:0 6px 18px rgba(0,0,0,0.16);
     }
 
-    .qrWrap img{
-      width:100%;
-      height:100%;
-      object-fit:contain;
-      display:block;
-    }
-
-    .screenCtaInfo{
-      width:100%;
-      text-align:center;
-    }
+    .qrWrap img{ width:100%; height:100%; object-fit:contain; display:block; }
 
     .ctaText{
       font-size:15px;
       line-height:1.2;
-      color:var(--text);
-      font-weight:700;
+      color:#eaf4ff;
+      font-weight:800;
       margin-bottom:4px;
       text-shadow:0 2px 10px rgba(0,0,0,0.10);
+      text-align:center;
     }
 
     .siteLink{
       font-size:13px;
       line-height:1.18;
-      color:var(--soft);
-      font-weight:700;
+      color:#cfe7ff;
+      font-weight:800;
       text-shadow:0 2px 8px rgba(0,0,0,0.08);
       overflow-wrap:anywhere;
-    }
-
-    .weatherCard{
-      position:absolute;
-      top:65px;
-      right:40px;
-      width:220px;
-      padding:12px 12px 10px;
-      border-radius:16px;
-      background:linear-gradient(180deg, rgba(8,18,34,0.34), rgba(7,16,30,0.24));
-      border:1px solid var(--cardBorder);
-      box-shadow:
-        inset 0 1px 0 rgba(255,255,255,0.04),
-        0 10px 28px rgba(0,0,0,0.14);
-      backdrop-filter:blur(6px);
-      z-index:4;
-    }
-
-    .weatherHead{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      margin-bottom:8px;
-    }
-
-    .weatherTitle{
-      font-size:14px;
-      font-weight:700;
-      color:var(--text);
-      line-height:1.2;
-    }
-
-    .weatherSub{
-      font-size:11px;
-      color:var(--muted);
-      line-height:1.2;
-      opacity:0.95;
-    }
-
-    .weatherNow{
-      font-size:24px;
-      line-height:1;
-    }
-
-    .weatherRows{
-      display:flex;
-      flex-direction:column;
-      gap:4px;
-    }
-
-    .weatherRow{
-      display:grid;
-      grid-template-columns:52px 28px 1fr;
-      gap:8px;
-      align-items:center;
-      min-height:24px;
-      padding:1px 0;
-    }
-
-    .weatherDay{
-      font-size:12px;
-      font-weight:700;
-      color:var(--text);
-      opacity:0.95;
-    }
-
-    .weatherIcon{
-      font-size:17px;
       text-align:center;
-      line-height:1;
     }
 
-    .weatherTemps{
-      font-size:12px;
-      color:var(--muted);
-      text-align:right;
-      font-weight:700;
-    }
-
-    .weatherLoading,
-    .weatherError{
-      font-size:12px;
-      color:var(--muted);
-      line-height:1.35;
-      text-align:left;
-    }
-
-    .empty{
+    .overlayMessage{
+      position:absolute;
+      inset:0;
       display:flex;
       align-items:center;
       justify-content:center;
-      width:100%;
-      height:100%;
-      font-size:32px;
-      font-weight:600;
-      color:var(--text);
-      text-align:center;
       padding:40px;
+      box-sizing:border-box;
+      font-size:32px;
+      font-weight:700;
       text-shadow:0 4px 16px rgba(0,0,0,0.14);
-    }
-
-    @media (orientation: portrait) {
-      .wrap{
-        padding:24px 20px 118px 20px;
-      }
-
-      .mainContent{
-        width:calc(100% - 16px);
-        gap:20px;
-        transform:translateY(4px);
-      }
-
-      .headline{
-        font-size:clamp(30px, 5.4vw, 44px);
-      }
-
-      .list{
-        gap:6px;
-        padding-right:0;
-      }
-
-      .eventRow{
-        grid-template-columns:72px minmax(0, 1fr);
-        gap:14px;
-        min-height:56px;
-      }
-
-      .dateTop{ font-size:17px; }
-      .dateMonth{ font-size:12px; margin-top:4px; }
-      .dateWeekday{ font-size:13px; margin-top:4px; }
-
-      .eventTitle{
-        font-size:clamp(17px, 3.2vw, 25px);
-        -webkit-line-clamp:1;
-      }
-
-      .eventMeta{
-        margin-top:3px;
-        font-size:14px;
-      }
-
-      .screenLogo{
-        left:34px;
-        bottom:10px;
-        width:68px;
-        height:68px;
-      }
-
-      .screenCta{
-        right:14px;
-        bottom:10px;
-        width:126px;
-        gap:6px;
-      }
-
-      .qrWrap{
-        width:82px;
-        height:82px;
-        border-radius:10px;
-        padding:5px;
-      }
-
-      .ctaText{
-        font-size:12px;
-        margin-bottom:3px;
-      }
-
-      .siteLink{
-        font-size:11px;
-        line-height:1.14;
-      }
-
-      .weatherCard{
-        display:none !important;
-      }
+      text-align:center;
     }
   </style>
 </head>
 <body>
-  <div id="empty" class="empty">Laster kalenderdata…</div>
-
-  <div id="app" class="wrap" style="display:none;">
+  <div class="wrap">
     <div class="mainContent">
       <h1 id="headline" class="headline">Dette kan du oppleve i Åmot kulturhus</h1>
       <div id="list" class="list"></div>
-    </div>
-
-    <div id="weatherCard" class="weatherCard" aria-label="Værkort">
-      <div class="weatherHead">
-        <div>
-          <div class="weatherTitle">Vær</div>
-          <div class="weatherSub">Rena • 7 dager</div>
-        </div>
-        <div id="weatherNow" class="weatherNow">☁️</div>
-      </div>
-      <div id="weatherBody" class="weatherRows">
-        <div class="weatherLoading">Laster vær…</div>
-      </div>
     </div>
 
     <div class="screenLogo">
@@ -426,126 +195,38 @@
       <div class="qrWrap">
         <img src="./assets/QR.png" alt="QR-kode" onerror="this.style.display='none'; this.parentNode.style.display='none';">
       </div>
-
-      <div class="screenCtaInfo">
+      <div>
         <div class="ctaText">Les mer - Kjøp her</div>
         <div class="siteLink">www.amotkulturhus.no</div>
       </div>
     </div>
+
+    <div id="overlay" class="overlayMessage">Laster kalenderdata…</div>
   </div>
 
 <script>
-(function () {
-  var EVENTS_URL = "https://script.google.com/macros/s/AKfycbzWYkczmmUW_cNhNd6NYoozKYlMH9XXp95DNo-JrCSI172oSjYPPL13AQ1feoktAKy6kQ/exec";
-  var REFRESH_MS = 5 * 60 * 1000;
-  var LOAD_TIMEOUT_MS = 10000;
+(() => {
+  // Calendar feed (JSONP)
+  const EVENTS_URL =
+    "https://script.google.com/macros/s/AKfycbzWYkczmmUW_cNhNd6NYoozKYlMH9XXp95DNo-JrCSI172oSjYPPL13AQ1feoktAKy6kQ/exec";
 
-  /* Rena, Åmot, Innlandet (approx.) */
-  var WEATHER_API_URL = "https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=61.1348&lon=11.3641&altitude=223";
-  var WEATHER_REFRESH_MS = 30 * 60 * 1000;
+  // Optional refresh tuning via URL params:
+  // ?refresh=300  (seconds)
+  // ?max=7        (max events)
+  const params = new URLSearchParams(location.search);
+  const REFRESH_SECONDS = Math.max(30, Number(params.get("refresh") || 300));
+  const MAX_EVENTS = Math.max(1, Math.min(20, Number(params.get("max") || 7)));
 
-  var els = {
-    app: document.getElementById("app"),
-    empty: document.getElementById("empty"),
-    list: document.getElementById("list"),
-    headline: document.getElementById("headline"),
-    weatherCard: document.getElementById("weatherCard"),
-    weatherBody: document.getElementById("weatherBody"),
-    weatherNow: document.getElementById("weatherNow")
-  };
+  const headlineEl = document.getElementById("headline");
+  const listEl = document.getElementById("list");
+  const overlayEl = document.getElementById("overlay");
 
-  var WEEKDAYS = ["SØN", "MAN", "TIR", "ONS", "TOR", "FRE", "LØR"];
-  var MONTHS = ["JAN", "FEB", "MAR", "APR", "MAI", "JUN", "JUL", "AUG", "SEP", "OKT", "NOV", "DES"];
-  var SHORT_DAYS = ["Søn", "Man", "Tir", "Ons", "Tor", "Fre", "Lør"];
+  const WEEKDAYS = ["SØN", "MAN", "TIR", "ONS", "TOR", "FRE", "LØR"];
+  const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAI", "JUN", "JUL", "AUG", "SEP", "OKT", "NOV", "DES"];
 
-  var lastData = null;
-  var loadTimer = null;
-  var callbackFired = false;
-  var resizeTimer = null;
-
-  function isLandscape() {
-    return window.innerWidth >= window.innerHeight;
-  }
-
-  function maxEvents() {
-    if (!isLandscape()) return 18;
-
-    /* Fit as many rows as possible without clipping, capped at 7 */
-    var available = window.innerHeight - 40 - 124 - 86;
-    var perRow = 62;
-    var gap = 6;
-    var fit = Math.floor((available + gap) / (perRow + gap));
-
-    return Math.max(4, Math.min(7, fit));
-  }
-
-  function parseDateTime(value) {
-    if (!value) return null;
-
-    var m = String(value).match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})(?::(\d{2}))?$/);
-    if (!m) return null;
-
-    var d = new Date(
-      Number(m[1]),
-      Number(m[2]) - 1,
-      Number(m[3]),
-      Number(m[4]),
-      Number(m[5]),
-      Number(m[6] || 0)
-    );
-
-    return Number.isNaN(d.getTime()) ? null : d;
-  }
-
-  function timeText(d) {
-    return new Intl.DateTimeFormat("nb-NO", {
-      hour: "2-digit",
-      minute: "2-digit"
-    }).format(d);
-  }
-
-  function makeDateKey(d) {
-    return d.getFullYear() + "-" + d.getMonth() + "-" + d.getDate();
-  }
-
-  function normalizeEvents(data) {
-    var now = new Date();
-
-    return (Array.isArray(data.events) ? data.events : [])
-      .map(function (ev) {
-        var begin = parseDateTime(ev.begin);
-        var end = parseDateTime(ev.end);
-        return {
-          title: String(ev.title || "").trim(),
-          place: String(ev.place || ev.location || "").trim(),
-          begin: begin,
-          end: end
-        };
-      })
-      .filter(function (ev) {
-        return ev.title && ev.begin;
-      })
-      .filter(function (ev) {
-        return !ev.end || ev.end >= now;
-      })
-      .sort(function (a, b) {
-        return a.begin - b.begin;
-      })
-      .slice(0, maxEvents());
-  }
-
-  function renderDateCell(date, repeated) {
-    if (repeated) {
-      return '<div class="dateCell dateSpacer"><div class="dateTop">00.</div><div class="dateMonth">JAN</div><div class="dateWeekday">MAN</div></div>';
-    }
-
-    return '' +
-      '<div class="dateCell">' +
-        '<div class="dateTop">' + date.getDate() + '.</div>' +
-        '<div class="dateMonth">' + MONTHS[date.getMonth()] + '</div>' +
-        '<div class="dateWeekday">' + WEEKDAYS[date.getDay()] + '</div>' +
-      '</div>';
-  }
+  let lastGoodData = null;
+  let loadTimer = null;
+  let callbackFired = false;
 
   function escapeHtml(text) {
     return String(text)
@@ -556,266 +237,165 @@
       .replace(/'/g, "&#39;");
   }
 
-  function renderEvents(events) {
-    var lastDateKey = "";
-    var html = "";
+  function parseDateTime(value) {
+    if (!value) return null;
+    const m = String(value).match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})(?::(\d{2}))?$/);
+    if (!m) return null;
+    const d = new Date(+m[1], +m[2]-1, +m[3], +m[4], +m[5], +(m[6]||0));
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
 
-    events.forEach(function (ev) {
-      var key = makeDateKey(ev.begin);
-      var repeated = key === lastDateKey;
-      lastDateKey = key;
+  function timeText(d) {
+    return new Intl.DateTimeFormat("nb-NO", { hour:"2-digit", minute:"2-digit" }).format(d);
+  }
 
-      var meta = timeText(ev.begin) +
+  function makeDateKey(d) {
+    return d.getFullYear() + "-" + d.getMonth() + "-" + d.getDate();
+  }
+
+  function renderDateCell(date, repeated) {
+    if (repeated) {
+      return '<div class="dateCell dateSpacer"><div class="dateTop">00.</div><div class="dateMonth">JAN</div><div class="dateWeekday">MAN</div></div>';
+    }
+    return '' +
+      '<div class="dateCell">' +
+        '<div class="dateTop">' + date.getDate() + '.</div>' +
+        '<div class="dateMonth">' + MONTHS[date.getMonth()] + '</div>' +
+        '<div class="dateWeekday">' + WEEKDAYS[date.getDay()] + '</div>' +
+      '</div>';
+  }
+
+  function normalizeEvents(data) {
+    const now = new Date();
+    return (Array.isArray(data.events) ? data.events : [])
+      .map(ev => {
+        const begin = parseDateTime(ev.begin);
+        const end = parseDateTime(ev.end);
+        return {
+          title: String(ev.title || "").trim(),
+          place: String(ev.place || ev.location || "").trim(),
+          begin, end
+        };
+      })
+      .filter(ev => ev.title && ev.begin)
+      .filter(ev => !ev.end || ev.end >= now)
+      .sort((a,b) => a.begin - b.begin)
+      .slice(0, MAX_EVENTS);
+  }
+
+  function render(data) {
+    if (data && Array.isArray(data.events)) lastGoodData = data;
+    const effective = lastGoodData || data || {};
+
+    headlineEl.textContent = effective.title ? String(effective.title) : "Dette kan du oppleve i Åmot kulturhus";
+
+    const events = normalizeEvents(effective);
+    if (!events.length) {
+      listEl.innerHTML = "";
+      overlayEl.style.display = "flex";
+      overlayEl.textContent = "Ingen kommende hendelser.";
+      return;
+    }
+
+    let lastKey = "";
+    let html = "";
+
+    for (const ev of events) {
+      const key = makeDateKey(ev.begin);
+      const repeated = key === lastKey;
+      lastKey = key;
+
+      const meta =
+        timeText(ev.begin) +
         (ev.end ? " - " + timeText(ev.end) : "") +
         (ev.place ? " " + ev.place : "");
 
       html += '' +
         '<div class="eventRow">' +
           renderDateCell(ev.begin, repeated) +
-          '<div class="eventCard">' +
+          '<div>' +
             '<h2 class="eventTitle">' + escapeHtml(ev.title) + '</h2>' +
             '<div class="eventMeta">' + escapeHtml(meta) + '</div>' +
           '</div>' +
         '</div>';
-    });
-
-    els.list.innerHTML = html;
-  }
-
-  function render(data) {
-    var events = normalizeEvents(data || {});
-
-    els.headline.textContent = data && data.title
-      ? data.title
-      : "Dette kan du oppleve i Åmot kulturhus";
-
-    if (!events.length) {
-      els.app.style.display = "none";
-      els.empty.style.display = "flex";
-      els.empty.textContent = "Ingen kommende hendelser.";
-      return;
     }
 
-    els.empty.style.display = "none";
-    els.app.style.display = "block";
-    renderEvents(events);
+    listEl.innerHTML = html;
+    overlayEl.style.display = "none";
   }
 
   function showError() {
-    if (lastData) {
-      render(lastData);
+    // If we have cached data, keep showing it; otherwise show error text.
+    if (lastGoodData) {
+      render(lastGoodData);
       return;
     }
-
-    els.app.style.display = "none";
-    els.empty.style.display = "flex";
-    els.empty.textContent = "Kunne ikke laste kalenderdata.";
+    listEl.innerHTML = "";
+    overlayEl.style.display = "flex";
+    overlayEl.textContent = "Kunne ikke laste kalenderdata.";
   }
 
-  function weatherIcon(symbolCode) {
-    var s = String(symbolCode || "").toLowerCase();
-
-    if (s.indexOf("clearsky") !== -1) return "☀️";
-    if (s.indexOf("fair") !== -1) return "🌤️";
-    if (s.indexOf("partlycloudy") !== -1) return "⛅";
-    if (s.indexOf("cloudy") !== -1) return "☁️";
-    if (s.indexOf("fog") !== -1) return "🌫️";
-    if (s.indexOf("heavyrain") !== -1) return "🌧️";
-    if (s.indexOf("rain") !== -1) return "🌦️";
-    if (s.indexOf("heavysleet") !== -1) return "🌨️";
-    if (s.indexOf("sleet") !== -1) return "🌨️";
-    if (s.indexOf("heavysnow") !== -1) return "❄️";
-    if (s.indexOf("snow") !== -1) return "❄️";
-    if (s.indexOf("thunder") !== -1) return "⛈️";
-    return "🌤️";
-  }
-
-  function renderWeatherError() {
-    els.weatherNow.textContent = "🌦️";
-    els.weatherBody.innerHTML = '<div class="weatherError">Vær utilgjengelig akkurat nå.</div>';
-  }
-
-  function renderWeatherCard(rows, currentSymbol) {
-    els.weatherNow.textContent = weatherIcon(currentSymbol);
-
-    if (!rows.length) {
-      renderWeatherError();
-      return;
-    }
-
-    var html = rows.map(function (row) {
-      return '' +
-        '<div class="weatherRow">' +
-          '<div class="weatherDay">' + escapeHtml(row.day) + '</div>' +
-          '<div class="weatherIcon">' + escapeHtml(weatherIcon(row.symbol)) + '</div>' +
-          '<div class="weatherTemps">' + escapeHtml(row.max + '° / ' + row.min + '°') + '</div>' +
-        '</div>';
-    }).join("");
-
-    els.weatherBody.innerHTML = '<div class="weatherRows">' + html + '</div>';
-  }
-
-  function buildWeatherRows(apiData) {
-    var series = (((apiData || {}).properties || {}).timeseries) || [];
-    var now = new Date();
-    var dayMap = {};
-    var currentSymbol = "";
-    var i;
-
-    if (!series.length) {
-      return { rows: [], currentSymbol: "" };
-    }
-
-    for (i = 0; i < series.length; i += 1) {
-      var item = series[i];
-      var t = new Date(item.time);
-      if (Number.isNaN(t.getTime()) || t < now) continue;
-
-      var instant = item.data && item.data.instant && item.data.instant.details
-        ? item.data.instant.details
-        : null;
-      if (!instant) continue;
-
-      if (!currentSymbol) {
-        var currentSummary = (item.data.next_1_hours || item.data.next_6_hours || item.data.next_12_hours || {}).summary;
-        currentSymbol = currentSummary && currentSummary.symbol_code ? currentSummary.symbol_code : "";
-      }
-
-      var key = makeDateKey(t);
-      if (!dayMap[key]) {
-        dayMap[key] = {
-          date: new Date(t.getFullYear(), t.getMonth(), t.getDate()),
-          min: null,
-          max: null,
-          symbol: "",
-          bestHourDistance: Infinity
-        };
-      }
-
-      var temp = instant.air_temperature;
-      if (typeof temp === "number") {
-        dayMap[key].min = dayMap[key].min === null ? temp : Math.min(dayMap[key].min, temp);
-        dayMap[key].max = dayMap[key].max === null ? temp : Math.max(dayMap[key].max, temp);
-      }
-
-      var summary = (item.data.next_6_hours || item.data.next_1_hours || item.data.next_12_hours || {}).summary;
-      var symbol = summary && summary.symbol_code ? summary.symbol_code : "";
-      var hourDistance = Math.abs((t.getHours() + (t.getMinutes() / 60)) - 12);
-
-      if (symbol && hourDistance < dayMap[key].bestHourDistance) {
-        dayMap[key].symbol = symbol;
-        dayMap[key].bestHourDistance = hourDistance;
-      }
-    }
-
-    var rows = Object.keys(dayMap)
-      .sort(function (a, b) {
-        return dayMap[a].date - dayMap[b].date;
-      })
-      .slice(0, 7)
-      .map(function (key) {
-        var d = dayMap[key].date;
-        return {
-          day: SHORT_DAYS[d.getDay()],
-          min: Math.round(dayMap[key].min === null ? 0 : dayMap[key].min),
-          max: Math.round(dayMap[key].max === null ? 0 : dayMap[key].max),
-          symbol: dayMap[key].symbol || currentSymbol || "partlycloudy_day"
-        };
-      });
-
-    return {
-      rows: rows,
-      currentSymbol: currentSymbol || (rows[0] ? rows[0].symbol : "")
-    };
-  }
-
-  function loadWeather() {
-    if (!els.weatherCard) return;
-
-    if (!isLandscape()) {
-      els.weatherCard.style.display = "none";
-      return;
-    }
-
-    els.weatherCard.style.display = "block";
-    els.weatherBody.innerHTML = '<div class="weatherLoading">Laster vær…</div>';
-
-    fetch(WEATHER_API_URL, {
-      method: "GET",
-      headers: {
-        "Accept": "application/json"
-      },
-      cache: "no-store"
-    })
-      .then(function (res) {
-        if (!res.ok) throw new Error("Weather request failed");
-        return res.json();
-      })
-      .then(function (json) {
-        var parsed = buildWeatherRows(json);
-        renderWeatherCard(parsed.rows, parsed.currentSymbol);
-      })
-      .catch(function () {
-        renderWeatherError();
-      });
-  }
-
-  function refreshLayout() {
-    if (lastData) render(lastData);
-    loadWeather();
-  }
-
-  window.__calendarFeedLoaded = function (data) {
+  // Your feed might call a fixed function name.
+  // We accept BOTH:
+  //  - JSONP: callback=__calendarFeedLoaded
+  //  - Plain script: calls handleCalendarData(data) or calendarData(data)
+  window.__calendarFeedLoaded = function(data) {
     callbackFired = true;
-    clearTimeout(loadTimer);
-    lastData = data || {};
-    render(lastData);
+    render(data || {});
+  };
+  window.handleCalendarData = function(data) {
+    callbackFired = true;
+    render(data || {});
+  };
+  window.calendarData = function(data) {
+    callbackFired = true;
+    render(data || {});
   };
 
   function loadCalendar() {
     callbackFired = false;
     clearTimeout(loadTimer);
 
-    var old = document.getElementById("calendarFeedScript");
+    // remove old script
+    const old = document.getElementById("calendarFeedScript");
     if (old && old.parentNode) old.parentNode.removeChild(old);
 
-    var s = document.createElement("script");
+    // try JSONP callback mode first
+    const s = document.createElement("script");
     s.id = "calendarFeedScript";
     s.async = true;
-    s.src = EVENTS_URL + "?_=" + Date.now();
+    s.src = EVENTS_URL + "?callback=__calendarFeedLoaded&_=" + Date.now();
 
-    s.onerror = function () {
-      clearTimeout(loadTimer);
-      showError();
-    };
-
-    s.onload = function () {
-      setTimeout(function () {
-        if (!callbackFired) showError();
-      }, 300);
-    };
-
+    s.onerror = function () { tryPlain(); };
     document.head.appendChild(s);
 
     loadTimer = setTimeout(function () {
-      showError();
-    }, LOAD_TIMEOUT_MS);
+      if (!callbackFired) tryPlain();
+    }, 9000);
+
+    function tryPlain() {
+      clearTimeout(loadTimer);
+
+      const old2 = document.getElementById("calendarFeedScript");
+      if (old2 && old2.parentNode) old2.parentNode.removeChild(old2);
+
+      const s2 = document.createElement("script");
+      s2.id = "calendarFeedScript";
+      s2.async = true;
+      s2.src = EVENTS_URL + "?_=" + Date.now();
+      s2.onerror = function () { showError(); };
+      document.head.appendChild(s2);
+
+      loadTimer = setTimeout(function () {
+        if (!callbackFired) showError();
+      }, 9000);
+    }
   }
 
-  window.addEventListener("resize", function () {
-    clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(refreshLayout, 120);
-  });
-
-  els.empty.textContent = "Laster kalenderdata…";
-  els.empty.style.display = "flex";
-  els.app.style.display = "none";
-
+  // Start
+  render({});
   loadCalendar();
-  loadWeather();
-
-  setInterval(loadCalendar, REFRESH_MS);
-  setInterval(loadWeather, WEATHER_REFRESH_MS);
+  setInterval(loadCalendar, REFRESH_SECONDS * 1000);
 })();
 </script>
 </body>
