@@ -22,7 +22,9 @@
 
 <script>
 (async () => {
-  const CONFIG_SERVICE_URL = "https://script.google.com/macros/s/AKfycbzfSFnMeg-26QNv802KVleuZWoEPqQE8zU4JwQLO3ikWL-fpYP4SFWTu8Q89jmgXq0YvQ/exec";
+  // ✅ ONE config service for all pages
+  const CONFIG_SERVICE_URL = "https://script.google.com/macros/s/AKfycbyeAHLzvmNUTGn_FWr8fTr1GDHVocivJG7M6Fpe6Lfcm0MjIQ-KjLZIhmkiNc7q00HLHA/exec";
+
   const MANIFEST_URL = "./assets/arrangements.json";
   const FIELD = "poster";
 
@@ -123,9 +125,7 @@
   function scheduleReload() {
     clearTimeout(refreshTimer);
     refreshTimer = setTimeout(async () => {
-      try {
-        await load();
-      } catch {}
+      try { await load(); } catch {}
       scheduleReload();
     }, refreshSeconds * 1000);
   }
