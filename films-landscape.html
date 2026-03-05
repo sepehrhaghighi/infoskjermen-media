@@ -40,7 +40,7 @@
       );
     }
 
-    #calendarScene .wrap{ position:relative; width:100%; height:100%; padding:40px 44px 124px 44px; }
+    #calendarScene .wrap{ position:relative; width:100%; height:100%; padding:40px 44px 124px 44px; box-sizing:border-box; }
 
     #calendarScene .mainContent{
       width:calc(100% - 120px);
@@ -174,6 +174,7 @@
       font-size:32px; font-weight:700;
       text-shadow:0 4px 16px rgba(0,0,0,0.14);
       padding:40px;
+      box-sizing:border-box;
     }
   </style>
 </head>
@@ -222,7 +223,7 @@
   const EXTRA_MANIFEST_URL = "./assets/landscape_extra/manifest.json";
   const FIELD = "landscape";
 
-  // Calendar feed (your existing JSONP endpoint)
+  // Calendar JSONP endpoint
   const EVENTS_URL = "https://script.google.com/macros/s/AKfycbzWYkczmmUW_cNhNd6NYoozKYlMH9XXp95DNo-JrCSI172oSjYPPL13AQ1feoktAKy6kQ/exec";
 
   let posterSeconds = 12;
@@ -230,10 +231,13 @@
   let fadeMs = 900;
   let refreshSeconds = 300;
 
-  let items = []; // { kind:"poster", url, v, seconds } or { kind:"calendar", seconds }
+  let items = [];
   let idx = 0;
   let frontIsA = true;
   let refreshTimer = null;
+
+  // Cached calendar data so we can show something even if fetch fails
+  let lastCalendarData = null;
 
   const emptyEl = document.getElementById("empty");
   const A = document.getElementById("a");
@@ -345,7 +349,7 @@
     return false;
   }
 
-  /* ---------- Calendar rendering (no iframe) ---------- */
+  /* ---------- Calendar rendering ---------- */
 
   function parseDateTime(value) {
     if (!value) return null;
@@ -403,8 +407,27 @@
   }
 
   function renderCalendar(data) {
-    const events = normalizeEvents(data || {});
-    calEls.headline.textContent = data && data.title ? data.title : "Dette kan du oppleve i Åmot kulturhus";
+    // Cache the latest good data
+    if (data && Array.isArray(data.events) && data.events.length > 0) {
+      lastCalendarData = data;
+    }
+
+    // Fall back to cached data if current data is empty/missing
+    const effectiveData = (data && Array.isArray(data.events) && data.events.length > 0)
+      ? data
+      : lastCalendarData;
+
+    if (!effectiveData) {
+      calEls.app.style.display = "none";
+      calEls.empty.style.display = "flex";
+      calEls.empty.textContent = "Ingen kalenderdata tilgjengelig.";
+      return;
+    }
+
+    const events = normalizeEvents(effectiveData);
+    calEls.headline.textContent = effectiveData.title
+      ? effectiveData.title
+      : "Dette kan du oppleve i Åmot kulturhus";
 
     if (!events.length) {
       calEls.app.style.display = "none";
@@ -441,33 +464,42 @@
     calEls.app.style.display = "block";
   }
 
-  function loadCalendarOnce(timeoutMs = 9000) {
-    return new Promise((resolve) => {
-      let done = false;
+  /* ---------- Background calendar fetching ---------- */
 
-      const cbName = "__calcb_" + Math.random().toString(16).slice(2);
-      window[cbName] = (data) => {
-        done = true;
-        cleanup();
-        renderCalendar(data || {});
-        resolve(true);
-      };
+  let calendarFetchInProgress = false;
 
-      const s = document.createElement("script");
-      s.src = EVENTS_URL + "?callback=" + cbName + "&_=" + Date.now();
-      s.onerror = () => { cleanup(); resolve(false); };
-      document.head.appendChild(s);
+  function fetchCalendarBackground() {
+    if (calendarFetchInProgress) return;
+    calendarFetchInProgress = true;
 
-      const t = setTimeout(() => {
-        if (!done) { cleanup(); resolve(false); }
-      }, timeoutMs);
+    const cbName = "__calcb_" + Math.random().toString(16).slice(2);
 
-      function cleanup() {
-        clearTimeout(t);
-        try { delete window[cbName]; } catch {}
-        s.remove();
-      }
-    });
+    window[cbName] = (data) => {
+      calendarFetchInProgress = false;
+      cleanup();
+      if (data) lastCalendarData = data;
+    };
+
+    const s = document.createElement("script");
+    s.src = EVENTS_URL + "?callback=" + cbName + "&_=" + Date.now();
+    s.onerror = () => { calendarFetchInProgress = false; cleanup(); };
+    document.head.appendChild(s);
+
+    const t = setTimeout(() => {
+      calendarFetchInProgress = false;
+      cleanup();
+    }, 10000);
+
+    function cleanup() {
+      clearTimeout(t);
+      try { delete window[cbName]; } catch {}
+      s.remove();
+    }
+  }
+
+  function scheduleCalendarRefresh() {
+    fetchCalendarBackground();
+    setInterval(fetchCalendarBackground, 5 * 60 * 1000);
   }
 
   /* ---------- Slideshow logic ---------- */
@@ -549,11 +581,44 @@
 
     if (item.kind === "calendar") {
       showCalendarScene();
-      calEls.empty.textContent = "Laster kalenderdata…";
-      calEls.empty.style.display = "flex";
-      calEls.app.style.display = "none";
 
-      await loadCalendarOnce();
+      if (lastCalendarData) {
+        // Render immediately from cache
+        renderCalendar(lastCalendarData);
+      } else {
+        // First-ever load — wait for fetch
+        calEls.empty.textContent = "Laster kalenderdata…";
+        calEls.empty.style.display = "flex";
+        calEls.app.style.display = "none";
+
+        await new Promise((resolve) => {
+          const cbName = "__calcb_init_" + Math.random().toString(16).slice(2);
+          window[cbName] = (data) => {
+            cleanup();
+            if (data) {
+              lastCalendarData = data;
+              renderCalendar(data);
+            } else {
+              calEls.empty.textContent = "Ingen kalenderdata tilgjengelig.";
+            }
+            resolve();
+          };
+
+          const s = document.createElement("script");
+          s.src = EVENTS_URL + "?callback=" + cbName + "&_=" + Date.now();
+          s.onerror = () => { cleanup(); resolve(); };
+          document.head.appendChild(s);
+
+          const t = setTimeout(() => { cleanup(); resolve(); }, 8000);
+
+          function cleanup() {
+            clearTimeout(t);
+            try { delete window[cbName]; } catch {}
+            s.remove();
+          }
+        });
+      }
+
       setTimeout(() => {
         showPosterScene();
         tick();
@@ -577,6 +642,10 @@
   }
 
   await load();
+
+  // Start background calendar fetching immediately
+  scheduleCalendarRefresh();
+
   showPosterScene();
   tick();
   scheduleReload();
