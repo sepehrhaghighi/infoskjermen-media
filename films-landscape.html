@@ -9,7 +9,7 @@
     .stage { position:relative; width:100%; height:100%; }
 
     /* Poster layers */
-    .layer {
+    .layer{
       position:absolute; inset:0;
       width:100%; height:100%;
       object-fit:contain;
@@ -17,7 +17,7 @@
       transition: opacity 900ms ease-in-out;
       will-change: opacity;
     }
-    .layer.show { opacity:1; }
+    .layer.show{ opacity:1; }
 
     /* Calendar iframe scene */
     #calendarScene{
@@ -32,10 +32,10 @@
       background:#000;
     }
 
-    #empty {
+    #empty{
       position:fixed; inset:0; display:none; align-items:center; justify-content:center;
       color:#fff; background:#000; text-align:center; padding:40px;
-      font: 26px/1.2 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      font:26px/1.2 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
       z-index:2000;
     }
   </style>
@@ -43,33 +43,32 @@
 <body>
   <div id="empty">No film landscape posters available.</div>
 
+  <!-- Poster scene -->
   <div class="stage" id="posterScene">
     <img id="a" class="layer show" alt="">
     <img id="b" class="layer" alt="">
   </div>
 
+  <!-- Calendar scene -->
   <div id="calendarScene">
     <iframe id="calendarFrame" title="Kalenderslide" referrerpolicy="no-referrer"></iframe>
   </div>
 
 <script>
 (async () => {
-  // === IMPORTANT: keep this exactly as your current working deployment ===
   const CONFIG_SERVICE_URL = "https://script.google.com/macros/s/AKfycbyeAHLzvmNUTGn_FWr8fTr1GDHVocivJG7M6Fpe6Lfcm0MjIQ-KjLZIhmkiNc7q00HLHA/exec";
-
-  // Your existing films manifest
   const MANIFEST_URL = "./assets/films.json";
   const FIELD = "landscape";
 
   // Your working calendar page
   const CALENDAR_URL = "https://sepehrhaghighi.github.io/infoskjermen-media/calendar-slide.html";
 
-  let posterSeconds = 12;
-  let calendarSeconds = 0;     // 0 => disabled
+  let posterSeconds = 7;
+  let calendarSlideSeconds = 20; // 0 disables
   let fadeMs = 900;
   let refreshSeconds = 300;
 
-  let items = [];              // { kind:'calendar', seconds } or { kind:'poster', url, v, seconds }
+  let items = []; // {kind:'calendar', seconds} or {kind:'poster', url, v, seconds}
   let idx = 0;
   let frontIsA = true;
   let refreshTimer = null;
@@ -82,36 +81,23 @@
   const calendarScene = document.getElementById("calendarScene");
   const calendarFrame = document.getElementById("calendarFrame");
 
-  function numParam(name, fallback) {
+  function positiveParam(name, fallback) {
     const v = new URLSearchParams(location.search).get(name);
     const n = Number(v);
-    return Number.isFinite(n) ? n : fallback;
-  }
-  function positiveParam(name, fallback) {
-    const n = numParam(name, null);
-    return (n != null && n > 0) ? n : fallback;
+    return Number.isFinite(n) && n > 0 ? n : fallback;
   }
   function nonNegativeParam(name, fallback) {
-    const n = numParam(name, null);
-    return (n != null && n >= 0) ? n : fallback;
+    const v = new URLSearchParams(location.search).get(name);
+    const n = Number(v);
+    return Number.isFinite(n) && n >= 0 ? n : fallback;
   }
 
-  function readCalendarSecondsFromCfg(cfg) {
-    // Accept several possible names so you don’t get stuck on a mismatch.
-    const candidates = [
-      cfg?.calendarSeconds,
-      cfg?.calendarSlideSeconds,
-      cfg?.calendarTimeSeconds,
-      cfg?.calendarDurationSeconds,
-      cfg?.calendar,
-      cfg?.calSeconds,
-      cfg?.cal
-    ];
-    for (const v of candidates) {
-      const n = Number(v);
-      if (Number.isFinite(n) && n >= 0) return n;
-    }
-    return 0;
+  function normalizeCfg(raw) {
+    if (!raw) return {};
+    if (raw.config && typeof raw.config === "object") return raw.config;
+    if (raw.data && typeof raw.data === "object") return raw.data;
+    if (typeof raw === "string") { try { return JSON.parse(raw); } catch { return {}; } }
+    return raw;
   }
 
   function loadConfigJSONP(timeoutMs = 5000) {
@@ -143,28 +129,28 @@
   }
 
   async function fetchJson(url) {
-    const r = await fetch(url, { cache: "no-store" });
+    const r = await fetch(url, { cache:"no-store" });
     if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
     return await r.json();
   }
 
   function signatureFromPosters(posters) {
-    // Only URLs affect cycling; ignore the version so index won’t reset on every refresh.
+    // Ignore version token so we don't reset index just because updated changed
     return posters.map(p => p.url).join("|");
   }
 
   async function load() {
-    const [cfg, data] = await Promise.all([
+    const [rawCfg, data] = await Promise.all([
       loadConfigJSONP(),
       fetchJson(MANIFEST_URL)
     ]);
 
-    posterSeconds  = positiveParam("p", cfg.posterSeconds ?? 12);
-    fadeMs         = positiveParam("fade", cfg.fadeMs ?? 900);
-    refreshSeconds = positiveParam("r", cfg.manifestRefreshSeconds ?? 300);
+    const cfg = normalizeCfg(rawCfg);
 
-    // config calendar seconds, but allow URL override: ?cal=30
-    calendarSeconds = nonNegativeParam("cal", readCalendarSecondsFromCfg(cfg));
+    posterSeconds = positiveParam("p", cfg.posterSeconds ?? 7);
+    calendarSlideSeconds = nonNegativeParam("cal", cfg.calendarSlideSeconds ?? 20);
+    fadeMs = positiveParam("fade", cfg.fadeMs ?? 900);
+    refreshSeconds = positiveParam("r", cfg.manifestRefreshSeconds ?? 300);
 
     A.style.transitionDuration = fadeMs + "ms";
     B.style.transitionDuration = fadeMs + "ms";
@@ -176,7 +162,7 @@
       .map(url => ({ kind:"poster", url, v: baseVersion, seconds: posterSeconds }));
 
     const nextItems = [];
-    if (calendarSeconds > 0) nextItems.push({ kind:"calendar", seconds: calendarSeconds });
+    if (calendarSlideSeconds > 0) nextItems.push({ kind:"calendar", seconds: calendarSlideSeconds });
     nextItems.push(...posters);
 
     const prevSig = signatureFromPosters(items.filter(x => x.kind === "poster"));
@@ -184,8 +170,6 @@
     const postersChanged = prevSig !== nextSig;
 
     items = nextItems;
-
-    // Only reset when the poster list actually changed
     if (postersChanged) idx = 0;
 
     emptyEl.style.display = posters.length ? "none" : "flex";
@@ -207,7 +191,7 @@
 
   function ensureCalendarLoaded() {
     const now = Date.now();
-    // Reload calendar iframe if it’s “old” (keeps it fresh without reloading every time)
+    // reload only if older than 2 minutes or empty
     if (!calendarFrame.src || (now - lastCalendarLoadMs) > 2 * 60 * 1000) {
       calendarFrame.src = CALENDAR_URL + "?v=" + now;
       lastCalendarLoadMs = now;
