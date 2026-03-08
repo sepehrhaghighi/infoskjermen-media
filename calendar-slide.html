@@ -48,8 +48,8 @@
       min-width:0;
       display:grid;
       grid-template-rows:auto 1fr;
-      gap:30px;                  /* more space between title and list */
-      transform:translateY(6px); /* slight downward nudge */
+      gap:30px;
+      transform:translate(18px, 6px); /* moved a bit right and slightly down */
     }
 
     .headline{
@@ -59,6 +59,7 @@
       line-height:1.04;
       letter-spacing:-0.02em;
       text-shadow:0 4px 16px rgba(0,0,0,0.16);
+      max-width:calc(100% - 320px); /* wrap before weather card */
     }
 
     .list{
@@ -145,10 +146,10 @@
 
     .screenLogo{
       position:absolute;
-      left:16px;
-      bottom:22px;
-      width:142px;
-      height:142px;
+      left:18px;
+      bottom:18px;
+      width:126px; /* a bit smaller */
+      height:126px;
       display:flex;
       align-items:flex-end;
       justify-content:flex-start;
@@ -327,11 +328,12 @@
       .mainContent{
         width:calc(100% - 16px);
         gap:20px;
-        transform:translateY(4px);
+        transform:translate(8px, 4px);
       }
 
       .headline{
         font-size:clamp(30px, 5.4vw, 44px);
+        max-width:100%;
       }
 
       .list{
@@ -360,10 +362,10 @@
       }
 
       .screenLogo{
-        left:34px;
+        left:28px;
         bottom:10px;
-        width:68px;
-        height:68px;
+        width:62px;
+        height:62px;
       }
 
       .screenCta{
@@ -470,13 +472,19 @@
   function maxEvents() {
     if (!isLandscape()) return 18;
 
-    /* Fit as many rows as possible without clipping, capped at 7 */
-    var available = window.innerHeight - 40 - 124 - 86;
+    var headlineHeight = els.headline ? Math.ceil(els.headline.getBoundingClientRect().height) : 86;
+    var topPad = 40;
+    var bottomPad = 124;
+    var blockGap = 30;
+    var nudge = 6;
+    var safety = 8;
     var perRow = 62;
     var gap = 6;
+
+    var available = window.innerHeight - topPad - bottomPad - headlineHeight - blockGap - nudge - safety;
     var fit = Math.floor((available + gap) / (perRow + gap));
 
-    return Math.max(4, Math.min(7, fit));
+    return Math.max(4, Math.min(10, fit));
   }
 
   function parseDateTime(value) {
