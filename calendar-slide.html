@@ -42,14 +42,14 @@
     }
 
     .mainContent{
-      width:calc(100% - 120px);
+      width:calc(100% - 140px);
       height:100%;
       margin:0 auto;
       min-width:0;
       display:grid;
       grid-template-rows:auto 1fr;
       gap:30px;
-      transform:translate(18px, 6px); /* moved a bit right and slightly down */
+      transform:translate(32px, 6px);
     }
 
     .headline{
@@ -59,7 +59,7 @@
       line-height:1.04;
       letter-spacing:-0.02em;
       text-shadow:0 4px 16px rgba(0,0,0,0.16);
-      max-width:calc(100% - 320px); /* wrap before weather card */
+      max-width:calc(100% - 360px);
     }
 
     .list{
@@ -148,7 +148,7 @@
       position:absolute;
       left:18px;
       bottom:18px;
-      width:126px; /* a bit smaller */
+      width:126px;
       height:126px;
       display:flex;
       align-items:flex-end;
@@ -442,7 +442,6 @@
   var REFRESH_MS = 5 * 60 * 1000;
   var LOAD_TIMEOUT_MS = 10000;
 
-  /* Rena, Åmot, Innlandet (approx.) */
   var WEATHER_API_URL = "https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=61.1348&lon=11.3641&altitude=223";
   var WEATHER_REFRESH_MS = 30 * 60 * 1000;
 
@@ -773,11 +772,20 @@
     loadWeather();
   }
 
+  function stableRefresh() {
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        refreshLayout();
+      });
+    });
+  }
+
   window.__calendarFeedLoaded = function (data) {
     callbackFired = true;
     clearTimeout(loadTimer);
     lastData = data || {};
     render(lastData);
+    stableRefresh();
   };
 
   function loadCalendar() {
@@ -814,6 +822,12 @@
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(refreshLayout, 120);
   });
+
+  window.addEventListener("load", stableRefresh);
+
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(stableRefresh);
+  }
 
   els.empty.textContent = "Laster kalenderdata…";
   els.empty.style.display = "flex";
