@@ -692,7 +692,7 @@ function __configFeedLoaded(data) {
     ]);
 
     posterSeconds = positiveParam("p", cfg.posterSeconds ?? 12);
-    calendarSlideSeconds = nonNegativeParam("cal", cfg.calendarSlideSeconds ?? 0);
+    calendarSlideSeconds = 10;
     fadeMs = positiveParam("fade", cfg.fadeMs ?? 900);
     refreshSeconds = positiveParam("r", cfg.manifestRefreshSeconds ?? cfg.refreshSeconds ?? 300);
 
