@@ -9,31 +9,15 @@
 
     html, body { margin:0; height:100%; background:#000; overflow:hidden; }
 
-    /* Scenes */
-    #posterScene,
-    #calendarScene{
+    /* Poster scene */
+    #posterScene {
       position:absolute;
       inset:0;
-      opacity:0;
-      visibility:hidden;
-      pointer-events:none;
-      transition:
-        opacity var(--fade-ms) ease-in-out,
-        visibility 0s linear var(--fade-ms);
+      z-index:1;
     }
 
-    #posterScene.show,
-    #calendarScene.show{
-      opacity:1;
-      visibility:visible;
-      pointer-events:auto;
-      transition:
-        opacity var(--fade-ms) ease-in-out,
-        visibility 0s linear 0s;
-    }
-
-    /* Poster scene */
     .stage { position:relative; width:100%; height:100%; }
+
     .layer {
       position:absolute;
       inset:0;
@@ -44,6 +28,7 @@
       transition: opacity var(--fade-ms) ease-in-out;
       will-change: opacity;
     }
+
     .layer.show { opacity:1; }
 
     #empty {
@@ -60,8 +45,11 @@
       z-index:100;
     }
 
-    /* Calendar scene */
+    /* Calendar scene overlays poster scene */
     #calendarScene {
+      position:absolute;
+      inset:0;
+      z-index:2;
       overflow:hidden;
       color:#eaf4ff;
       font-family:system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
@@ -76,6 +64,22 @@
         #2c37c2 86%,
         #3124dd 100%
       );
+
+      opacity:0;
+      visibility:hidden;
+      pointer-events:none;
+      transition:
+        opacity var(--fade-ms) ease-in-out,
+        visibility 0s linear var(--fade-ms);
+    }
+
+    #calendarScene.show {
+      opacity:1;
+      visibility:visible;
+      pointer-events:auto;
+      transition:
+        opacity var(--fade-ms) ease-in-out,
+        visibility 0s linear 0s;
     }
 
     #calendarScene .wrap{
@@ -269,15 +273,13 @@
 <body>
   <div id="empty">No film landscape posters available.</div>
 
-  <!-- Poster scene -->
-  <div id="posterScene" class="show">
+  <div id="posterScene">
     <div class="stage">
       <img id="a" class="layer show" alt="">
       <img id="b" class="layer" alt="">
     </div>
   </div>
 
-  <!-- Calendar scene -->
   <div id="calendarScene">
     <div id="calEmpty" class="calEmpty">Laster kalenderdata…</div>
 
@@ -357,7 +359,6 @@ function __configFeedLoaded(data) {
   const A = document.getElementById("a");
   const B = document.getElementById("b");
 
-  const posterScene = document.getElementById("posterScene");
   const calendarScene = document.getElementById("calendarScene");
 
   const calEls = {
@@ -535,7 +536,7 @@ function __configFeedLoaded(data) {
   }
 
   async function fetchJson(url) {
-    const r = await fetch(url, { cache: "no-store" });
+    const r = await fetch(url, { cache:"no-store" });
     if (!r.ok) throw new Error(r.status + " " + r.statusText);
     return await r.json();
   }
@@ -552,7 +553,7 @@ function __configFeedLoaded(data) {
       const rawItems = Array.isArray(m.items) ? m.items : [];
       return rawItems
         .map((it) => ({
-          kind: "poster",
+          kind:"poster",
           url: normalizeExtraUrl(it?.url || ""),
           v: it?.v ? ("?v=" + encodeURIComponent(it.v)) : "",
           seconds: baseSeconds
@@ -612,8 +613,8 @@ function __configFeedLoaded(data) {
 
   function timeText(d) {
     return new Intl.DateTimeFormat("nb-NO", {
-      hour: "2-digit",
-      minute: "2-digit"
+      hour:"2-digit",
+      minute:"2-digit"
     }).format(d);
   }
 
@@ -738,7 +739,7 @@ function __configFeedLoaded(data) {
       .map((x) => x?.[FIELD])
       .filter(Boolean)
       .map((url) => ({
-        kind: "poster",
+        kind:"poster",
         url,
         v: baseVersion,
         seconds: posterSeconds
@@ -748,10 +749,7 @@ function __configFeedLoaded(data) {
     let nextItems = mergeUniqueItems(posters, extraItems);
 
     if (calendarSlideSeconds > 0) {
-      nextItems.unshift({
-        kind: "calendar",
-        seconds: calendarSlideSeconds
-      });
+      nextItems.unshift({ kind:"calendar", seconds: calendarSlideSeconds });
     }
 
     const changed = itemsChanged(nextItems);
@@ -770,21 +768,19 @@ function __configFeedLoaded(data) {
     });
   }
 
-  function showPosterScene() {
+  function hideCalendarScene() {
     calendarSceneActive = false;
     calendarScene.classList.remove("show");
-    posterScene.classList.add("show");
   }
 
   function showCalendarScene() {
     calendarSceneActive = true;
-    posterScene.classList.remove("show");
     calendarScene.classList.add("show");
   }
 
   function swapToPoster(item) {
     const front = frontIsA ? A : B;
-    const back = frontIsA ? B : A;
+    const back  = frontIsA ? B : A;
 
     back.src = item.url + (item.v || "");
     back.classList.add("show");
@@ -815,14 +811,14 @@ function __configFeedLoaded(data) {
       await loadCalendarOnce(12000);
 
       setTimeout(() => {
-        showPosterScene();
+        hideCalendarScene();
         tick();
       }, (item.seconds || 15) * 1000);
 
       return;
     }
 
-    showPosterScene();
+    hideCalendarScene();
     await preloadPoster(item);
     swapToPoster(item);
 
@@ -832,9 +828,7 @@ function __configFeedLoaded(data) {
   function scheduleReload() {
     clearTimeout(refreshTimer);
     refreshTimer = setTimeout(async () => {
-      try {
-        await load();
-      } catch {}
+      try { await load(); } catch {}
       scheduleReload();
     }, refreshSeconds * 1000);
   }
@@ -844,7 +838,7 @@ function __configFeedLoaded(data) {
   fetchCalendarBackground();
   setInterval(fetchCalendarBackground, 5 * 60 * 1000);
 
-  showPosterScene();
+  hideCalendarScene();
   tick();
   scheduleReload();
 })();
