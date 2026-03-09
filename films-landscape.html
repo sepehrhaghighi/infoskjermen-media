@@ -5,10 +5,34 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Films – Landscape</title>
   <style>
+    :root { --fade-ms: 900ms; }
+
     html, body { margin:0; height:100%; background:#000; overflow:hidden; }
 
+    /* Scenes */
+    #posterScene,
+    #calendarScene{
+      position:absolute;
+      inset:0;
+      opacity:0;
+      visibility:hidden;
+      pointer-events:none;
+      transition:
+        opacity var(--fade-ms) ease-in-out,
+        visibility 0s linear var(--fade-ms);
+    }
+
+    #posterScene.show,
+    #calendarScene.show{
+      opacity:1;
+      visibility:visible;
+      pointer-events:auto;
+      transition:
+        opacity var(--fade-ms) ease-in-out,
+        visibility 0s linear 0s;
+    }
+
     /* Poster scene */
-    #posterScene { position:absolute; inset:0; }
     .stage { position:relative; width:100%; height:100%; }
     .layer {
       position:absolute;
@@ -17,7 +41,7 @@
       height:100%;
       object-fit:contain;
       opacity:0;
-      transition: opacity 900ms ease-in-out;
+      transition: opacity var(--fade-ms) ease-in-out;
       will-change: opacity;
     }
     .layer.show { opacity:1; }
@@ -38,9 +62,6 @@
 
     /* Calendar scene */
     #calendarScene {
-      position:absolute;
-      inset:0;
-      display:none;
       overflow:hidden;
       color:#eaf4ff;
       font-family:system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
@@ -249,7 +270,7 @@
   <div id="empty">No film landscape posters available.</div>
 
   <!-- Poster scene -->
-  <div id="posterScene">
+  <div id="posterScene" class="show">
     <div class="stage">
       <img id="a" class="layer show" alt="">
       <img id="b" class="layer" alt="">
@@ -281,6 +302,27 @@
       </div>
     </div>
   </div>
+
+<script>
+window.__calendarFeedLoadedData = null;
+window.__configFeedLoadedData = null;
+window.__calendarFeedLoadedHandler = null;
+window.__configFeedLoadedHandler = null;
+
+function __calendarFeedLoaded(data) {
+  window.__calendarFeedLoadedData = data;
+  if (typeof window.__calendarFeedLoadedHandler === "function") {
+    window.__calendarFeedLoadedHandler(data);
+  }
+}
+
+function __configFeedLoaded(data) {
+  window.__configFeedLoadedData = data;
+  if (typeof window.__configFeedLoadedHandler === "function") {
+    window.__configFeedLoadedHandler(data);
+  }
+}
+</script>
 
 <script>
 (async () => {
@@ -366,7 +408,7 @@
     }
   }
 
-  window[CONFIG_CALLBACK] = (raw) => {
+  window.__configFeedLoadedHandler = (raw) => {
     lastConfigData = normalizeCfg(raw || {});
 
     if (!configRequest) return;
@@ -377,7 +419,7 @@
     resolve(lastConfigData);
   };
 
-  window[CALENDAR_CALLBACK] = (data) => {
+  window.__calendarFeedLoadedHandler = (data) => {
     if (data && Array.isArray(data.events)) {
       lastCalendarData = data;
     }
@@ -684,12 +726,11 @@
     ]);
 
     posterSeconds = positiveParam("p", cfg.posterSeconds ?? 12);
-    calendarSlideSeconds = 10;
+    calendarSlideSeconds = nonNegativeParam("cal", cfg.calendarSlideSeconds ?? 0);
     fadeMs = positiveParam("fade", cfg.fadeMs ?? 900);
     refreshSeconds = positiveParam("r", cfg.manifestRefreshSeconds ?? cfg.refreshSeconds ?? 300);
 
-    A.style.transitionDuration = fadeMs + "ms";
-    B.style.transitionDuration = fadeMs + "ms";
+    document.documentElement.style.setProperty("--fade-ms", fadeMs + "ms");
 
     const baseVersion = data.updated ? ("?v=" + encodeURIComponent(data.updated)) : "";
 
@@ -731,14 +772,14 @@
 
   function showPosterScene() {
     calendarSceneActive = false;
-    calendarScene.style.display = "none";
-    posterScene.style.display = "block";
+    calendarScene.classList.remove("show");
+    posterScene.classList.add("show");
   }
 
   function showCalendarScene() {
     calendarSceneActive = true;
-    posterScene.style.display = "none";
-    calendarScene.style.display = "block";
+    posterScene.classList.remove("show");
+    calendarScene.classList.add("show");
   }
 
   function swapToPoster(item) {
