@@ -10,23 +10,40 @@
     /* Poster scene */
     #posterScene { position:absolute; inset:0; }
     .stage { position:relative; width:100%; height:100%; }
-    .layer { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; opacity:0; transition: opacity 900ms ease-in-out; will-change: opacity; }
+    .layer {
+      position:absolute;
+      inset:0;
+      width:100%;
+      height:100%;
+      object-fit:contain;
+      opacity:0;
+      transition: opacity 900ms ease-in-out;
+      will-change: opacity;
+    }
     .layer.show { opacity:1; }
 
     #empty {
-      position:fixed; inset:0; display:none; align-items:center; justify-content:center;
-      color:#fff; background:#000; text-align:center; padding:40px;
-      font: 26px/1.2 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-      z-index: 100;
+      position:fixed;
+      inset:0;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      color:#fff;
+      background:#000;
+      text-align:center;
+      padding:40px;
+      font:26px/1.2 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      z-index:100;
     }
 
     /* Calendar scene */
     #calendarScene {
-      position:absolute; inset:0;
+      position:absolute;
+      inset:0;
       display:none;
       overflow:hidden;
       color:#eaf4ff;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      font-family:system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
       background: linear-gradient(
         90deg,
         #4ed347 0%,
@@ -40,7 +57,14 @@
       );
     }
 
-    #calendarScene .wrap{ position:relative; width:100%; height:100%; padding:40px 44px 124px 44px; box-sizing:border-box; }
+    #calendarScene .wrap{
+      position:relative;
+      width:100%;
+      height:100%;
+      padding:40px 44px 124px 44px;
+      box-sizing:border-box;
+    }
+
     #calendarScene .mainContent{
       width:calc(100% - 120px);
       height:100%;
@@ -61,12 +85,54 @@
       text-shadow:0 4px 16px rgba(0,0,0,0.16);
     }
 
-    #calendarScene .list{ min-width:0; display:flex; flex-direction:column; gap:7px; padding-right:8px; overflow:hidden; }
-    #calendarScene .eventRow{ display:grid; grid-template-columns:104px minmax(0, 1fr); gap:18px; align-items:start; min-height:58px; }
-    #calendarScene .dateCell{ padding-top:2px; line-height:1; color:#eef9ff; }
-    #calendarScene .dateTop{ font-size:22px; font-weight:800; letter-spacing:-0.02em; }
-    #calendarScene .dateMonth{ margin-top:5px; font-size:15px; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; opacity:0.94; }
-    #calendarScene .dateWeekday{ margin-top:6px; font-size:16px; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; color:#cfe7ff; opacity:0.96; }
+    #calendarScene .list{
+      min-width:0;
+      display:flex;
+      flex-direction:column;
+      gap:7px;
+      padding-right:8px;
+      overflow:hidden;
+    }
+
+    #calendarScene .eventRow{
+      display:grid;
+      grid-template-columns:104px minmax(0, 1fr);
+      gap:18px;
+      align-items:start;
+      min-height:58px;
+    }
+
+    #calendarScene .dateCell{
+      padding-top:2px;
+      line-height:1;
+      color:#eef9ff;
+    }
+
+    #calendarScene .dateTop{
+      font-size:22px;
+      font-weight:800;
+      letter-spacing:-0.02em;
+    }
+
+    #calendarScene .dateMonth{
+      margin-top:5px;
+      font-size:15px;
+      font-weight:800;
+      letter-spacing:0.08em;
+      text-transform:uppercase;
+      opacity:0.94;
+    }
+
+    #calendarScene .dateWeekday{
+      margin-top:6px;
+      font-size:16px;
+      font-weight:800;
+      letter-spacing:0.08em;
+      text-transform:uppercase;
+      color:#cfe7ff;
+      opacity:0.96;
+    }
+
     #calendarScene .dateSpacer{ visibility:hidden; }
 
     #calendarScene .eventTitle{
@@ -81,6 +147,7 @@
       overflow:hidden;
       text-shadow:0 2px 10px rgba(0,0,0,0.10);
     }
+
     #calendarScene .eventMeta{
       margin-top:4px;
       font-size:19px;
@@ -92,21 +159,89 @@
       text-shadow:0 2px 8px rgba(0,0,0,0.08);
     }
 
-    #calendarScene .screenLogo{ position:absolute; left:16px; bottom:22px; width:142px; height:142px; display:flex; align-items:flex-end; z-index:3; pointer-events:none; }
-    #calendarScene .screenLogo img{ max-width:100%; max-height:100%; object-fit:contain; display:block; filter:drop-shadow(0 4px 12px rgba(0,0,0,0.18)); }
+    #calendarScene .screenLogo{
+      position:absolute;
+      left:16px;
+      bottom:22px;
+      width:142px;
+      height:142px;
+      display:flex;
+      align-items:flex-end;
+      z-index:3;
+      pointer-events:none;
+    }
 
-    #calendarScene .screenCta{ position:absolute; right:24px; bottom:12px; display:flex; flex-direction:column; align-items:center; gap:8px; width:176px; z-index:3; pointer-events:none; }
-    #calendarScene .qrWrap{ width:108px; height:108px; border-radius:14px; background:rgba(255,255,255,0.97); padding:8px; display:flex; align-items:center; justify-content:center; box-shadow:0 6px 18px rgba(0,0,0,0.16); }
-    #calendarScene .qrWrap img{ width:100%; height:100%; object-fit:contain; display:block; }
-    #calendarScene .ctaText{ font-size:15px; line-height:1.2; color:#eaf4ff; font-weight:800; margin-bottom:4px; text-shadow:0 2px 10px rgba(0,0,0,0.10); text-align:center; }
-    #calendarScene .siteLink{ font-size:13px; line-height:1.18; color:#cfe7ff; font-weight:800; text-shadow:0 2px 8px rgba(0,0,0,0.08); overflow-wrap:anywhere; text-align:center; }
+    #calendarScene .screenLogo img{
+      max-width:100%;
+      max-height:100%;
+      object-fit:contain;
+      display:block;
+      filter:drop-shadow(0 4px 12px rgba(0,0,0,0.18));
+    }
+
+    #calendarScene .screenCta{
+      position:absolute;
+      right:24px;
+      bottom:12px;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:8px;
+      width:176px;
+      z-index:3;
+      pointer-events:none;
+    }
+
+    #calendarScene .qrWrap{
+      width:108px;
+      height:108px;
+      border-radius:14px;
+      background:rgba(255,255,255,0.97);
+      padding:8px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      box-shadow:0 6px 18px rgba(0,0,0,0.16);
+    }
+
+    #calendarScene .qrWrap img{
+      width:100%;
+      height:100%;
+      object-fit:contain;
+      display:block;
+    }
+
+    #calendarScene .ctaText{
+      font-size:15px;
+      line-height:1.2;
+      color:#eaf4ff;
+      font-weight:800;
+      margin-bottom:4px;
+      text-shadow:0 2px 10px rgba(0,0,0,0.10);
+      text-align:center;
+    }
+
+    #calendarScene .siteLink{
+      font-size:13px;
+      line-height:1.18;
+      color:#cfe7ff;
+      font-weight:800;
+      text-shadow:0 2px 8px rgba(0,0,0,0.08);
+      overflow-wrap:anywhere;
+      text-align:center;
+    }
 
     #calendarScene .calEmpty{
-      position:absolute; inset:0;
-      display:flex; align-items:center; justify-content:center;
-      font-size:32px; font-weight:700;
+      position:absolute;
+      inset:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:32px;
+      font-weight:700;
       text-shadow:0 4px 16px rgba(0,0,0,0.14);
-      padding:40px; box-sizing:border-box;
+      padding:40px;
+      box-sizing:border-box;
     }
   </style>
 </head>
@@ -149,28 +284,32 @@
 
 <script>
 (async () => {
-  // ✅ ONE config service for all pages
   const CONFIG_SERVICE_URL = "https://script.google.com/macros/s/AKfycbyeAHLzvmNUTGn_FWr8fTr1GDHVocivJG7M6Fpe6Lfcm0MjIQ-KjLZIhmkiNc7q00HLHA/exec";
+  const EVENTS_URL = "https://script.google.com/macros/s/AKfycbzWYkczmmUW_cNhNd6NYoozKYlMH9XXp95DNo-JrCSI172oSjYPPL13AQ1feoktAKy6kQ/exec";
 
   const MANIFEST_URL = "./assets/films.json";
   const EXTRA_MANIFEST_URL = "./assets/landscape_extra/manifest.json";
   const FIELD = "landscape";
 
-  // Calendar JSONP endpoint
-  const EVENTS_URL = "https://script.google.com/macros/s/AKfycbzWYkczmmUW_cNhNd6NYoozKYlMH9XXp95DNo-JrCSI172oSjYPPL13AQ1feoktAKy6kQ/exec";
+  const CONFIG_CALLBACK = "__configFeedLoaded";
+  const CALENDAR_CALLBACK = "__calendarFeedLoaded";
 
   let posterSeconds = 12;
   let calendarSlideSeconds = 0;
   let fadeMs = 900;
   let refreshSeconds = 300;
 
-  let items = []; // {kind:"calendar", seconds} OR {kind:"poster", url, v, seconds}
+  let items = [];
   let idx = 0;
   let frontIsA = true;
   let refreshTimer = null;
 
+  let lastConfigData = {};
   let lastCalendarData = null;
-  let calendarFetchInProgress = false;
+
+  let configRequest = null;
+  let calendarRequest = null;
+  let calendarSceneActive = false;
 
   const emptyEl = document.getElementById("empty");
   const A = document.getElementById("a");
@@ -194,43 +333,168 @@
     const n = Number(v);
     return Number.isFinite(n) && n > 0 ? n : fallback;
   }
+
   function nonNegativeParam(name, fallback) {
     const v = new URLSearchParams(location.search).get(name);
     const n = Number(v);
     return Number.isFinite(n) && n >= 0 ? n : fallback;
   }
 
-  function loadConfigJSONP(timeoutMs = 4000) {
-    return new Promise((resolve) => {
-      const cbName = "__cfgcb_" + Math.random().toString(16).slice(2);
-      let done = false;
+  function normalizeCfg(raw) {
+    if (!raw) return {};
+    if (typeof raw === "string") {
+      try { return JSON.parse(raw); } catch { return {}; }
+    }
+    if (raw.data && typeof raw.data === "object") return raw.data;
+    if (raw.config && typeof raw.config === "object") return raw.config;
+    return raw;
+  }
 
-      window[cbName] = (cfg) => {
-        done = true;
-        cleanup();
-        resolve(cfg || {});
-      };
+  function cleanupConfigRequest() {
+    if (!configRequest) return;
+    clearTimeout(configRequest.timer);
+    if (configRequest.script && configRequest.script.parentNode) {
+      configRequest.script.parentNode.removeChild(configRequest.script);
+    }
+  }
 
-      const s = document.createElement("script");
-      s.src = CONFIG_SERVICE_URL + "?callback=" + cbName + "&_=" + Date.now();
-      s.onerror = () => { cleanup(); resolve({}); };
-      document.head.appendChild(s);
+  function cleanupCalendarRequest() {
+    if (!calendarRequest) return;
+    clearTimeout(calendarRequest.timer);
+    if (calendarRequest.script && calendarRequest.script.parentNode) {
+      calendarRequest.script.parentNode.removeChild(calendarRequest.script);
+    }
+  }
 
-      const t = setTimeout(() => {
-        if (!done) { cleanup(); resolve({}); }
-      }, timeoutMs);
+  window[CONFIG_CALLBACK] = (raw) => {
+    lastConfigData = normalizeCfg(raw || {});
 
-      function cleanup() {
-        clearTimeout(t);
-        try { delete window[cbName]; } catch {}
-        s.remove();
+    if (!configRequest) return;
+
+    const resolve = configRequest.resolve;
+    cleanupConfigRequest();
+    configRequest = null;
+    resolve(lastConfigData);
+  };
+
+  window[CALENDAR_CALLBACK] = (data) => {
+    if (data && Array.isArray(data.events)) {
+      lastCalendarData = data;
+    }
+
+    if (!calendarRequest) {
+      if (calendarSceneActive && lastCalendarData) {
+        renderCalendar(lastCalendarData);
       }
+      return;
+    }
+
+    const resolve = calendarRequest.resolve;
+    const wantRender = calendarRequest.wantRender;
+
+    cleanupCalendarRequest();
+    calendarRequest = null;
+
+    if (wantRender) {
+      renderCalendar(lastCalendarData || data || {});
+    }
+
+    resolve(true);
+  };
+
+  function loadConfigJSONP(timeoutMs = 12000) {
+    if (configRequest) return configRequest.promise;
+
+    let resolveFn;
+
+    const promise = new Promise((resolve) => {
+      resolveFn = resolve;
     });
+
+    const script = document.createElement("script");
+    const timer = setTimeout(() => {
+      const fallback = normalizeCfg(lastConfigData || {});
+      cleanupConfigRequest();
+      configRequest = null;
+      resolveFn(fallback);
+    }, timeoutMs);
+
+    configRequest = {
+      promise,
+      resolve: resolveFn,
+      script,
+      timer
+    };
+
+    script.src = CONFIG_SERVICE_URL + "?callback=" + encodeURIComponent(CONFIG_CALLBACK) + "&_=" + Date.now();
+    script.onerror = () => {
+      const fallback = normalizeCfg(lastConfigData || {});
+      cleanupConfigRequest();
+      configRequest = null;
+      resolveFn(fallback);
+    };
+
+    document.head.appendChild(script);
+    return promise;
+  }
+
+  function requestCalendar(wantRender, timeoutMs = 12000) {
+    if (calendarRequest) {
+      if (wantRender) calendarRequest.wantRender = true;
+      return calendarRequest.promise;
+    }
+
+    let resolveFn;
+
+    const promise = new Promise((resolve) => {
+      resolveFn = resolve;
+    });
+
+    const script = document.createElement("script");
+    const timer = setTimeout(() => {
+      const hadData = !!lastCalendarData;
+      const shouldRender = calendarRequest && calendarRequest.wantRender;
+
+      cleanupCalendarRequest();
+      calendarRequest = null;
+
+      if (shouldRender) {
+        renderCalendar(lastCalendarData || {});
+      }
+
+      resolveFn(hadData);
+    }, timeoutMs);
+
+    calendarRequest = {
+      promise,
+      resolve: resolveFn,
+      script,
+      timer,
+      wantRender: !!wantRender
+    };
+
+    script.src = EVENTS_URL + "?callback=" + encodeURIComponent(CALENDAR_CALLBACK) + "&_=" + Date.now();
+    script.onerror = () => {
+      const hadData = !!lastCalendarData;
+      const shouldRender = calendarRequest && calendarRequest.wantRender;
+
+      cleanupCalendarRequest();
+      calendarRequest = null;
+
+      if (shouldRender) {
+        renderCalendar(lastCalendarData || {});
+      }
+
+      resolveFn(hadData);
+    };
+
+    document.head.appendChild(script);
+    return promise;
   }
 
   async function fetchJson(url) {
-    const r = await fetch(url, { cache:"no-store" });
-    if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+    const r = await fetch(url, { cache: "no-store" });
+    if (!r.ok) throw new Error(r.status + " " + r.statusText);
     return await r.json();
   }
 
@@ -245,55 +509,70 @@
       const m = await fetchJson(manifestUrl);
       const rawItems = Array.isArray(m.items) ? m.items : [];
       return rawItems
-        .map(it => ({
+        .map((it) => ({
           kind: "poster",
           url: normalizeExtraUrl(it?.url || ""),
           v: it?.v ? ("?v=" + encodeURIComponent(it.v)) : "",
           seconds: baseSeconds
         }))
-        .filter(it => it.url);
+        .filter((it) => it.url);
     } catch {
       return [];
     }
   }
 
   function mergeUniqueItems(primary, extra) {
-    const seen = new Set(primary.map(it => it.url));
+    const seen = new Set(primary.map((it) => it.url));
     const out = primary.slice();
+
     for (const it of extra) {
       if (it.url && !seen.has(it.url)) {
         seen.add(it.url);
         out.push(it);
       }
     }
+
     return out;
   }
 
   function itemsChanged(nextItems) {
     if (nextItems.length !== items.length) return true;
+
     for (let i = 0; i < nextItems.length; i += 1) {
-      const a = nextItems[i], b = items[i];
+      const a = nextItems[i];
+      const b = items[i];
       if (!b) return true;
       if (a.kind !== b.kind) return true;
       if ((a.url || "") !== (b.url || "")) return true;
       if ((a.v || "") !== (b.v || "")) return true;
       if ((a.seconds || 0) !== (b.seconds || 0)) return true;
     }
+
     return false;
   }
-
-  /* ---------- Calendar rendering ---------- */
 
   function parseDateTime(value) {
     if (!value) return null;
     const m = String(value).match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})(?::(\d{2}))?$/);
     if (!m) return null;
-    const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4]), Number(m[5]), Number(m[6] || 0));
+
+    const d = new Date(
+      Number(m[1]),
+      Number(m[2]) - 1,
+      Number(m[3]),
+      Number(m[4]),
+      Number(m[5]),
+      Number(m[6] || 0)
+    );
+
     return Number.isNaN(d.getTime()) ? null : d;
   }
 
   function timeText(d) {
-    return new Intl.DateTimeFormat("nb-NO", { hour:"2-digit", minute:"2-digit" }).format(d);
+    return new Intl.DateTimeFormat("nb-NO", {
+      hour: "2-digit",
+      minute: "2-digit"
+    }).format(d);
   }
 
   function makeDateKey(d) {
@@ -313,6 +592,7 @@
     if (repeated) {
       return '<div class="dateCell dateSpacer"><div class="dateTop">00.</div><div class="dateMonth">JAN</div><div class="dateWeekday">MAN</div></div>';
     }
+
     return '' +
       '<div class="dateCell">' +
         '<div class="dateTop">' + date.getDate() + '.</div>' +
@@ -323,28 +603,36 @@
 
   function normalizeEvents(data) {
     const now = new Date();
+
     return (Array.isArray(data.events) ? data.events : [])
-      .map(ev => {
+      .map((ev) => {
         const begin = parseDateTime(ev.begin);
         const end = parseDateTime(ev.end);
         return {
           title: String(ev.title || "").trim(),
           place: String(ev.place || ev.location || "").trim(),
-          begin, end
+          begin,
+          end
         };
       })
-      .filter(ev => ev.title && ev.begin)
-      .filter(ev => !ev.end || ev.end >= now)
-      .sort((a,b) => a.begin - b.begin)
+      .filter((ev) => ev.title && ev.begin)
+      .filter((ev) => !ev.end || ev.end >= now)
+      .sort((a, b) => a.begin - b.begin)
       .slice(0, 7);
   }
 
   function renderCalendar(data) {
-    if (data && Array.isArray(data.events)) lastCalendarData = data;
+    if (data && Array.isArray(data.events)) {
+      lastCalendarData = data;
+    }
 
     const effective = lastCalendarData || data || {};
     const events = normalizeEvents(effective);
-    calEls.headline.textContent = effective && effective.title ? effective.title : "Dette kan du oppleve i Åmot kulturhus";
+
+    calEls.headline.textContent =
+      effective && effective.title
+        ? effective.title
+        : "Dette kan du oppleve i Åmot kulturhus";
 
     if (!events.length) {
       calEls.app.style.display = "none";
@@ -382,69 +670,23 @@
   }
 
   function fetchCalendarBackground() {
-    if (calendarFetchInProgress) return;
-    calendarFetchInProgress = true;
-
-    const cbName = "__calbg_" + Math.random().toString(16).slice(2);
-    window[cbName] = (data) => {
-      calendarFetchInProgress = false;
-      cleanup();
-      if (data) lastCalendarData = data;
-    };
-
-    const s = document.createElement("script");
-    s.src = EVENTS_URL + "?callback=" + cbName + "&_=" + Date.now();
-    s.onerror = () => { calendarFetchInProgress = false; cleanup(); };
-    document.head.appendChild(s);
-
-    const t = setTimeout(() => { calendarFetchInProgress = false; cleanup(); }, 9000);
-
-    function cleanup() {
-      clearTimeout(t);
-      try { delete window[cbName]; } catch {}
-      s.remove();
-    }
+    requestCalendar(false, 12000);
   }
 
-  function loadCalendarOnce(timeoutMs = 9000) {
-    return new Promise((resolve) => {
-      let done = false;
-      const cbName = "__calcb_" + Math.random().toString(16).slice(2);
-
-      window[cbName] = (data) => {
-        done = true;
-        cleanup();
-        if (data) lastCalendarData = data;
-        renderCalendar(data || lastCalendarData || {});
-        resolve(true);
-      };
-
-      const s = document.createElement("script");
-      s.src = EVENTS_URL + "?callback=" + cbName + "&_=" + Date.now();
-      s.onerror = () => { cleanup(); resolve(false); };
-      document.head.appendChild(s);
-
-      const t = setTimeout(() => {
-        if (!done) { cleanup(); resolve(false); }
-      }, timeoutMs);
-
-      function cleanup() {
-        clearTimeout(t);
-        try { delete window[cbName]; } catch {}
-        s.remove();
-      }
-    });
+  function loadCalendarOnce(timeoutMs = 12000) {
+    return requestCalendar(true, timeoutMs);
   }
-
-  /* ---------- Slideshow ---------- */
 
   async function load() {
-    const [cfg, data] = await Promise.all([loadConfigJSONP(), fetchJson(MANIFEST_URL)]);
+    const [cfg, data] = await Promise.all([
+      loadConfigJSONP(12000),
+      fetchJson(MANIFEST_URL)
+    ]);
 
     posterSeconds = positiveParam("p", cfg.posterSeconds ?? 12);
     calendarSlideSeconds = nonNegativeParam("cal", cfg.calendarSlideSeconds ?? 0);
     fadeMs = positiveParam("fade", cfg.fadeMs ?? 900);
-    refreshSeconds = positiveParam("r", cfg.manifestRefreshSeconds ?? 300);
+    refreshSeconds = positiveParam("r", cfg.manifestRefreshSeconds ?? cfg.refreshSeconds ?? 300);
 
     A.style.transitionDuration = fadeMs + "ms";
     B.style.transitionDuration = fadeMs + "ms";
@@ -452,16 +694,23 @@
     const baseVersion = data.updated ? ("?v=" + encodeURIComponent(data.updated)) : "";
 
     const posters = (data.films || [])
-      .map(x => x?.[FIELD])
+      .map((x) => x?.[FIELD])
       .filter(Boolean)
-      .map(url => ({ kind:"poster", url, v: baseVersion, seconds: posterSeconds }));
+      .map((url) => ({
+        kind: "poster",
+        url,
+        v: baseVersion,
+        seconds: posterSeconds
+      }));
 
     const extraItems = await loadManualExtras(EXTRA_MANIFEST_URL, posterSeconds);
     let nextItems = mergeUniqueItems(posters, extraItems);
 
-    // ✅ calendar first when enabled
     if (calendarSlideSeconds > 0) {
-      nextItems.unshift({ kind:"calendar", seconds: calendarSlideSeconds });
+      nextItems.unshift({
+        kind: "calendar",
+        seconds: calendarSlideSeconds
+      });
     }
 
     const changed = itemsChanged(nextItems);
@@ -472,7 +721,7 @@
   }
 
   async function preloadPoster(item) {
-    await new Promise(resolve => {
+    await new Promise((resolve) => {
       const img = new Image();
       img.onload = resolve;
       img.onerror = resolve;
@@ -481,18 +730,20 @@
   }
 
   function showPosterScene() {
+    calendarSceneActive = false;
     calendarScene.style.display = "none";
     posterScene.style.display = "block";
   }
 
   function showCalendarScene() {
+    calendarSceneActive = true;
     posterScene.style.display = "none";
     calendarScene.style.display = "block";
   }
 
   function swapToPoster(item) {
     const front = frontIsA ? A : B;
-    const back  = frontIsA ? B : A;
+    const back = frontIsA ? B : A;
 
     back.src = item.url + (item.v || "");
     back.classList.add("show");
@@ -502,7 +753,10 @@
   }
 
   async function tick() {
-    if (!items.length) { setTimeout(tick, 2000); return; }
+    if (!items.length) {
+      setTimeout(tick, 2000);
+      return;
+    }
 
     const item = items[idx % items.length];
     idx += 1;
@@ -513,34 +767,39 @@
       calEls.empty.style.display = "flex";
       calEls.app.style.display = "none";
 
-      // Try cached immediately; still fetch once to refresh
-      if (lastCalendarData) renderCalendar(lastCalendarData);
-      await loadCalendarOnce();
+      if (lastCalendarData) {
+        renderCalendar(lastCalendarData);
+      }
+
+      await loadCalendarOnce(12000);
 
       setTimeout(() => {
         showPosterScene();
         tick();
       }, (item.seconds || 15) * 1000);
+
       return;
     }
 
     showPosterScene();
     await preloadPoster(item);
     swapToPoster(item);
+
     setTimeout(tick, (item.seconds || posterSeconds) * 1000);
   }
 
   function scheduleReload() {
     clearTimeout(refreshTimer);
     refreshTimer = setTimeout(async () => {
-      try { await load(); } catch {}
+      try {
+        await load();
+      } catch {}
       scheduleReload();
     }, refreshSeconds * 1000);
   }
 
   await load();
 
-  // background calendar refresh
   fetchCalendarBackground();
   setInterval(fetchCalendarBackground, 5 * 60 * 1000);
 
