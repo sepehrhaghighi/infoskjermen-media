@@ -23,15 +23,23 @@
     .layer.show { opacity:1; }
 
     #empty {
-      position:fixed; inset:0; display:none; align-items:center; justify-content:center;
-      color:#fff; background:#000; text-align:center; padding:40px;
+      position:fixed;
+      inset:0;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      color:#fff;
+      background:#000;
+      text-align:center;
+      padding:40px;
       font:26px/1.2 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
       z-index:100;
     }
 
     /* Calendar scene */
     #calendarScene {
-      position:absolute; inset:0;
+      position:absolute;
+      inset:0;
       display:none;
       overflow:hidden;
       color:#eaf4ff;
@@ -224,11 +232,16 @@
     }
 
     #calendarScene .calEmpty{
-      position:absolute; inset:0;
-      display:flex; align-items:center; justify-content:center;
-      font-size:32px; font-weight:700;
+      position:absolute;
+      inset:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:32px;
+      font-weight:700;
       text-shadow:0 4px 16px rgba(0,0,0,0.14);
-      padding:40px; box-sizing:border-box;
+      padding:40px;
+      box-sizing:border-box;
     }
   </style>
 </head>
@@ -268,27 +281,6 @@
       </div>
     </div>
   </div>
-
-<script>
-window.__calendarFeedLoadedData = null;
-window.__configFeedLoadedData = null;
-window.__calendarFeedLoadedHandler = null;
-window.__configFeedLoadedHandler = null;
-
-function __calendarFeedLoaded(data) {
-  window.__calendarFeedLoadedData = data;
-  if (typeof window.__calendarFeedLoadedHandler === "function") {
-    window.__calendarFeedLoadedHandler(data);
-  }
-}
-
-function __configFeedLoaded(data) {
-  window.__configFeedLoadedData = data;
-  if (typeof window.__configFeedLoadedHandler === "function") {
-    window.__configFeedLoadedHandler(data);
-  }
-}
-</script>
 
 <script>
 (async () => {
@@ -374,7 +366,7 @@ function __configFeedLoaded(data) {
     }
   }
 
-  window.__configFeedLoadedHandler = (raw) => {
+  window[CONFIG_CALLBACK] = (raw) => {
     lastConfigData = normalizeCfg(raw || {});
 
     if (!configRequest) return;
@@ -385,7 +377,7 @@ function __configFeedLoaded(data) {
     resolve(lastConfigData);
   };
 
-  window.__calendarFeedLoadedHandler = (data) => {
+  window[CALENDAR_CALLBACK] = (data) => {
     if (data && Array.isArray(data.events)) {
       lastCalendarData = data;
     }
@@ -501,7 +493,7 @@ function __configFeedLoaded(data) {
   }
 
   async function fetchJson(url) {
-    const r = await fetch(url, { cache:"no-store" });
+    const r = await fetch(url, { cache: "no-store" });
     if (!r.ok) throw new Error(r.status + " " + r.statusText);
     return await r.json();
   }
@@ -578,8 +570,8 @@ function __configFeedLoaded(data) {
 
   function timeText(d) {
     return new Intl.DateTimeFormat("nb-NO", {
-      hour:"2-digit",
-      minute:"2-digit"
+      hour: "2-digit",
+      minute: "2-digit"
     }).format(d);
   }
 
@@ -692,7 +684,7 @@ function __configFeedLoaded(data) {
     ]);
 
     posterSeconds = positiveParam("p", cfg.posterSeconds ?? 12);
-    calendarSlideSeconds = 10;
+    calendarSlideSeconds = nonNegativeParam("cal", cfg.calendarSlideSeconds ?? 0);
     fadeMs = positiveParam("fade", cfg.fadeMs ?? 900);
     refreshSeconds = positiveParam("r", cfg.manifestRefreshSeconds ?? cfg.refreshSeconds ?? 300);
 
@@ -705,7 +697,7 @@ function __configFeedLoaded(data) {
       .map((x) => x?.[FIELD])
       .filter(Boolean)
       .map((url) => ({
-        kind:"poster",
+        kind: "poster",
         url,
         v: baseVersion,
         seconds: posterSeconds
@@ -715,7 +707,10 @@ function __configFeedLoaded(data) {
     let nextItems = mergeUniqueItems(posters, extraItems);
 
     if (calendarSlideSeconds > 0) {
-      nextItems.unshift({ kind:"calendar", seconds: calendarSlideSeconds });
+      nextItems.unshift({
+        kind: "calendar",
+        seconds: calendarSlideSeconds
+      });
     }
 
     const changed = itemsChanged(nextItems);
@@ -748,7 +743,7 @@ function __configFeedLoaded(data) {
 
   function swapToPoster(item) {
     const front = frontIsA ? A : B;
-    const back  = frontIsA ? B : A;
+    const back = frontIsA ? B : A;
 
     back.src = item.url + (item.v || "");
     back.classList.add("show");
@@ -758,7 +753,10 @@ function __configFeedLoaded(data) {
   }
 
   async function tick() {
-    if (!items.length) { setTimeout(tick, 2000); return; }
+    if (!items.length) {
+      setTimeout(tick, 2000);
+      return;
+    }
 
     const item = items[idx % items.length];
     idx += 1;
@@ -769,8 +767,11 @@ function __configFeedLoaded(data) {
       calEls.empty.style.display = "flex";
       calEls.app.style.display = "none";
 
-      if (lastCalendarData) renderCalendar(lastCalendarData);
-      await loadCalendarOnce();
+      if (lastCalendarData) {
+        renderCalendar(lastCalendarData);
+      }
+
+      await loadCalendarOnce(12000);
 
       setTimeout(() => {
         showPosterScene();
@@ -783,13 +784,16 @@ function __configFeedLoaded(data) {
     showPosterScene();
     await preloadPoster(item);
     swapToPoster(item);
+
     setTimeout(tick, (item.seconds || posterSeconds) * 1000);
   }
 
   function scheduleReload() {
     clearTimeout(refreshTimer);
     refreshTimer = setTimeout(async () => {
-      try { await load(); } catch {}
+      try {
+        await load();
+      } catch {}
       scheduleReload();
     }, refreshSeconds * 1000);
   }
