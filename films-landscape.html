@@ -8,17 +8,8 @@
     html, body { margin:0; height:100%; background:#000; overflow:hidden; }
 
     /* Poster scene */
-    #posterScene {
-      position:absolute;
-      inset:0;
-    }
-
-    .stage {
-      position:relative;
-      width:100%;
-      height:100%;
-    }
-
+    #posterScene { position:absolute; inset:0; }
+    .stage { position:relative; width:100%; height:100%; }
     .layer {
       position:absolute;
       inset:0;
@@ -29,19 +20,11 @@
       transition: opacity 900ms ease-in-out;
       will-change: opacity;
     }
-
     .layer.show { opacity:1; }
 
     #empty {
-      position:fixed;
-      inset:0;
-      display:none;
-      align-items:center;
-      justify-content:center;
-      color:#fff;
-      background:#000;
-      text-align:center;
-      padding:40px;
+      position:fixed; inset:0; display:none; align-items:center; justify-content:center;
+      color:#fff; background:#000; text-align:center; padding:40px;
       font:26px/1.2 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
       z-index:100;
     }
@@ -52,7 +35,7 @@
       display:none;
       overflow:hidden;
       color:#eaf4ff;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      font-family:system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
       background: linear-gradient(
         90deg,
         #4ed347 0%,
@@ -64,16 +47,6 @@
         #2c37c2 86%,
         #3124dd 100%
       );
-
-      opacity:0;
-      pointer-events:none;
-      transition: opacity 900ms ease-in-out;
-      z-index:2;
-    }
-
-    #calendarScene.show {
-      opacity:1;
-      pointer-events:auto;
     }
 
     #calendarScene .wrap{
@@ -251,16 +224,11 @@
     }
 
     #calendarScene .calEmpty{
-      position:absolute;
-      inset:0;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      font-size:32px;
-      font-weight:700;
+      position:absolute; inset:0;
+      display:flex; align-items:center; justify-content:center;
+      font-size:32px; font-weight:700;
       text-shadow:0 4px 16px rgba(0,0,0,0.14);
-      padding:40px;
-      box-sizing:border-box;
+      padding:40px; box-sizing:border-box;
     }
   </style>
 </head>
@@ -343,7 +311,6 @@ function __configFeedLoaded(data) {
   let idx = 0;
   let frontIsA = true;
   let refreshTimer = null;
-  let calendarHideTimer = null;
 
   let lastConfigData = {};
   let lastCalendarData = null;
@@ -534,7 +501,7 @@ function __configFeedLoaded(data) {
   }
 
   async function fetchJson(url) {
-    const r = await fetch(url, { cache: "no-store" });
+    const r = await fetch(url, { cache:"no-store" });
     if (!r.ok) throw new Error(r.status + " " + r.statusText);
     return await r.json();
   }
@@ -611,8 +578,8 @@ function __configFeedLoaded(data) {
 
   function timeText(d) {
     return new Intl.DateTimeFormat("nb-NO", {
-      hour: "2-digit",
-      minute: "2-digit"
+      hour:"2-digit",
+      minute:"2-digit"
     }).format(d);
   }
 
@@ -731,7 +698,6 @@ function __configFeedLoaded(data) {
 
     A.style.transitionDuration = fadeMs + "ms";
     B.style.transitionDuration = fadeMs + "ms";
-    calendarScene.style.transitionDuration = fadeMs + "ms";
 
     const baseVersion = data.updated ? ("?v=" + encodeURIComponent(data.updated)) : "";
 
@@ -739,7 +705,7 @@ function __configFeedLoaded(data) {
       .map((x) => x?.[FIELD])
       .filter(Boolean)
       .map((url) => ({
-        kind: "poster",
+        kind:"poster",
         url,
         v: baseVersion,
         seconds: posterSeconds
@@ -749,10 +715,7 @@ function __configFeedLoaded(data) {
     let nextItems = mergeUniqueItems(posters, extraItems);
 
     if (calendarSlideSeconds > 0) {
-      nextItems.unshift({
-        kind: "calendar",
-        seconds: calendarSlideSeconds
-      });
+      nextItems.unshift({ kind:"calendar", seconds: calendarSlideSeconds });
     }
 
     const changed = itemsChanged(nextItems);
@@ -772,30 +735,20 @@ function __configFeedLoaded(data) {
   }
 
   function showPosterScene() {
-    clearTimeout(calendarHideTimer);
     calendarSceneActive = false;
-    calendarScene.classList.remove("show");
-
-    calendarHideTimer = setTimeout(() => {
-      calendarScene.style.display = "none";
-    }, fadeMs);
+    calendarScene.style.display = "none";
+    posterScene.style.display = "block";
   }
 
   function showCalendarScene() {
-    clearTimeout(calendarHideTimer);
     calendarSceneActive = true;
+    posterScene.style.display = "none";
     calendarScene.style.display = "block";
-
-    void calendarScene.offsetWidth;
-
-    requestAnimationFrame(() => {
-      calendarScene.classList.add("show");
-    });
   }
 
   function swapToPoster(item) {
     const front = frontIsA ? A : B;
-    const back = frontIsA ? B : A;
+    const back  = frontIsA ? B : A;
 
     back.src = item.url + (item.v || "");
     back.classList.add("show");
@@ -805,10 +758,7 @@ function __configFeedLoaded(data) {
   }
 
   async function tick() {
-    if (!items.length) {
-      setTimeout(tick, 2000);
-      return;
-    }
+    if (!items.length) { setTimeout(tick, 2000); return; }
 
     const item = items[idx % items.length];
     idx += 1;
