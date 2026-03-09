@@ -322,13 +322,13 @@
 
     @media (orientation: portrait) {
       .wrap{
-        padding:24px 20px 118px 20px;
+        padding:24px 20px 136px 20px;
       }
 
       .mainContent{
-        width:calc(100% - 16px);
-        gap:20px;
-        transform:translate(8px, 4px);
+        width:calc(100% - 24px);
+        gap:18px;
+        transform:translate(14px, 4px);
       }
 
       .headline{
@@ -362,10 +362,10 @@
       }
 
       .screenLogo{
-        left:18px;
-        bottom:18px;
-        width:126px;
-        height:126px;
+        left:14px;
+        bottom:14px;
+        width:56px;
+        height:56px;
       }
 
       .screenCta{
@@ -469,21 +469,36 @@
   }
 
   function maxEvents() {
-    if (!isLandscape()) return 18;
-
     var headlineHeight = els.headline ? Math.ceil(els.headline.getBoundingClientRect().height) : 86;
-    var topPad = 40;
-    var bottomPad = 124;
-    var blockGap = 30;
-    var nudge = 6;
-    var safety = 8;
-    var perRow = 62;
-    var gap = 6;
+    var fit, available;
 
-    var available = window.innerHeight - topPad - bottomPad - headlineHeight - blockGap - nudge - safety;
-    var fit = Math.floor((available + gap) / (perRow + gap));
+    if (isLandscape()) {
+      var topPadL = 40;
+      var bottomPadL = 124;
+      var blockGapL = 30;
+      var nudgeL = 6;
+      var safetyL = 8;
+      var perRowL = 62;
+      var gapL = 6;
 
-    return Math.max(4, Math.min(10, fit));
+      available = window.innerHeight - topPadL - bottomPadL - headlineHeight - blockGapL - nudgeL - safetyL;
+      fit = Math.floor((available + gapL) / (perRowL + gapL));
+
+      return Math.max(4, Math.min(10, fit));
+    }
+
+    var topPadP = 24;
+    var bottomPadP = 136;
+    var blockGapP = 18;
+    var nudgeP = 4;
+    var safetyP = 10;
+    var perRowP = 56;
+    var gapP = 6;
+
+    available = window.innerHeight - topPadP - bottomPadP - headlineHeight - blockGapP - nudgeP - safetyP;
+    fit = Math.floor((available + gapP) / (perRowP + gapP));
+
+    return Math.max(4, Math.min(18, fit));
   }
 
   function parseDateTime(value) {
