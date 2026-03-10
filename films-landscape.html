@@ -989,9 +989,7 @@ function __configFeedLoaded(data) {
 
     fetch(WEATHER_API_URL, {
       method: "GET",
-      headers: {
-        "Accept": "application/json"
-      },
+      headers: { "Accept": "application/json" },
       cache: "no-store"
     })
       .then((res) => {
@@ -1145,14 +1143,28 @@ function __configFeedLoaded(data) {
 
   await load();
 
-  fetchCalendarBackground();
-  loadWeather();
-
   setInterval(fetchCalendarBackground, 5 * 60 * 1000);
   setInterval(loadWeather, WEATHER_REFRESH_MS);
 
-  showPosterScene();
-  tick();
+  if (calendarSlideSeconds > 0) {
+    showCalendarScene();
+    calEls.empty.textContent = "Laster kalenderdata…";
+    calEls.empty.style.display = "flex";
+    calEls.app.style.display = "none";
+
+    await loadCalendarOnce(JSONP_TIMEOUT_MS);
+
+    idx = 1;
+
+    setTimeout(() => {
+      showPosterScene();
+      tick();
+    }, calendarSlideSeconds * 1000);
+  } else {
+    showPosterScene();
+    tick();
+  }
+
   scheduleReload();
 })();
 </script>
