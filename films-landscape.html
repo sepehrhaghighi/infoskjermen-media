@@ -519,6 +519,20 @@ function __configFeedLoaded(data) {
     return raw;
   }
 
+  function readCachedConfig() {
+    try {
+      return JSON.parse(localStorage.getItem("infoskjermenSharedConfig") || "{}");
+    } catch {
+      return {};
+    }
+  }
+
+  function writeCachedConfig(cfg) {
+    try {
+      localStorage.setItem("infoskjermenSharedConfig", JSON.stringify(cfg || {}));
+    } catch {}
+  }
+
   function isLandscape() {
     return window.innerWidth >= window.innerHeight;
   }
@@ -556,6 +570,10 @@ function __configFeedLoaded(data) {
 
   window.__configFeedLoadedHandler = (raw) => {
     lastConfigData = normalizeCfg(raw || {});
+
+    if (lastConfigData && Object.keys(lastConfigData).length) {
+      writeCachedConfig(lastConfigData);
+    }
 
     if (!configRequest) return;
 
@@ -601,7 +619,7 @@ function __configFeedLoaded(data) {
 
     const script = document.createElement("script");
     const timer = setTimeout(() => {
-      const fallback = normalizeCfg(lastConfigData || {});
+      const fallback = normalizeCfg(lastConfigData || readCachedConfig() || {});
       cleanupConfigRequest();
       configRequest = null;
       resolveFn(fallback);
@@ -616,7 +634,7 @@ function __configFeedLoaded(data) {
 
     script.src = CONFIG_SERVICE_URL + "?callback=" + encodeURIComponent(CONFIG_CALLBACK) + "&_=" + Date.now();
     script.onerror = () => {
-      const fallback = normalizeCfg(lastConfigData || {});
+      const fallback = normalizeCfg(lastConfigData || readCachedConfig() || {});
       cleanupConfigRequest();
       configRequest = null;
       resolveFn(fallback);
@@ -1024,10 +1042,12 @@ function __configFeedLoaded(data) {
       fetchJson(MANIFEST_URL)
     ]);
 
-    posterSeconds = positiveParam("p", cfg.posterSeconds ?? 12);
-    calendarSlideSeconds = nonNegativeParam("cal", cfg.calendarSlideSeconds ?? 0);
-    fadeMs = positiveParam("fade", cfg.fadeMs ?? 900);
-    refreshSeconds = positiveParam("r", cfg.manifestRefreshSeconds ?? cfg.refreshSeconds ?? 300);
+    const cachedCfg = readCachedConfig();
+
+    posterSeconds = positiveParam("p", cfg.posterSeconds ?? cachedCfg.posterSeconds ?? 12);
+    calendarSlideSeconds = nonNegativeParam("cal", cfg.calendarSlideSeconds ?? cachedCfg.calendarSlideSeconds ?? 0);
+    fadeMs = positiveParam("fade", cfg.fadeMs ?? cachedCfg.fadeMs ?? 900);
+    refreshSeconds = positiveParam("r", cfg.manifestRefreshSeconds ?? cfg.refreshSeconds ?? cachedCfg.manifestRefreshSeconds ?? cachedCfg.refreshSeconds ?? 300);
 
     A.style.transitionDuration = fadeMs + "ms";
     B.style.transitionDuration = fadeMs + "ms";
@@ -1141,17 +1161,17 @@ function __configFeedLoaded(data) {
     resizeTimer = setTimeout(refreshCalendarLayout, 120);
   });
 
+  showCalendarScene();
+  calEls.empty.textContent = "Laster kalenderdata…";
+  calEls.empty.style.display = "flex";
+  calEls.app.style.display = "none";
+
   await load();
 
   setInterval(fetchCalendarBackground, 5 * 60 * 1000);
   setInterval(loadWeather, WEATHER_REFRESH_MS);
 
   if (calendarSlideSeconds > 0) {
-    showCalendarScene();
-    calEls.empty.textContent = "Laster kalenderdata…";
-    calEls.empty.style.display = "flex";
-    calEls.app.style.display = "none";
-
     await loadCalendarOnce(JSONP_TIMEOUT_MS);
 
     idx = 1;
