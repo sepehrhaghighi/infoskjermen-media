@@ -5,67 +5,83 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Films – Landscape</title>
   <style>
-    :root{
-      --text:#eaf4ff;
-      --muted:#d5e6f7;
-      --soft:#cfe7ff;
-      --cardBorder:rgba(255,255,255,0.12);
-    }
-
-    *{ box-sizing:border-box; }
-
-    html, body{
-      margin:0;
-      height:100%;
-      background:#000;
-      overflow:hidden;
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: #000;
+      overflow: hidden;
     }
 
     /* Poster scene */
-    #posterScene{
-      position:absolute;
-      inset:0;
+    #posterScene {
+      position: absolute;
+      inset: 0;
+      display: block;
+      z-index: 1;
     }
 
-    .stage{
-      position:relative;
-      width:100%;
-      height:100%;
+    .stage {
+      position: relative;
+      width: 100%;
+      height: 100%;
     }
 
-    .layer{
-      position:absolute;
-      inset:0;
-      width:100%;
-      height:100%;
-      object-fit:contain;
-      opacity:0;
-      transition:opacity 900ms ease-in-out;
-      will-change:opacity;
+    .layer {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      opacity: 0;
+      transition: opacity 900ms ease-in-out;
+      will-change: opacity;
     }
 
-    .layer.show{ opacity:1; }
+    .layer.show {
+      opacity: 1;
+    }
 
-    #empty{
-      position:fixed;
-      inset:0;
-      display:none;
-      align-items:center;
-      justify-content:center;
-      color:#fff;
-      background:#000;
-      text-align:center;
-      padding:40px;
-      font:26px/1.2 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-      z-index:100;
+    #empty {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      background: #000;
+      text-align: center;
+      padding: 40px;
+      font: 26px/1.2 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      z-index: 100;
     }
 
     /* Calendar scene */
-    #calendarScene{
-      position:absolute;
-      inset:0;
-      display:none;
-      overflow:hidden;
+    #calendarScene {
+      position: absolute;
+      inset: 0;
+      display: none;
+      z-index: 2;
+      background: #000;
+    }
+
+    #calendarFrame {
+      width: 100%;
+      height: 100%;
+      border: 0;
+      display: block;
+      background: #000;
+    }
+
+    #calendarLoading {
+      position: absolute;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      color: #eaf4ff;
+      text-align: center;
+      padding: 40px;
+      font: 32px/1.2 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
       background: linear-gradient(
         90deg,
         #4ed347 0%,
@@ -77,299 +93,6 @@
         #2c37c2 86%,
         #3124dd 100%
       );
-      color:var(--text);
-      font-family:system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-    }
-
-    #calendarScene .wrap{
-      position:relative;
-      width:100%;
-      height:100%;
-      padding:40px 44px 124px 44px;
-    }
-
-    #calendarScene .mainContent{
-      width:calc(100% - 140px);
-      height:100%;
-      margin:0 auto;
-      min-width:0;
-      display:grid;
-      grid-template-rows:auto 1fr;
-      gap:30px;
-      transform:translate(32px, 6px);
-    }
-
-    #calendarScene .headline{
-      margin:0;
-      font-size:clamp(36px, 3vw, 58px);
-      font-weight:700;
-      line-height:1.04;
-      letter-spacing:-0.02em;
-      text-shadow:0 4px 16px rgba(0,0,0,0.16);
-      max-width:calc(100% - 360px);
-    }
-
-    #calendarScene .list{
-      min-width:0;
-      display:flex;
-      flex-direction:column;
-      gap:6px;
-      padding-right:8px;
-      overflow:hidden;
-    }
-
-    #calendarScene .eventRow{
-      display:grid;
-      grid-template-columns:96px minmax(0, 1fr);
-      gap:18px;
-      align-items:start;
-      min-height:62px;
-    }
-
-    #calendarScene .dateCell{
-      padding-top:2px;
-      line-height:1;
-      color:#eef9ff;
-    }
-
-    #calendarScene .dateTop{
-      font-size:22px;
-      font-weight:700;
-      letter-spacing:-0.02em;
-    }
-
-    #calendarScene .dateMonth{
-      margin-top:5px;
-      font-size:15px;
-      font-weight:700;
-      letter-spacing:0.08em;
-      text-transform:uppercase;
-      opacity:0.94;
-    }
-
-    #calendarScene .dateWeekday{
-      margin-top:6px;
-      font-size:16px;
-      font-weight:700;
-      letter-spacing:0.08em;
-      text-transform:uppercase;
-      color:var(--soft);
-      opacity:0.96;
-    }
-
-    #calendarScene .dateSpacer{ visibility:hidden; }
-
-    #calendarScene .eventCard{
-      min-width:0;
-      padding-top:1px;
-    }
-
-    #calendarScene .eventTitle{
-      margin:0;
-      font-size:clamp(24px, 2.1vw, 36px);
-      font-weight:400;
-      line-height:1.08;
-      letter-spacing:-0.02em;
-      color:var(--text);
-      display:-webkit-box;
-      -webkit-line-clamp:2;
-      -webkit-box-orient:vertical;
-      overflow:hidden;
-      text-shadow:0 2px 10px rgba(0,0,0,0.10);
-    }
-
-    #calendarScene .eventMeta{
-      margin-top:3px;
-      font-size:18px;
-      line-height:1.18;
-      color:var(--muted);
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      text-shadow:0 2px 8px rgba(0,0,0,0.08);
-    }
-
-    #calendarScene .screenLogo{
-      position:absolute;
-      left:18px;
-      bottom:18px;
-      width:126px;
-      height:126px;
-      display:flex;
-      align-items:flex-end;
-      justify-content:flex-start;
-      z-index:3;
-      pointer-events:none;
-    }
-
-    #calendarScene .screenLogo img{
-      max-width:100%;
-      max-height:100%;
-      object-fit:contain;
-      display:block;
-      filter:drop-shadow(0 4px 12px rgba(0,0,0,0.18));
-    }
-
-    #calendarScene .screenCta{
-      position:absolute;
-      right:24px;
-      bottom:12px;
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      gap:8px;
-      width:176px;
-      z-index:3;
-      pointer-events:none;
-    }
-
-    #calendarScene .qrWrap{
-      width:108px;
-      height:108px;
-      border-radius:14px;
-      background:rgba(255,255,255,0.97);
-      padding:8px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      box-shadow:0 6px 18px rgba(0,0,0,0.16);
-    }
-
-    #calendarScene .qrWrap img{
-      width:100%;
-      height:100%;
-      object-fit:contain;
-      display:block;
-    }
-
-    #calendarScene .screenCtaInfo{
-      width:100%;
-      text-align:center;
-    }
-
-    #calendarScene .ctaText{
-      font-size:15px;
-      line-height:1.2;
-      color:var(--text);
-      font-weight:700;
-      margin-bottom:4px;
-      text-shadow:0 2px 10px rgba(0,0,0,0.10);
-    }
-
-    #calendarScene .siteLink{
-      font-size:13px;
-      line-height:1.18;
-      color:var(--soft);
-      font-weight:700;
-      text-shadow:0 2px 8px rgba(0,0,0,0.08);
-      overflow-wrap:anywhere;
-    }
-
-    #calendarScene .weatherCard{
-      position:absolute;
-      top:65px;
-      right:40px;
-      width:220px;
-      padding:12px 12px 10px;
-      border-radius:16px;
-      background:linear-gradient(180deg, rgba(8,18,34,0.34), rgba(7,16,30,0.24));
-      border:1px solid var(--cardBorder);
-      box-shadow:
-        inset 0 1px 0 rgba(255,255,255,0.04),
-        0 10px 28px rgba(0,0,0,0.14);
-      backdrop-filter:blur(6px);
-      z-index:4;
-    }
-
-    #calendarScene .weatherHead{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      margin-bottom:8px;
-    }
-
-    #calendarScene .weatherTitle{
-      font-size:14px;
-      font-weight:700;
-      color:var(--text);
-      line-height:1.2;
-    }
-
-    #calendarScene .weatherSub{
-      font-size:11px;
-      color:var(--muted);
-      line-height:1.2;
-      opacity:0.95;
-    }
-
-    #calendarScene .weatherNow{
-      font-size:24px;
-      line-height:1;
-    }
-
-    #calendarScene .weatherRows{
-      display:flex;
-      flex-direction:column;
-      gap:4px;
-    }
-
-    #calendarScene .weatherRow{
-      display:grid;
-      grid-template-columns:52px 28px 1fr;
-      gap:8px;
-      align-items:center;
-      min-height:24px;
-      padding:1px 0;
-    }
-
-    #calendarScene .weatherDay{
-      font-size:12px;
-      font-weight:700;
-      color:var(--text);
-      opacity:0.95;
-    }
-
-    #calendarScene .weatherIcon{
-      font-size:17px;
-      text-align:center;
-      line-height:1;
-    }
-
-    #calendarScene .weatherTemps{
-      font-size:12px;
-      color:var(--muted);
-      text-align:right;
-      font-weight:700;
-    }
-
-    #calendarScene .weatherLoading,
-    #calendarScene .weatherError{
-      font-size:12px;
-      color:var(--muted);
-      line-height:1.35;
-      text-align:left;
-    }
-
-    #calendarScene .calEmpty{
-      position:absolute;
-      inset:0;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      font-size:32px;
-      font-weight:600;
-      color:var(--text);
-      text-align:center;
-      padding:40px;
-      text-shadow:0 4px 16px rgba(0,0,0,0.14);
-      box-sizing:border-box;
-    }
-
-    @media (orientation: portrait) {
-      #calendarScene .weatherCard{
-        display:none !important;
-      }
     }
   </style>
 </head>
@@ -384,79 +107,31 @@
   </div>
 
   <div id="calendarScene">
-    <div id="calEmpty" class="calEmpty">Laster kalenderdata…</div>
-
-    <div id="calApp" class="wrap" style="display:none;">
-      <div class="mainContent">
-        <h1 id="calHeadline" class="headline">Dette kan du oppleve i Åmot kulturhus</h1>
-        <div id="calList" class="list"></div>
-      </div>
-
-      <div id="weatherCard" class="weatherCard" aria-label="Værkort">
-        <div class="weatherHead">
-          <div>
-            <div class="weatherTitle">Vær</div>
-            <div class="weatherSub">Rena • 7 dager</div>
-          </div>
-          <div id="weatherNow" class="weatherNow">☁️</div>
-        </div>
-        <div id="weatherBody" class="weatherRows">
-          <div class="weatherLoading">Laster vær…</div>
-        </div>
-      </div>
-
-      <div class="screenLogo">
-        <img src="./assets/logo.jpg" alt="Logo" onerror="this.style.display='none';">
-      </div>
-
-      <div class="screenCta">
-        <div class="qrWrap">
-          <img src="./assets/QR.png" alt="QR-kode" onerror="this.style.display='none'; this.parentNode.style.display='none';">
-        </div>
-        <div class="screenCtaInfo">
-          <div class="ctaText">Les mer - Kjøp her</div>
-          <div class="siteLink">www.amotkulturhus.no</div>
-        </div>
-      </div>
-    </div>
+    <iframe
+      id="calendarFrame"
+      title="Kalenderslide"
+      loading="eager"
+      referrerpolicy="no-referrer-when-downgrade"
+    ></iframe>
+    <div id="calendarLoading">Laster kalenderdata…</div>
   </div>
 
 <script>
-window.__calendarFeedLoadedData = null;
-window.__configFeedLoadedData = null;
-window.__calendarFeedLoadedHandler = null;
-window.__configFeedLoadedHandler = null;
-
-function __calendarFeedLoaded(data) {
-  window.__calendarFeedLoadedData = data;
-  if (typeof window.__calendarFeedLoadedHandler === "function") {
-    window.__calendarFeedLoadedHandler(data);
-  }
-}
-
-function __configFeedLoaded(data) {
-  window.__configFeedLoadedData = data;
-  if (typeof window.__configFeedLoadedHandler === "function") {
-    window.__configFeedLoadedHandler(data);
-  }
-}
-</script>
-
-<script>
 (async () => {
-  const CONFIG_SERVICE_URL = "https://script.google.com/macros/s/AKfycbyeAHLzvmNUTGn_FWr8fTr1GDHVocivJG7M6Fpe6Lfcm0MjIQ-KjLZIhmkiNc7q00HLHA/exec";
-  const EVENTS_URL = "https://script.google.com/macros/s/AKfycbzWYkczmmUW_cNhNd6NYoozKYlMH9XXp95DNo-JrCSI172oSjYPPL13AQ1feoktAKy6kQ/exec";
-  const WEATHER_API_URL = "https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=61.1348&lon=11.3641&altitude=223";
+  const CONFIG_FILE_ID = "1eUx7tmPVUHyQPFPi78PyzMGSwzDhnYx9";
+  const CONFIG_URLS = [
+    "https://drive.google.com/uc?export=download&id=" + CONFIG_FILE_ID,
+    "https://drive.googleusercontent.com/uc?id=" + CONFIG_FILE_ID + "&export=download"
+  ];
 
+  const CALENDAR_FRAME_URL = "./calendar-slide.html";
   const MANIFEST_URL = "./assets/films.json";
   const EXTRA_MANIFEST_URL = "./assets/landscape_extra/manifest.json";
   const FIELD = "landscape";
 
-  const CONFIG_CALLBACK = "__configFeedLoaded";
-  const CALENDAR_CALLBACK = "__calendarFeedLoaded";
-
-  const WEATHER_REFRESH_MS = 30 * 60 * 1000;
-  const JSONP_TIMEOUT_MS = 20000;
+  const CONFIG_TIMEOUT_MS = 20000;
+  const CALENDAR_FRAME_TIMEOUT_MS = 12000;
+  const CONFIG_CACHE_KEY = "infoskjermenSharedConfigFromDrive";
 
   let posterSeconds = 12;
   let calendarSlideSeconds = 0;
@@ -467,14 +142,7 @@ function __configFeedLoaded(data) {
   let idx = 0;
   let frontIsA = true;
   let refreshTimer = null;
-  let resizeTimer = null;
-
-  let lastConfigData = {};
-  let lastCalendarData = null;
-
-  let configRequest = null;
-  let calendarRequest = null;
-  let calendarSceneActive = false;
+  let calendarFrameLoadId = 0;
 
   const emptyEl = document.getElementById("empty");
   const A = document.getElementById("a");
@@ -482,20 +150,8 @@ function __configFeedLoaded(data) {
 
   const posterScene = document.getElementById("posterScene");
   const calendarScene = document.getElementById("calendarScene");
-
-  const calEls = {
-    empty: document.getElementById("calEmpty"),
-    app: document.getElementById("calApp"),
-    list: document.getElementById("calList"),
-    headline: document.getElementById("calHeadline"),
-    weatherCard: document.getElementById("weatherCard"),
-    weatherBody: document.getElementById("weatherBody"),
-    weatherNow: document.getElementById("weatherNow")
-  };
-
-  const WEEKDAYS = ["SØN", "MAN", "TIR", "ONS", "TOR", "FRE", "LØR"];
-  const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAI", "JUN", "JUL", "AUG", "SEP", "OKT", "NOV", "DES"];
-  const SHORT_DAYS = ["Søn", "Man", "Tir", "Ons", "Tor", "Fre", "Lør"];
+  const calendarFrame = document.getElementById("calendarFrame");
+  const calendarLoading = document.getElementById("calendarLoading");
 
   function positiveParam(name, fallback) {
     const v = new URLSearchParams(location.search).get(name);
@@ -509,19 +165,9 @@ function __configFeedLoaded(data) {
     return Number.isFinite(n) && n >= 0 ? n : fallback;
   }
 
-  function normalizeCfg(raw) {
-    if (!raw) return {};
-    if (typeof raw === "string") {
-      try { return JSON.parse(raw); } catch { return {}; }
-    }
-    if (raw.data && typeof raw.data === "object") return raw.data;
-    if (raw.config && typeof raw.config === "object") return raw.config;
-    return raw;
-  }
-
   function readCachedConfig() {
     try {
-      return JSON.parse(localStorage.getItem("infoskjermenSharedConfig") || "{}");
+      return JSON.parse(localStorage.getItem(CONFIG_CACHE_KEY) || "{}");
     } catch {
       return {};
     }
@@ -529,179 +175,42 @@ function __configFeedLoaded(data) {
 
   function writeCachedConfig(cfg) {
     try {
-      localStorage.setItem("infoskjermenSharedConfig", JSON.stringify(cfg || {}));
+      localStorage.setItem(CONFIG_CACHE_KEY, JSON.stringify(cfg || {}));
     } catch {}
   }
 
-  function isLandscape() {
-    return window.innerWidth >= window.innerHeight;
+  function normalizeConfig(raw) {
+    if (!raw || typeof raw !== "object") return {};
+    return raw;
   }
 
-  function maxEvents() {
-    const headlineHeight = calEls.headline ? Math.ceil(calEls.headline.getBoundingClientRect().height) : 86;
+  async function fetchJson(url, timeoutMs = CONFIG_TIMEOUT_MS) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-    const topPad = 40;
-    const bottomPad = 124;
-    const blockGap = 30;
-    const nudge = 6;
-    const safety = 8;
-    const perRow = 62;
-    const gap = 6;
-    const available = window.innerHeight - topPad - bottomPad - headlineHeight - blockGap - nudge - safety;
-    const fit = Math.floor((available + gap) / (perRow + gap));
-    return Math.max(4, Math.min(10, fit));
-  }
-
-  function cleanupConfigRequest() {
-    if (!configRequest) return;
-    clearTimeout(configRequest.timer);
-    if (configRequest.script && configRequest.script.parentNode) {
-      configRequest.script.parentNode.removeChild(configRequest.script);
+    try {
+      const r = await fetch(url, {
+        cache: "no-store",
+        signal: controller.signal
+      });
+      if (!r.ok) throw new Error(r.status + " " + r.statusText);
+      return await r.json();
+    } finally {
+      clearTimeout(timer);
     }
   }
 
-  function cleanupCalendarRequest() {
-    if (!calendarRequest) return;
-    clearTimeout(calendarRequest.timer);
-    if (calendarRequest.script && calendarRequest.script.parentNode) {
-      calendarRequest.script.parentNode.removeChild(calendarRequest.script);
+  async function loadConfigFromDrive(timeoutMs = CONFIG_TIMEOUT_MS) {
+    for (const url of CONFIG_URLS) {
+      try {
+        const cfg = normalizeConfig(await fetchJson(url + "&_=" + Date.now(), timeoutMs));
+        if (cfg && Object.keys(cfg).length) {
+          writeCachedConfig(cfg);
+          return cfg;
+        }
+      } catch {}
     }
-  }
-
-  window.__configFeedLoadedHandler = (raw) => {
-    lastConfigData = normalizeCfg(raw || {});
-
-    if (lastConfigData && Object.keys(lastConfigData).length) {
-      writeCachedConfig(lastConfigData);
-    }
-
-    if (!configRequest) return;
-
-    const resolve = configRequest.resolve;
-    cleanupConfigRequest();
-    configRequest = null;
-    resolve(lastConfigData);
-  };
-
-  window.__calendarFeedLoadedHandler = (data) => {
-    if (data && Array.isArray(data.events)) {
-      lastCalendarData = data;
-    }
-
-    if (!calendarRequest) {
-      if (calendarSceneActive && lastCalendarData) {
-        renderCalendar(lastCalendarData);
-      }
-      return;
-    }
-
-    const resolve = calendarRequest.resolve;
-    const wantRender = calendarRequest.wantRender;
-
-    cleanupCalendarRequest();
-    calendarRequest = null;
-
-    if (wantRender) {
-      renderCalendar(lastCalendarData || data || {});
-    }
-
-    resolve(true);
-  };
-
-  function loadConfigJSONP(timeoutMs = JSONP_TIMEOUT_MS) {
-    if (configRequest) return configRequest.promise;
-
-    let resolveFn;
-
-    const promise = new Promise((resolve) => {
-      resolveFn = resolve;
-    });
-
-    const script = document.createElement("script");
-    const timer = setTimeout(() => {
-      const fallback = normalizeCfg(lastConfigData || readCachedConfig() || {});
-      cleanupConfigRequest();
-      configRequest = null;
-      resolveFn(fallback);
-    }, timeoutMs);
-
-    configRequest = {
-      promise,
-      resolve: resolveFn,
-      script,
-      timer
-    };
-
-    script.src = CONFIG_SERVICE_URL + "?callback=" + encodeURIComponent(CONFIG_CALLBACK) + "&_=" + Date.now();
-    script.onerror = () => {
-      const fallback = normalizeCfg(lastConfigData || readCachedConfig() || {});
-      cleanupConfigRequest();
-      configRequest = null;
-      resolveFn(fallback);
-    };
-
-    document.head.appendChild(script);
-    return promise;
-  }
-
-  function requestCalendar(wantRender, timeoutMs = JSONP_TIMEOUT_MS) {
-    if (calendarRequest) {
-      if (wantRender) calendarRequest.wantRender = true;
-      return calendarRequest.promise;
-    }
-
-    let resolveFn;
-
-    const promise = new Promise((resolve) => {
-      resolveFn = resolve;
-    });
-
-    const script = document.createElement("script");
-    const timer = setTimeout(() => {
-      const hadData = !!lastCalendarData;
-      const shouldRender = calendarRequest && calendarRequest.wantRender;
-
-      cleanupCalendarRequest();
-      calendarRequest = null;
-
-      if (shouldRender) {
-        renderCalendar(lastCalendarData || {});
-      }
-
-      resolveFn(hadData);
-    }, timeoutMs);
-
-    calendarRequest = {
-      promise,
-      resolve: resolveFn,
-      script,
-      timer,
-      wantRender: !!wantRender
-    };
-
-    script.src = EVENTS_URL + "?callback=" + encodeURIComponent(CALENDAR_CALLBACK) + "&_=" + Date.now();
-    script.onerror = () => {
-      const hadData = !!lastCalendarData;
-      const shouldRender = calendarRequest && calendarRequest.wantRender;
-
-      cleanupCalendarRequest();
-      calendarRequest = null;
-
-      if (shouldRender) {
-        renderCalendar(lastCalendarData || {});
-      }
-
-      resolveFn(hadData);
-    };
-
-    document.head.appendChild(script);
-    return promise;
-  }
-
-  async function fetchJson(url) {
-    const r = await fetch(url, { cache:"no-store" });
-    if (!r.ok) throw new Error(r.status + " " + r.statusText);
-    return await r.json();
+    return normalizeConfig(readCachedConfig());
   }
 
   function normalizeExtraUrl(url) {
@@ -712,7 +221,7 @@ function __configFeedLoaded(data) {
 
   async function loadManualExtras(manifestUrl, baseSeconds) {
     try {
-      const m = await fetchJson(manifestUrl);
+      const m = await fetchJson(manifestUrl, 12000);
       const rawItems = Array.isArray(m.items) ? m.items : [];
       return rawItems
         .map((it) => ({
@@ -737,7 +246,6 @@ function __configFeedLoaded(data) {
         out.push(it);
       }
     }
-
     return out;
   }
 
@@ -757,297 +265,24 @@ function __configFeedLoaded(data) {
     return false;
   }
 
-  function parseDateTime(value) {
-    if (!value) return null;
-
-    const m = String(value).match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})(?::(\d{2}))?$/);
-    if (!m) return null;
-
-    const d = new Date(
-      Number(m[1]),
-      Number(m[2]) - 1,
-      Number(m[3]),
-      Number(m[4]),
-      Number(m[5]),
-      Number(m[6] || 0)
-    );
-
-    return Number.isNaN(d.getTime()) ? null : d;
-  }
-
-  function timeText(d) {
-    return new Intl.DateTimeFormat("nb-NO", {
-      hour: "2-digit",
-      minute: "2-digit"
-    }).format(d);
-  }
-
-  function makeDateKey(d) {
-    return d.getFullYear() + "-" + d.getMonth() + "-" + d.getDate();
-  }
-
-  function escapeHtml(text) {
-    return String(text)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#39;");
-  }
-
-  function renderDateCell(date, repeated) {
-    if (repeated) {
-      return '<div class="dateCell dateSpacer"><div class="dateTop">00.</div><div class="dateMonth">JAN</div><div class="dateWeekday">MAN</div></div>';
-    }
-
-    return '' +
-      '<div class="dateCell">' +
-        '<div class="dateTop">' + date.getDate() + '.</div>' +
-        '<div class="dateMonth">' + MONTHS[date.getMonth()] + '</div>' +
-        '<div class="dateWeekday">' + WEEKDAYS[date.getDay()] + '</div>' +
-      '</div>';
-  }
-
-  function normalizeEvents(data) {
-    const now = new Date();
-
-    return (Array.isArray(data.events) ? data.events : [])
-      .map((ev) => {
-        const begin = parseDateTime(ev.begin);
-        const end = parseDateTime(ev.end);
-        return {
-          title: String(ev.title || "").trim(),
-          place: String(ev.place || ev.location || "").trim(),
-          begin,
-          end
-        };
-      })
-      .filter((ev) => ev.title && ev.begin)
-      .filter((ev) => !ev.end || ev.end >= now)
-      .sort((a, b) => a.begin - b.begin)
-      .slice(0, maxEvents());
-  }
-
-  function renderCalendar(data) {
-    if (data && Array.isArray(data.events)) {
-      lastCalendarData = data;
-    }
-
-    const effective = lastCalendarData || data || {};
-    const events = normalizeEvents(effective);
-
-    calEls.headline.textContent =
-      effective && effective.title
-        ? effective.title
-        : "Dette kan du oppleve i Åmot kulturhus";
-
-    if (!events.length) {
-      calEls.app.style.display = "none";
-      calEls.empty.style.display = "flex";
-      calEls.empty.textContent = "Ingen kommende hendelser.";
-      return;
-    }
-
-    let lastKey = "";
-    let html = "";
-
-    for (const ev of events) {
-      const key = makeDateKey(ev.begin);
-      const repeated = key === lastKey;
-      lastKey = key;
-
-      const meta =
-        timeText(ev.begin) +
-        (ev.end ? " - " + timeText(ev.end) : "") +
-        (ev.place ? " " + ev.place : "");
-
-      html += '' +
-        '<div class="eventRow">' +
-          renderDateCell(ev.begin, repeated) +
-          '<div class="eventCard">' +
-            '<h2 class="eventTitle">' + escapeHtml(ev.title) + '</h2>' +
-            '<div class="eventMeta">' + escapeHtml(meta) + '</div>' +
-          '</div>' +
-        '</div>';
-    }
-
-    calEls.list.innerHTML = html;
-    calEls.empty.style.display = "none";
-    calEls.app.style.display = "block";
-    loadWeather();
-  }
-
-  function weatherIcon(symbolCode) {
-    const s = String(symbolCode || "").toLowerCase();
-
-    if (s.includes("clearsky")) return "☀️";
-    if (s.includes("fair")) return "🌤️";
-    if (s.includes("partlycloudy")) return "⛅";
-    if (s.includes("cloudy")) return "☁️";
-    if (s.includes("fog")) return "🌫️";
-    if (s.includes("heavyrain")) return "🌧️";
-    if (s.includes("rain")) return "🌦️";
-    if (s.includes("heavysleet")) return "🌨️";
-    if (s.includes("sleet")) return "🌨️";
-    if (s.includes("heavysnow")) return "❄️";
-    if (s.includes("snow")) return "❄️";
-    if (s.includes("thunder")) return "⛈️";
-    return "🌤️";
-  }
-
-  function renderWeatherError() {
-    if (!calEls.weatherNow || !calEls.weatherBody) return;
-    calEls.weatherNow.textContent = "🌦️";
-    calEls.weatherBody.innerHTML = '<div class="weatherError">Vær utilgjengelig akkurat nå.</div>';
-  }
-
-  function renderWeatherCard(rows, currentSymbol) {
-    if (!calEls.weatherNow || !calEls.weatherBody) return;
-
-    calEls.weatherNow.textContent = weatherIcon(currentSymbol);
-
-    if (!rows.length) {
-      renderWeatherError();
-      return;
-    }
-
-    const html = rows.map((row) => {
-      return '' +
-        '<div class="weatherRow">' +
-          '<div class="weatherDay">' + escapeHtml(row.day) + '</div>' +
-          '<div class="weatherIcon">' + escapeHtml(weatherIcon(row.symbol)) + '</div>' +
-          '<div class="weatherTemps">' + escapeHtml(row.max + '° / ' + row.min + '°') + '</div>' +
-        '</div>';
-    }).join("");
-
-    calEls.weatherBody.innerHTML = '<div class="weatherRows">' + html + '</div>';
-  }
-
-  function buildWeatherRows(apiData) {
-    const series = (((apiData || {}).properties || {}).timeseries) || [];
-    const now = new Date();
-    const dayMap = {};
-    let currentSymbol = "";
-
-    if (!series.length) {
-      return { rows: [], currentSymbol: "" };
-    }
-
-    for (let i = 0; i < series.length; i += 1) {
-      const item = series[i];
-      const t = new Date(item.time);
-      if (Number.isNaN(t.getTime()) || t < now) continue;
-
-      const instant = item.data && item.data.instant && item.data.instant.details
-        ? item.data.instant.details
-        : null;
-      if (!instant) continue;
-
-      if (!currentSymbol) {
-        const currentSummary = (item.data.next_1_hours || item.data.next_6_hours || item.data.next_12_hours || {}).summary;
-        currentSymbol = currentSummary && currentSummary.symbol_code ? currentSummary.symbol_code : "";
-      }
-
-      const key = makeDateKey(t);
-      if (!dayMap[key]) {
-        dayMap[key] = {
-          date: new Date(t.getFullYear(), t.getMonth(), t.getDate()),
-          min: null,
-          max: null,
-          symbol: "",
-          bestHourDistance: Infinity
-        };
-      }
-
-      const temp = instant.air_temperature;
-      if (typeof temp === "number") {
-        dayMap[key].min = dayMap[key].min === null ? temp : Math.min(dayMap[key].min, temp);
-        dayMap[key].max = dayMap[key].max === null ? temp : Math.max(dayMap[key].max, temp);
-      }
-
-      const summary = (item.data.next_6_hours || item.data.next_1_hours || item.data.next_12_hours || {}).summary;
-      const symbol = summary && summary.symbol_code ? summary.symbol_code : "";
-      const hourDistance = Math.abs((t.getHours() + (t.getMinutes() / 60)) - 12);
-
-      if (symbol && hourDistance < dayMap[key].bestHourDistance) {
-        dayMap[key].symbol = symbol;
-        dayMap[key].bestHourDistance = hourDistance;
-      }
-    }
-
-    const rows = Object.keys(dayMap)
-      .sort((a, b) => dayMap[a].date - dayMap[b].date)
-      .slice(0, 7)
-      .map((key) => {
-        const d = dayMap[key].date;
-        return {
-          day: SHORT_DAYS[d.getDay()],
-          min: Math.round(dayMap[key].min === null ? 0 : dayMap[key].min),
-          max: Math.round(dayMap[key].max === null ? 0 : dayMap[key].max),
-          symbol: dayMap[key].symbol || currentSymbol || "partlycloudy_day"
-        };
-      });
-
-    return {
-      rows,
-      currentSymbol: currentSymbol || (rows[0] ? rows[0].symbol : "")
-    };
-  }
-
-  function loadWeather() {
-    if (!calEls.weatherCard || !calEls.weatherBody || !calEls.weatherNow) return;
-
-    if (!isLandscape()) {
-      calEls.weatherCard.style.display = "none";
-      return;
-    }
-
-    calEls.weatherCard.style.display = "block";
-    calEls.weatherBody.innerHTML = '<div class="weatherLoading">Laster vær…</div>';
-
-    fetch(WEATHER_API_URL, {
-      method: "GET",
-      headers: { "Accept": "application/json" },
-      cache: "no-store"
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error("Weather request failed");
-        return res.json();
-      })
-      .then((json) => {
-        const parsed = buildWeatherRows(json);
-        renderWeatherCard(parsed.rows, parsed.currentSymbol);
-      })
-      .catch(() => {
-        renderWeatherError();
-      });
-  }
-
-  function refreshCalendarLayout() {
-    if (lastCalendarData) renderCalendar(lastCalendarData);
-    loadWeather();
-  }
-
-  function fetchCalendarBackground() {
-    requestCalendar(false, JSONP_TIMEOUT_MS);
-  }
-
-  function loadCalendarOnce(timeoutMs = JSONP_TIMEOUT_MS) {
-    return requestCalendar(true, timeoutMs);
-  }
-
   async function load() {
-    const [cfg, data] = await Promise.all([
-      loadConfigJSONP(JSONP_TIMEOUT_MS),
-      fetchJson(MANIFEST_URL)
-    ]);
-
     const cachedCfg = readCachedConfig();
+    const [cfg, data] = await Promise.all([
+      loadConfigFromDrive(CONFIG_TIMEOUT_MS),
+      fetchJson(MANIFEST_URL, 12000)
+    ]);
 
     posterSeconds = positiveParam("p", cfg.posterSeconds ?? cachedCfg.posterSeconds ?? 12);
     calendarSlideSeconds = nonNegativeParam("cal", cfg.calendarSlideSeconds ?? cachedCfg.calendarSlideSeconds ?? 0);
     fadeMs = positiveParam("fade", cfg.fadeMs ?? cachedCfg.fadeMs ?? 900);
-    refreshSeconds = positiveParam("r", cfg.manifestRefreshSeconds ?? cfg.refreshSeconds ?? cachedCfg.manifestRefreshSeconds ?? cachedCfg.refreshSeconds ?? 300);
+    refreshSeconds = positiveParam(
+      "r",
+      cfg.manifestRefreshSeconds ??
+      cfg.refreshSeconds ??
+      cachedCfg.manifestRefreshSeconds ??
+      cachedCfg.refreshSeconds ??
+      300
+    );
 
     A.style.transitionDuration = fadeMs + "ms";
     B.style.transitionDuration = fadeMs + "ms";
@@ -1058,7 +293,7 @@ function __configFeedLoaded(data) {
       .map((x) => x?.[FIELD])
       .filter(Boolean)
       .map((url) => ({
-        kind:"poster",
+        kind: "poster",
         url,
         v: baseVersion,
         seconds: posterSeconds
@@ -1068,7 +303,7 @@ function __configFeedLoaded(data) {
     let nextItems = mergeUniqueItems(posters, extraItems);
 
     if (calendarSlideSeconds > 0) {
-      nextItems.unshift({ kind:"calendar", seconds: calendarSlideSeconds });
+      nextItems.unshift({ kind: "calendar", seconds: calendarSlideSeconds });
     }
 
     const changed = itemsChanged(nextItems);
@@ -1088,17 +323,13 @@ function __configFeedLoaded(data) {
   }
 
   function showPosterScene() {
-    calendarSceneActive = false;
     calendarScene.style.display = "none";
     posterScene.style.display = "block";
   }
 
   function showCalendarScene() {
-    calendarSceneActive = true;
     posterScene.style.display = "none";
     calendarScene.style.display = "block";
-    if (lastCalendarData) renderCalendar(lastCalendarData);
-    loadWeather();
   }
 
   function swapToPoster(item) {
@@ -1112,6 +343,45 @@ function __configFeedLoaded(data) {
     frontIsA = !frontIsA;
   }
 
+  function loadCalendarFrame(forceReload = true) {
+    const thisLoadId = ++calendarFrameLoadId;
+
+    return new Promise((resolve) => {
+      let settled = false;
+
+      function done() {
+        if (settled || thisLoadId !== calendarFrameLoadId) return;
+        settled = true;
+        calendarLoading.style.display = "none";
+        resolve();
+      }
+
+      calendarLoading.style.display = "flex";
+
+      const timer = setTimeout(() => {
+        calendarFrame.removeEventListener("load", onLoad);
+        done();
+      }, CALENDAR_FRAME_TIMEOUT_MS);
+
+      function onLoad() {
+        clearTimeout(timer);
+        calendarFrame.removeEventListener("load", onLoad);
+        done();
+      }
+
+      calendarFrame.addEventListener("load", onLoad, { once: true });
+
+      if (forceReload || !calendarFrame.src) {
+        const sep = CALENDAR_FRAME_URL.includes("?") ? "&" : "?";
+        calendarFrame.src = CALENDAR_FRAME_URL + sep + "_=" + Date.now();
+      } else {
+        clearTimeout(timer);
+        calendarFrame.removeEventListener("load", onLoad);
+        done();
+      }
+    });
+  }
+
   async function tick() {
     if (!items.length) {
       setTimeout(tick, 2000);
@@ -1123,15 +393,7 @@ function __configFeedLoaded(data) {
 
     if (item.kind === "calendar") {
       showCalendarScene();
-      calEls.empty.textContent = "Laster kalenderdata…";
-      calEls.empty.style.display = "flex";
-      calEls.app.style.display = "none";
-
-      if (lastCalendarData) {
-        renderCalendar(lastCalendarData);
-      }
-
-      await loadCalendarOnce(JSONP_TIMEOUT_MS);
+      await loadCalendarFrame(true);
 
       setTimeout(() => {
         showPosterScene();
@@ -1151,28 +413,18 @@ function __configFeedLoaded(data) {
   function scheduleReload() {
     clearTimeout(refreshTimer);
     refreshTimer = setTimeout(async () => {
-      try { await load(); } catch {}
+      try {
+        await load();
+      } catch {}
       scheduleReload();
     }, refreshSeconds * 1000);
   }
 
-  window.addEventListener("resize", () => {
-    clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(refreshCalendarLayout, 120);
-  });
-
-  showCalendarScene();
-  calEls.empty.textContent = "Laster kalenderdata…";
-  calEls.empty.style.display = "flex";
-  calEls.app.style.display = "none";
-
   await load();
 
-  setInterval(fetchCalendarBackground, 5 * 60 * 1000);
-  setInterval(loadWeather, WEATHER_REFRESH_MS);
-
   if (calendarSlideSeconds > 0) {
-    await loadCalendarOnce(JSONP_TIMEOUT_MS);
+    showCalendarScene();
+    await loadCalendarFrame(true);
 
     idx = 1;
 
