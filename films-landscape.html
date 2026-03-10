@@ -365,6 +365,12 @@
       text-shadow:0 4px 16px rgba(0,0,0,0.14);
       box-sizing:border-box;
     }
+
+    @media (orientation: portrait) {
+      #calendarScene .weatherCard{
+        display:none !important;
+      }
+    }
   </style>
 </head>
 <body>
@@ -450,6 +456,7 @@ function __configFeedLoaded(data) {
   const CALENDAR_CALLBACK = "__calendarFeedLoaded";
 
   const WEATHER_REFRESH_MS = 30 * 60 * 1000;
+  const JSONP_TIMEOUT_MS = 20000;
 
   let posterSeconds = 12;
   let calendarSlideSeconds = 0;
@@ -519,20 +526,16 @@ function __configFeedLoaded(data) {
   function maxEvents() {
     const headlineHeight = calEls.headline ? Math.ceil(calEls.headline.getBoundingClientRect().height) : 86;
 
-    if (isLandscape()) {
-      const topPad = 40;
-      const bottomPad = 124;
-      const blockGap = 30;
-      const nudge = 6;
-      const safety = 8;
-      const perRow = 62;
-      const gap = 6;
-      const available = window.innerHeight - topPad - bottomPad - headlineHeight - blockGap - nudge - safety;
-      const fit = Math.floor((available + gap) / (perRow + gap));
-      return Math.max(4, Math.min(10, fit));
-    }
-
-    return 7;
+    const topPad = 40;
+    const bottomPad = 124;
+    const blockGap = 30;
+    const nudge = 6;
+    const safety = 8;
+    const perRow = 62;
+    const gap = 6;
+    const available = window.innerHeight - topPad - bottomPad - headlineHeight - blockGap - nudge - safety;
+    const fit = Math.floor((available + gap) / (perRow + gap));
+    return Math.max(4, Math.min(10, fit));
   }
 
   function cleanupConfigRequest() {
@@ -587,7 +590,7 @@ function __configFeedLoaded(data) {
     resolve(true);
   };
 
-  function loadConfigJSONP(timeoutMs = 12000) {
+  function loadConfigJSONP(timeoutMs = JSONP_TIMEOUT_MS) {
     if (configRequest) return configRequest.promise;
 
     let resolveFn;
@@ -623,7 +626,7 @@ function __configFeedLoaded(data) {
     return promise;
   }
 
-  function requestCalendar(wantRender, timeoutMs = 12000) {
+  function requestCalendar(wantRender, timeoutMs = JSONP_TIMEOUT_MS) {
     if (calendarRequest) {
       if (wantRender) calendarRequest.wantRender = true;
       return calendarRequest.promise;
@@ -1010,16 +1013,16 @@ function __configFeedLoaded(data) {
   }
 
   function fetchCalendarBackground() {
-    requestCalendar(false, 12000);
+    requestCalendar(false, JSONP_TIMEOUT_MS);
   }
 
-  function loadCalendarOnce(timeoutMs = 12000) {
+  function loadCalendarOnce(timeoutMs = JSONP_TIMEOUT_MS) {
     return requestCalendar(true, timeoutMs);
   }
 
   async function load() {
     const [cfg, data] = await Promise.all([
-      loadConfigJSONP(12000),
+      loadConfigJSONP(JSONP_TIMEOUT_MS),
       fetchJson(MANIFEST_URL)
     ]);
 
@@ -1110,7 +1113,7 @@ function __configFeedLoaded(data) {
         renderCalendar(lastCalendarData);
       }
 
-      await loadCalendarOnce(12000);
+      await loadCalendarOnce(JSONP_TIMEOUT_MS);
 
       setTimeout(() => {
         showPosterScene();
