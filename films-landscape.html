@@ -12,11 +12,27 @@
       overflow: hidden;
     }
 
-    #posterScene {
+    #posterScene,
+    #calendarScene {
       position: absolute;
       inset: 0;
-      display: block;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 900ms ease-in-out;
+    }
+
+    #posterScene {
       z-index: 1;
+    }
+
+    #calendarScene {
+      z-index: 2;
+      background: #000;
+    }
+
+    #posterScene.active,
+    #calendarScene.active {
+      opacity: 1;
     }
 
     .stage {
@@ -54,14 +70,6 @@
       z-index: 100;
     }
 
-    #calendarScene {
-      position: absolute;
-      inset: 0;
-      display: none;
-      z-index: 2;
-      background: #000;
-    }
-
     #calendarFrame {
       width: 100%;
       height: 100%;
@@ -69,35 +77,12 @@
       display: block;
       background: #000;
     }
-
-    #calendarLoading {
-      position: absolute;
-      inset: 0;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      color: #eaf4ff;
-      text-align: center;
-      padding: 40px;
-      font: 32px/1.2 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-      background: linear-gradient(
-        90deg,
-        #4ed347 0%,
-        #37b352 12%,
-        #2f9b61 26%,
-        #2c7d78 40%,
-        #2a668e 56%,
-        #284ea7 72%,
-        #2c37c2 86%,
-        #3124dd 100%
-      );
-    }
   </style>
 </head>
 <body>
   <div id="empty">No film landscape posters available.</div>
 
-  <div id="posterScene">
+  <div id="posterScene" class="active">
     <div class="stage">
       <img id="a" class="layer show" alt="">
       <img id="b" class="layer" alt="">
@@ -111,7 +96,6 @@
       loading="eager"
       referrerpolicy="no-referrer-when-downgrade"
     ></iframe>
-    <div id="calendarLoading">Laster kalenderdata…</div>
   </div>
 
 <script>
@@ -135,7 +119,9 @@
   let idx = 0;
   let frontIsA = true;
   let refreshTimer = null;
-  let calendarFrameLoadId = 0;
+
+  let calendarReady = false;
+  let calendarLoadingPromise = null;
 
   const emptyEl = document.getElementById("empty");
   const A = document.getElementById("a");
@@ -144,7 +130,10 @@
   const posterScene = document.getElementById("posterScene");
   const calendarScene = document.getElementById("calendarScene");
   const calendarFrame = document.getElementById("calendarFrame");
-  const calendarLoading = document.getElementById("calendarLoading");
+
+  function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
 
   function readNumericParam(name) {
     const v = new URLSearchParams(location.search).get(name);
@@ -159,10 +148,10 @@
     return n !== null && n > 0 ? n : fallback;
   }
 
-function nonNegativeParam(name, fallback) {
-  const n = readNumericParam(name);
-  return n !== null && n >= 0 ? n : fallback;
-}
+  function nonNegativeParam(name, fallback) {
+    const n = readNumericParam(name);
+    return n !== null && n >= 0 ? n : fallback;
+  }
 
   function pickNumber(...values) {
     for (const value of values) {
@@ -344,6 +333,46 @@ function nonNegativeParam(name, fallback) {
     return false;
   }
 
+  function applyFadeDurations() {
+    const dur = fadeMs + "ms";
+    A.style.transitionDuration = dur;
+    B.style.transitionDuration = dur;
+    posterScene.style.transitionDuration = dur;
+    calendarScene.style.transitionDuration = dur;
+  }
+
+  function isCalendarActive() {
+    return calendarScene.classList.contains("active");
+  }
+
+  async function fadeToCalendar() {
+    if (isCalendarActive()) return;
+    calendarScene.classList.add("active");
+    posterScene.classList.remove("active");
+    if (fadeMs > 0) await sleep(fadeMs);
+  }
+
+  async function fadeToPoster() {
+    if (!isCalendarActive()) return;
+    posterScene.classList.add("active");
+    calendarScene.classList.remove("active");
+    if (fadeMs > 0) await sleep(fadeMs);
+  }
+
+  function setPosterImmediate(item) {
+    A.src = item.url + (item.v || "");
+    A.classList.add("show");
+    B.classList.remove("show");
+    frontIsA = true;
+  }
+
+  async function primeFirstPoster() {
+    const firstPoster = items.find((it) => it.kind === "poster");
+    if (!firstPoster) return;
+    await preloadPoster(firstPoster);
+    setPosterImmediate(firstPoster);
+  }
+
   async function load() {
     const cachedCfg = readCachedConfig();
 
@@ -378,18 +407,7 @@ function nonNegativeParam(name, fallback) {
       )
     );
 
-    console.log("LANDSCAPE CONFIG DEBUG", {
-      cfg,
-      cachedCfg,
-      posterSeconds,
-      calendarSlideSeconds,
-      fadeMs,
-      refreshSeconds,
-      search: location.search
-    });
-
-    A.style.transitionDuration = fadeMs + "ms";
-    B.style.transitionDuration = fadeMs + "ms";
+    applyFadeDurations();
 
     const baseVersion = data.updated ? ("?v=" + encodeURIComponent(data.updated)) : "";
 
@@ -412,9 +430,14 @@ function nonNegativeParam(name, fallback) {
 
     const changed = itemsChanged(nextItems);
     items = nextItems;
+
     if (changed) idx = 0;
 
     emptyEl.style.display = items.length ? "none" : "flex";
+
+    if (calendarSlideSeconds > 0 && !isCalendarActive() && !calendarLoadingPromise) {
+      void refreshCalendarInBackground(true);
+    }
   }
 
   async function preloadPoster(item) {
@@ -424,16 +447,6 @@ function nonNegativeParam(name, fallback) {
       img.onerror = resolve;
       img.src = item.url + (item.v || "");
     });
-  }
-
-  function showPosterScene() {
-    calendarScene.style.display = "none";
-    posterScene.style.display = "block";
-  }
-
-  function showCalendarScene() {
-    posterScene.style.display = "none";
-    calendarScene.style.display = "block";
   }
 
   function swapToPoster(item) {
@@ -447,30 +460,36 @@ function nonNegativeParam(name, fallback) {
     frontIsA = !frontIsA;
   }
 
-  function loadCalendarFrame(forceReload = true) {
-    const thisLoadId = ++calendarFrameLoadId;
+  function refreshCalendarInBackground(forceReload = true) {
+    if (calendarSlideSeconds <= 0) {
+      calendarReady = false;
+      return Promise.resolve(false);
+    }
 
-    return new Promise((resolve) => {
+    if (calendarLoadingPromise) return calendarLoadingPromise;
+
+    calendarReady = false;
+
+    calendarLoadingPromise = new Promise((resolve) => {
       let settled = false;
 
-      function done() {
-        if (settled || thisLoadId !== calendarFrameLoadId) return;
+      function finish(ok) {
+        if (settled) return;
         settled = true;
-        calendarLoading.style.display = "none";
-        resolve();
+        calendarReady = !!ok;
+        calendarLoadingPromise = null;
+        resolve(!!ok);
       }
-
-      calendarLoading.style.display = "flex";
 
       const timer = setTimeout(() => {
         calendarFrame.removeEventListener("load", onLoad);
-        done();
+        finish(false);
       }, CALENDAR_FRAME_TIMEOUT_MS);
 
       function onLoad() {
         clearTimeout(timer);
         calendarFrame.removeEventListener("load", onLoad);
-        done();
+        finish(true);
       }
 
       calendarFrame.addEventListener("load", onLoad, { once: true });
@@ -481,9 +500,17 @@ function nonNegativeParam(name, fallback) {
       } else {
         clearTimeout(timer);
         calendarFrame.removeEventListener("load", onLoad);
-        done();
+        finish(true);
       }
     });
+
+    return calendarLoadingPromise;
+  }
+
+  async function ensureCalendarReady() {
+    if (calendarSlideSeconds <= 0) return false;
+    if (calendarReady && calendarFrame.src) return true;
+    return await refreshCalendarInBackground(true);
   }
 
   async function tick() {
@@ -496,18 +523,32 @@ function nonNegativeParam(name, fallback) {
     idx += 1;
 
     if (item.kind === "calendar") {
-      showCalendarScene();
-      await loadCalendarFrame(true);
+      const ready = await ensureCalendarReady();
 
-      setTimeout(() => {
-        showPosterScene();
+      if (!ready) {
+        setTimeout(tick, 1000);
+        return;
+      }
+
+      await fadeToCalendar();
+
+      setTimeout(async () => {
+        await fadeToPoster();
+
+        if (calendarSlideSeconds > 0 && !isCalendarActive()) {
+          void refreshCalendarInBackground(true);
+        }
+
         tick();
       }, (item.seconds || 15) * 1000);
 
       return;
     }
 
-    showPosterScene();
+    if (isCalendarActive()) {
+      await fadeToPoster();
+    }
+
     await preloadPoster(item);
     swapToPoster(item);
 
@@ -527,22 +568,13 @@ function nonNegativeParam(name, fallback) {
   }
 
   await load();
+  await primeFirstPoster();
 
   if (calendarSlideSeconds > 0) {
-    showCalendarScene();
-    await loadCalendarFrame(true);
-
-    idx = 1;
-
-    setTimeout(() => {
-      showPosterScene();
-      tick();
-    }, calendarSlideSeconds * 1000);
-  } else {
-    showPosterScene();
-    tick();
+    void refreshCalendarInBackground(true);
   }
 
+  tick();
   scheduleReload();
 })();
 </script>
