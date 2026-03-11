@@ -33,6 +33,7 @@
     #posterScene.active,
     #calendarScene.active {
       opacity: 1;
+      pointer-events: auto;
     }
 
     .stage {
@@ -82,7 +83,7 @@
 <body>
   <div id="empty">No film landscape posters available.</div>
 
-  <div id="posterScene" class="active">
+  <div id="posterScene">
     <div class="stage">
       <img id="a" class="layer show" alt="">
       <img id="b" class="layer" alt="">
@@ -434,10 +435,6 @@
     if (changed) idx = 0;
 
     emptyEl.style.display = items.length ? "none" : "flex";
-
-    if (calendarSlideSeconds > 0 && !isCalendarActive() && !calendarLoadingPromise) {
-      void refreshCalendarInBackground(true);
-    }
   }
 
   async function preloadPoster(item) {
@@ -535,7 +532,7 @@
       setTimeout(async () => {
         await fadeToPoster();
 
-        if (calendarSlideSeconds > 0 && !isCalendarActive()) {
+        if (calendarSlideSeconds > 0) {
           void refreshCalendarInBackground(true);
         }
 
@@ -547,6 +544,10 @@
 
     if (isCalendarActive()) {
       await fadeToPoster();
+
+      if (calendarSlideSeconds > 0) {
+        void refreshCalendarInBackground(true);
+      }
     }
 
     await preloadPoster(item);
@@ -568,13 +569,38 @@
   }
 
   await load();
-  await primeFirstPoster();
 
-  if (calendarSlideSeconds > 0) {
-    void refreshCalendarInBackground(true);
+  posterScene.classList.remove("active");
+  calendarScene.classList.remove("active");
+
+  const startsWithCalendar = items[0]?.kind === "calendar";
+
+  if (startsWithCalendar) {
+    const ready = await refreshCalendarInBackground(true);
+
+    if (ready) {
+      calendarScene.classList.add("active");
+      idx = 1;
+
+      setTimeout(() => {
+        tick();
+      }, calendarSlideSeconds * 1000);
+    } else {
+      await primeFirstPoster();
+      posterScene.classList.add("active");
+      tick();
+    }
+  } else {
+    await primeFirstPoster();
+    posterScene.classList.add("active");
+
+    if (calendarSlideSeconds > 0) {
+      void refreshCalendarInBackground(true);
+    }
+
+    tick();
   }
 
-  tick();
   scheduleReload();
 })();
 </script>
