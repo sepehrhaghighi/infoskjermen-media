@@ -1,180 +1,216 @@
 <!doctype html>
-<html>
+<html lang="no">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Arrangements – Landscape</title>
   <style>
     html, body {
-      margin:0;
-      height:100%;
-      background:#000;
-      overflow:hidden;
+      margin: 0;
+      height: 100%;
+      background: #000;
+      overflow: hidden;
     }
 
-    .stage{
-      position:relative;
-      width:100%;
-      height:100%;
-      z-index:1;
-      background:#000;
-    }
-
-    .layer{
-      position:absolute;
-      inset:0;
-      opacity:0;
+    #posterScene,
+    #calendarScene {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      pointer-events: none;
       transition: opacity 900ms ease-in-out;
       will-change: opacity;
-      background:#000;
+      background: #000;
     }
 
-    .layer.show{
-      opacity:1;
+    #posterScene {
+      z-index: 1;
     }
 
-    .mediaImg,
-    .mediaFrame{
-      position:absolute;
-      inset:0;
-      width:100%;
-      height:100%;
-      display:block;
-      border:0;
-      background:#000;
+    #calendarScene {
+      z-index: 2;
     }
 
-    .mediaImg{
-      object-fit:contain;
+    #posterScene.active,
+    #calendarScene.active {
+      opacity: 1;
+      pointer-events: auto;
     }
 
-    .mediaFrame{
-      border:0;
+    .stage {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      background: #000;
     }
 
-    #empty{
-      position:fixed;
-      inset:0;
-      display:none;
-      align-items:center;
-      justify-content:center;
-      color:#fff;
-      background:#000;
-      text-align:center;
-      padding:40px;
-      font:26px/1.2 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-      z-index:2000;
+    .layer {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      transition: opacity 900ms ease-in-out;
+      will-change: opacity;
+      background: #000;
     }
 
-    .qrWrap{
-      position:fixed;
-      right:20px;
-      bottom:20px;
-      z-index:1000;
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      gap:10px;
-      pointer-events:none;
+    .layer.show {
+      opacity: 1;
+    }
 
-      opacity:0;
+    .mediaImg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      border: 0;
+      background: #000;
+      object-fit: contain;
+    }
+
+    #calendarFrame {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      border: 0;
+      background: #000;
+    }
+
+    #empty {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      background: #000;
+      text-align: center;
+      padding: 40px;
+      font: 26px/1.2 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      z-index: 2000;
+    }
+
+    .qrWrap {
+      position: fixed;
+      right: 20px;
+      bottom: 20px;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      pointer-events: none;
+      opacity: 0;
       transition: opacity 900ms ease-in-out;
       will-change: opacity;
     }
 
-    .qrWrap.show{
-      opacity:1;
+    .qrWrap.show {
+      opacity: 1;
     }
 
-    .qrImg{
-      width:146px;
-      height:146px;
-      object-fit:contain;
-      background:rgba(255,255,255,0.97);
-      padding:10px;
-      border-radius:16px;
+    .qrImg {
+      width: 146px;
+      height: 146px;
+      object-fit: contain;
+      background: rgba(255,255,255,0.97);
+      padding: 10px;
+      border-radius: 16px;
       box-shadow:
         0 14px 34px rgba(0,0,0,0.50),
         0 3px 10px rgba(0,0,0,0.30);
     }
 
-    .qrText{
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      gap:4px;
-      color:#fff;
-      background:rgba(0,0,0,0.74);
-      padding:9px 14px;
-      border-radius:14px;
+    .qrText {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      color: #fff;
+      background: rgba(0,0,0,0.74);
+      padding: 9px 14px;
+      border-radius: 14px;
       box-shadow:
         0 10px 24px rgba(0,0,0,0.38),
         0 2px 8px rgba(0,0,0,0.24);
-      text-align:center;
-      line-height:1.15;
-      white-space:nowrap;
+      text-align: center;
+      line-height: 1.15;
+      white-space: nowrap;
     }
 
-    .qrMain{
-      font:16px/1.15 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-      letter-spacing:0.2px;
+    .qrMain {
+      font: 16px/1.15 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      letter-spacing: 0.2px;
     }
 
-    .qrSub{
-      font:14px/1.15 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-      opacity:0.95;
-      letter-spacing:0.15px;
+    .qrSub {
+      font: 14px/1.15 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      opacity: 0.95;
+      letter-spacing: 0.15px;
     }
 
-    .dateLayer{
-      position:fixed;
-      left:22px;
-      bottom:22px;
-      z-index:900;
-      opacity:0;
+    .dateLayer {
+      position: fixed;
+      left: 22px;
+      bottom: 22px;
+      z-index: 900;
+      opacity: 0;
       transition: opacity 900ms ease-in-out;
       will-change: opacity;
 
-      color:#fff;
-      background:rgba(0,0,0,0.74);
-      padding:10px 16px;
-      border-radius:14px;
+      color: #fff;
+      background: rgba(0,0,0,0.74);
+      padding: 10px 16px;
+      border-radius: 14px;
       box-shadow:
         0 10px 26px rgba(0,0,0,0.45),
         0 2px 8px rgba(0,0,0,0.28);
 
-      font:24px/1.2 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-      letter-spacing:0.2px;
-      pointer-events:none;
-      white-space:nowrap;
-      max-width:calc(100vw - 260px);
-      overflow:hidden;
-      text-overflow:ellipsis;
+      font: 24px/1.2 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      letter-spacing: 0.2px;
+      pointer-events: none;
+      white-space: nowrap;
+      max-width: calc(100vw - 260px);
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
-    .dateLayer.show{
-      opacity:1;
+    .dateLayer.show {
+      opacity: 1;
     }
   </style>
 </head>
 <body>
   <div id="empty">No arrangement landscape posters available.</div>
 
-  <div class="stage">
-    <div id="a" class="layer show"></div>
-    <div id="b" class="layer"></div>
-  </div>
-
-  <div id="qrWrap" class="qrWrap">
-    <img id="qrImg" class="qrImg" src="./assets/QR.png" alt="QR code" onerror="this.style.opacity='0';">
-    <div class="qrText">
-      <div class="qrMain">Les mer - Kjøp billett</div>
-      <div class="qrSub">www.amotkulturhus.no</div>
+  <div id="posterScene">
+    <div class="stage">
+      <div id="a" class="layer show"></div>
+      <div id="b" class="layer"></div>
     </div>
+
+    <div id="qrWrap" class="qrWrap">
+      <img id="qrImg" class="qrImg" src="./assets/QR.png" alt="QR code" onerror="this.style.opacity='0';">
+      <div class="qrText">
+        <div class="qrMain">Les mer - Kjøp billett</div>
+        <div class="qrSub">www.amotkulturhus.no</div>
+      </div>
+    </div>
+
+    <div id="dateA" class="dateLayer"></div>
+    <div id="dateB" class="dateLayer"></div>
   </div>
 
-  <div id="dateA" class="dateLayer"></div>
-  <div id="dateB" class="dateLayer"></div>
+  <div id="calendarScene">
+    <iframe
+      id="calendarFrame"
+      title="Kalenderslide"
+      loading="eager"
+      referrerpolicy="no-referrer-when-downgrade"
+    ></iframe>
+  </div>
 
 <script>
 (async () => {
@@ -182,6 +218,10 @@
   const MANIFEST_URL = "./assets/arrangements.json";
   const CALENDAR_SLIDE_URL = "https://sepehrhaghighi.github.io/infoskjermen-media/calendar-slide.html";
   const FIELD = "landscape";
+
+  const CONFIG_TIMEOUT_MS = 7000;
+  const CALENDAR_FRAME_TIMEOUT_MS = 12000;
+  const CONFIG_CACHE_KEY = "infoskjermenSharedConfigFromService";
 
   let posterSeconds = 12;
   let calendarSlideSeconds = 0;
@@ -191,33 +231,91 @@
   let refreshTimer = null;
   let tickTimer = null;
 
-  /*
-    items:
-    { kind: "image", url, date, seconds }
-    { kind: "calendar", url, seconds }
-  */
   let items = [];
   let idx = 0;
   let frontIsA = true;
   let version = "";
 
+  let calendarReady = false;
+  let calendarLoadingPromise = null;
+
   const emptyEl = document.getElementById("empty");
+  const posterScene = document.getElementById("posterScene");
+  const calendarScene = document.getElementById("calendarScene");
+  const calendarFrame = document.getElementById("calendarFrame");
+
   const A = document.getElementById("a");
   const B = document.getElementById("b");
   const dateA = document.getElementById("dateA");
   const dateB = document.getElementById("dateB");
   const qrWrap = document.getElementById("qrWrap");
 
-  function positiveParam(name, fallback) {
+  function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  function readNumericParam(name) {
     const v = new URLSearchParams(location.search).get(name);
+    if (v === null || v === "") return null;
+
     const n = Number(v);
-    return Number.isFinite(n) && n > 0 ? n : fallback;
+    return Number.isFinite(n) ? n : null;
+  }
+
+  function positiveParam(name, fallback) {
+    const n = readNumericParam(name);
+    return n !== null && n > 0 ? n : fallback;
   }
 
   function nonNegativeParam(name, fallback) {
-    const v = new URLSearchParams(location.search).get(name);
-    const n = Number(v);
-    return Number.isFinite(n) && n >= 0 ? n : fallback;
+    const n = readNumericParam(name);
+    return n !== null && n >= 0 ? n : fallback;
+  }
+
+  function pickNumber(...values) {
+    for (const value of values) {
+      if (value === "" || value == null) continue;
+      const n = Number(value);
+      if (Number.isFinite(n)) return n;
+    }
+    return null;
+  }
+
+  function readCachedConfig() {
+    try {
+      return JSON.parse(localStorage.getItem(CONFIG_CACHE_KEY) || "{}");
+    } catch {
+      return {};
+    }
+  }
+
+  function writeCachedConfig(cfg) {
+    try {
+      localStorage.setItem(CONFIG_CACHE_KEY, JSON.stringify(cfg || {}));
+    } catch {}
+  }
+
+  function normalizeConfig(raw) {
+    if (!raw) return {};
+    if (typeof raw === "string") {
+      try { return JSON.parse(raw); } catch { return {}; }
+    }
+    if (raw.data && typeof raw.data === "object") return raw.data;
+    if (raw.config && typeof raw.config === "object") return raw.config;
+    if (typeof raw === "object") return raw;
+    return {};
+  }
+
+  function isMeaningfulCfg(raw) {
+    const cfg = normalizeConfig(raw);
+    const refresh = cfg.manifestRefreshSeconds ?? cfg.refreshSeconds;
+
+    return (
+      pickNumber(cfg.posterSeconds) !== null ||
+      pickNumber(cfg.calendarSlideSeconds) !== null ||
+      pickNumber(cfg.fadeMs) !== null ||
+      pickNumber(refresh) !== null
+    );
   }
 
   function parseDateParts(value) {
@@ -274,33 +372,55 @@
     return `${dateText} kl. ${beginTime} - ${endTime}`;
   }
 
-  async function fetchJson(url) {
-    const r = await fetch(url, { cache: "no-store" });
-    if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
-    return await r.json();
+  async function fetchJson(url, timeoutMs = 12000) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const r = await fetch(url, {
+        cache: "no-store",
+        signal: controller.signal
+      });
+      if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+      return await r.json();
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
-  function loadConfigJSONP(timeoutMs = 4000) {
+  function loadConfigJSONP(extraParams = {}, timeoutMs = CONFIG_TIMEOUT_MS) {
     return new Promise((resolve) => {
       const cbName = "__cfgcb_" + Math.random().toString(16).slice(2);
-      let done = false;
+      let finished = false;
+      let called = false;
 
       window[cbName] = (cfg) => {
-        done = true;
-        cleanup();
-        resolve(cfg || {});
+        called = true;
+        finish(cfg || {});
       };
 
+      const params = new URLSearchParams({
+        callback: cbName,
+        _: String(Date.now()),
+        ...Object.fromEntries(
+          Object.entries(extraParams).filter(([, v]) => v != null && String(v).length > 0)
+        )
+      });
+
       const s = document.createElement("script");
-      s.src = CONFIG_SERVICE_URL + "?callback=" + cbName + "&_=" + Date.now();
-      s.onerror = () => { cleanup(); resolve({}); };
+      s.src = CONFIG_SERVICE_URL + "?" + params.toString();
+
+      s.onerror = () => finish({});
+      s.onload = () => {
+        setTimeout(() => {
+          if (!finished && !called) finish({});
+        }, 250);
+      };
+
       document.head.appendChild(s);
 
       const t = setTimeout(() => {
-        if (!done) {
-          cleanup();
-          resolve({});
-        }
+        if (!finished) finish({});
       }, timeoutMs);
 
       function cleanup() {
@@ -308,7 +428,30 @@
         try { delete window[cbName]; } catch {}
         s.remove();
       }
+
+      function finish(val) {
+        if (finished) return;
+        finished = true;
+        cleanup();
+        resolve(val);
+      }
     });
+  }
+
+  async function loadConfigFromService(timeoutMs = CONFIG_TIMEOUT_MS) {
+    try {
+      const raw = await loadConfigJSONP({}, timeoutMs);
+      const cfg = normalizeConfig(raw);
+
+      if (isMeaningfulCfg(cfg)) {
+        writeCachedConfig(cfg);
+        return cfg;
+      }
+    } catch (err) {
+      console.error("Config service read failed:", err);
+    }
+
+    return normalizeConfig(readCachedConfig());
   }
 
   function itemsChanged(nextItems) {
@@ -319,7 +462,7 @@
       const b = items[i];
       if (!b) return true;
       if (a.kind !== b.kind) return true;
-      if (a.url !== b.url) return true;
+      if ((a.url || "") !== (b.url || "")) return true;
       if ((a.date || "") !== (b.date || "")) return true;
       if ((a.seconds || 0) !== (b.seconds || 0)) return true;
     }
@@ -327,28 +470,206 @@
     return false;
   }
 
+  function applyFadeDurations() {
+    const dur = fadeMs + "ms";
+    A.style.transitionDuration = dur;
+    B.style.transitionDuration = dur;
+    dateA.style.transitionDuration = dur;
+    dateB.style.transitionDuration = dur;
+    qrWrap.style.transitionDuration = dur;
+    posterScene.style.transitionDuration = dur;
+    calendarScene.style.transitionDuration = dur;
+  }
+
+  function isCalendarActive() {
+    return calendarScene.classList.contains("active");
+  }
+
+  async function fadeToCalendar() {
+    if (isCalendarActive()) return;
+    calendarScene.classList.add("active");
+    posterScene.classList.remove("active");
+    if (fadeMs > 0) await sleep(fadeMs);
+  }
+
+  async function fadeToPoster() {
+    if (!isCalendarActive()) return;
+    posterScene.classList.add("active");
+    calendarScene.classList.remove("active");
+    if (fadeMs > 0) await sleep(fadeMs);
+  }
+
+  function clearLayer(el) {
+    while (el.firstChild) el.removeChild(el.firstChild);
+  }
+
+  function setLayerImage(el, item) {
+    clearLayer(el);
+
+    const img = document.createElement("img");
+    img.className = "mediaImg";
+    img.alt = "";
+    img.src = item.url + version;
+    el.appendChild(img);
+  }
+
+  function setPosterImmediate(item) {
+    setLayerImage(A, item);
+    A.classList.add("show");
+    B.classList.remove("show");
+
+    const text = (item.date || "").trim();
+    dateA.textContent = text;
+    dateB.textContent = "";
+    if (text) {
+      dateA.classList.add("show");
+    } else {
+      dateA.classList.remove("show");
+    }
+    dateB.classList.remove("show");
+
+    qrWrap.classList.add("show");
+    frontIsA = true;
+  }
+
+  async function preloadPoster(item) {
+    if (!item || item.kind !== "image") return;
+
+    await new Promise((resolve) => {
+      const img = new Image();
+      img.onload = resolve;
+      img.onerror = resolve;
+      img.src = item.url + version;
+    });
+  }
+
+  async function primeFirstPoster() {
+    const firstPoster = items.find((it) => it.kind === "image");
+    if (!firstPoster) return;
+    await preloadPoster(firstPoster);
+    setPosterImmediate(firstPoster);
+  }
+
+  function swapToPoster(item) {
+    const frontLayer = frontIsA ? A : B;
+    const backLayer = frontIsA ? B : A;
+    const frontDate = frontIsA ? dateA : dateB;
+    const backDate = frontIsA ? dateB : dateA;
+
+    setLayerImage(backLayer, item);
+
+    const text = (item.date || "").trim();
+    backDate.textContent = text;
+
+    if (text) {
+      backDate.classList.add("show");
+    } else {
+      backDate.classList.remove("show");
+    }
+
+    qrWrap.classList.add("show");
+
+    backLayer.classList.add("show");
+    frontLayer.classList.remove("show");
+    frontDate.classList.remove("show");
+
+    frontIsA = !frontIsA;
+  }
+
+  function refreshCalendarInBackground(forceReload = true) {
+    if (calendarSlideSeconds <= 0) {
+      calendarReady = false;
+      return Promise.resolve(false);
+    }
+
+    if (calendarLoadingPromise) return calendarLoadingPromise;
+
+    calendarReady = false;
+
+    calendarLoadingPromise = new Promise((resolve) => {
+      let settled = false;
+
+      function finish(ok) {
+        if (settled) return;
+        settled = true;
+        calendarReady = !!ok;
+        calendarLoadingPromise = null;
+        resolve(!!ok);
+      }
+
+      const timer = setTimeout(() => {
+        calendarFrame.removeEventListener("load", onLoad);
+        finish(false);
+      }, CALENDAR_FRAME_TIMEOUT_MS);
+
+      function onLoad() {
+        clearTimeout(timer);
+        calendarFrame.removeEventListener("load", onLoad);
+        finish(true);
+      }
+
+      calendarFrame.addEventListener("load", onLoad, { once: true });
+
+      if (forceReload || !calendarFrame.src) {
+        const sep = CALENDAR_SLIDE_URL.includes("?") ? "&" : "?";
+        calendarFrame.src = CALENDAR_SLIDE_URL + sep + "_=" + Date.now();
+      } else {
+        clearTimeout(timer);
+        calendarFrame.removeEventListener("load", onLoad);
+        finish(true);
+      }
+    });
+
+    return calendarLoadingPromise;
+  }
+
+  async function ensureCalendarReady() {
+    if (calendarSlideSeconds <= 0) return false;
+    if (calendarReady && calendarFrame.src) return true;
+    return await refreshCalendarInBackground(true);
+  }
+
   async function load() {
+    const cachedCfg = readCachedConfig();
+
     const [cfg, data] = await Promise.all([
-      loadConfigJSONP(),
-      fetchJson(MANIFEST_URL)
+      loadConfigFromService(CONFIG_TIMEOUT_MS),
+      fetchJson(MANIFEST_URL, 12000)
     ]);
 
-    posterSeconds = positiveParam("p", cfg.posterSeconds ?? 12);
-    calendarSlideSeconds = nonNegativeParam("cal", cfg.calendarSlideSeconds ?? 0);
-    fadeMs = positiveParam("fade", cfg.fadeMs ?? 900);
-    refreshSeconds = positiveParam("r", cfg.manifestRefreshSeconds ?? 300);
+    posterSeconds = positiveParam(
+      "p",
+      pickNumber(cfg.posterSeconds, cachedCfg.posterSeconds, 12)
+    );
 
-    A.style.transitionDuration = fadeMs + "ms";
-    B.style.transitionDuration = fadeMs + "ms";
-    dateA.style.transitionDuration = fadeMs + "ms";
-    dateB.style.transitionDuration = fadeMs + "ms";
-    if (qrWrap) qrWrap.style.transitionDuration = fadeMs + "ms";
+    calendarSlideSeconds = nonNegativeParam(
+      "cal",
+      pickNumber(cfg.calendarSlideSeconds, cachedCfg.calendarSlideSeconds, 0)
+    );
+
+    fadeMs = positiveParam(
+      "fade",
+      pickNumber(cfg.fadeMs, cachedCfg.fadeMs, 900)
+    );
+
+    refreshSeconds = positiveParam(
+      "r",
+      pickNumber(
+        cfg.manifestRefreshSeconds,
+        cfg.refreshSeconds,
+        cachedCfg.manifestRefreshSeconds,
+        cachedCfg.refreshSeconds,
+        300
+      )
+    );
+
+    applyFadeDurations();
 
     version = data.updated ? ("?v=" + encodeURIComponent(data.updated)) : "";
 
     let nextItems = (data.arrangements || [])
-      .filter(x => x?.[FIELD])
-      .map(x => ({
+      .filter((x) => x?.[FIELD])
+      .map((x) => ({
         kind: "image",
         url: x[FIELD],
         date: formatArrangementDateTimeRange(x.begin, x.end),
@@ -369,76 +690,10 @@
     if (changed) idx = 0;
 
     emptyEl.style.display = items.length ? "none" : "flex";
-  }
 
-  async function preload(item) {
-    if (!item) return;
-
-    if (item.kind === "image") {
-      await new Promise(resolve => {
-        const img = new Image();
-        img.onload = resolve;
-        img.onerror = resolve;
-        img.src = item.url + version;
-      });
+    if (calendarSlideSeconds > 0 && !isCalendarActive() && !calendarLoadingPromise) {
+      void refreshCalendarInBackground(true);
     }
-  }
-
-  function clearLayer(el) {
-    while (el.firstChild) el.removeChild(el.firstChild);
-  }
-
-  function setLayerContent(el, item) {
-    clearLayer(el);
-
-    if (item.kind === "calendar") {
-      const frame = document.createElement("iframe");
-      frame.className = "mediaFrame";
-      frame.setAttribute("title", "Calendar slide");
-      frame.setAttribute("loading", "eager");
-      frame.setAttribute("referrerpolicy", "no-referrer");
-      frame.src = item.url + (item.url.indexOf("?") === -1 ? "?_=" : "&_=") + Date.now();
-      el.appendChild(frame);
-      return;
-    }
-
-    const img = document.createElement("img");
-    img.className = "mediaImg";
-    img.alt = "";
-    img.src = item.url + version;
-    el.appendChild(img);
-  }
-
-  function swapTo(item) {
-    const frontLayer = frontIsA ? A : B;
-    const backLayer = frontIsA ? B : A;
-    const frontDate = frontIsA ? dateA : dateB;
-    const backDate = frontIsA ? dateB : dateA;
-
-    setLayerContent(backLayer, item);
-
-    if (item.kind === "image") {
-      const text = (item.date || "").trim();
-      backDate.textContent = text;
-
-      if (text) {
-        backDate.classList.add("show");
-      } else {
-        backDate.classList.remove("show");
-      }
-
-      if (qrWrap) qrWrap.classList.add("show");
-    } else {
-      backDate.textContent = "";
-      backDate.classList.remove("show");
-      if (qrWrap) qrWrap.classList.remove("show");
-    }
-
-    backLayer.classList.add("show");
-    frontLayer.classList.remove("show");
-    frontDate.classList.remove("show");
-
-    frontIsA = !frontIsA;
   }
 
   async function tick() {
@@ -450,8 +705,39 @@
     const item = items[idx % items.length];
     idx += 1;
 
-    await preload(item);
-    swapTo(item);
+    if (item.kind === "calendar") {
+      const ready = await ensureCalendarReady();
+
+      if (!ready) {
+        tickTimer = setTimeout(tick, 1000);
+        return;
+      }
+
+      await fadeToCalendar();
+
+      tickTimer = setTimeout(async () => {
+        await fadeToPoster();
+
+        if (calendarSlideSeconds > 0) {
+          void refreshCalendarInBackground(true);
+        }
+
+        tick();
+      }, (item.seconds || 15) * 1000);
+
+      return;
+    }
+
+    if (isCalendarActive()) {
+      await fadeToPoster();
+
+      if (calendarSlideSeconds > 0) {
+        void refreshCalendarInBackground(true);
+      }
+    }
+
+    await preloadPoster(item);
+    swapToPoster(item);
 
     tickTimer = setTimeout(tick, (item.seconds || posterSeconds) * 1000);
   }
@@ -461,13 +747,49 @@
     refreshTimer = setTimeout(async () => {
       try {
         await load();
-      } catch {}
+      } catch (err) {
+        console.error("Manifest/config reload failed:", err);
+      }
       scheduleReload();
     }, refreshSeconds * 1000);
   }
 
   await load();
-  tick();
+
+  posterScene.classList.remove("active");
+  calendarScene.classList.remove("active");
+
+  const startsWithCalendar = items[0]?.kind === "calendar";
+
+  if (startsWithCalendar) {
+    const ready = await refreshCalendarInBackground(true);
+
+    if (ready) {
+      qrWrap.classList.remove("show");
+      dateA.classList.remove("show");
+      dateB.classList.remove("show");
+      calendarScene.classList.add("active");
+      idx = 1;
+
+      tickTimer = setTimeout(() => {
+        tick();
+      }, calendarSlideSeconds * 1000);
+    } else {
+      await primeFirstPoster();
+      posterScene.classList.add("active");
+      tick();
+    }
+  } else {
+    await primeFirstPoster();
+    posterScene.classList.add("active");
+
+    if (calendarSlideSeconds > 0) {
+      void refreshCalendarInBackground(true);
+    }
+
+    tick();
+  }
+
   scheduleReload();
 })();
 </script>
