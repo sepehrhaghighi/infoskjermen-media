@@ -158,6 +158,15 @@
     return Number.isFinite(n) && n >= 0 ? n : fallback;
   }
 
+  function pickNumber(...values) {
+    for (const value of values) {
+      if (value === "" || value == null) continue;
+      const n = Number(value);
+      if (Number.isFinite(n)) return n;
+    }
+    return null;
+  }
+
   function readCachedConfig() {
     try {
       return JSON.parse(localStorage.getItem(CONFIG_CACHE_KEY) || "{}");
@@ -186,11 +195,12 @@
   function isMeaningfulCfg(raw) {
     const cfg = normalizeConfig(raw);
     const refresh = cfg.manifestRefreshSeconds ?? cfg.refreshSeconds;
+
     return (
-      cfg.posterSeconds != null ||
-      cfg.calendarSlideSeconds != null ||
-      cfg.fadeMs != null ||
-      refresh != null
+      pickNumber(cfg.posterSeconds) !== null ||
+      pickNumber(cfg.calendarSlideSeconds) !== null ||
+      pickNumber(cfg.fadeMs) !== null ||
+      pickNumber(refresh) !== null
     );
   }
 
@@ -336,17 +346,41 @@
       fetchJson(MANIFEST_URL, 12000)
     ]);
 
-    posterSeconds = positiveParam("p", cfg.posterSeconds ?? cachedCfg.posterSeconds ?? 12);
-    calendarSlideSeconds = nonNegativeParam("cal", cfg.calendarSlideSeconds ?? cachedCfg.calendarSlideSeconds ?? 0);
-    fadeMs = positiveParam("fade", cfg.fadeMs ?? cachedCfg.fadeMs ?? 900);
+    posterSeconds = positiveParam(
+      "p",
+      pickNumber(cfg.posterSeconds, cachedCfg.posterSeconds, 12)
+    );
+
+    calendarSlideSeconds = nonNegativeParam(
+      "cal",
+      pickNumber(cfg.calendarSlideSeconds, cachedCfg.calendarSlideSeconds, 0)
+    );
+
+    fadeMs = positiveParam(
+      "fade",
+      pickNumber(cfg.fadeMs, cachedCfg.fadeMs, 900)
+    );
+
     refreshSeconds = positiveParam(
       "r",
-      cfg.manifestRefreshSeconds ??
-      cfg.refreshSeconds ??
-      cachedCfg.manifestRefreshSeconds ??
-      cachedCfg.refreshSeconds ??
-      300
+      pickNumber(
+        cfg.manifestRefreshSeconds,
+        cfg.refreshSeconds,
+        cachedCfg.manifestRefreshSeconds,
+        cachedCfg.refreshSeconds,
+        300
+      )
     );
+
+    console.log("LANDSCAPE CONFIG DEBUG", {
+      cfg,
+      cachedCfg,
+      posterSeconds,
+      calendarSlideSeconds,
+      fadeMs,
+      refreshSeconds,
+      search: location.search
+    });
 
     A.style.transitionDuration = fadeMs + "ms";
     B.style.transitionDuration = fadeMs + "ms";
