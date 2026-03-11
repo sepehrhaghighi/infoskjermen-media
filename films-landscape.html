@@ -146,17 +146,23 @@
   const calendarFrame = document.getElementById("calendarFrame");
   const calendarLoading = document.getElementById("calendarLoading");
 
-  function positiveParam(name, fallback) {
+  function readNumericParam(name) {
     const v = new URLSearchParams(location.search).get(name);
+    if (v === null || v === "") return null;
+
     const n = Number(v);
-    return Number.isFinite(n) && n > 0 ? n : fallback;
+    return Number.isFinite(n) ? n : null;
   }
 
-  function nonNegativeParam(name, fallback) {
-    const v = new URLSearchParams(location.search).get(name);
-    const n = Number(v);
-    return Number.isFinite(n) && n >= 0 ? n : fallback;
+  function positiveParam(name, fallback) {
+    const n = readNumericParam(name);
+    return n !== null && n > 0 ? n : fallback;
   }
+
+function nonNegativeParam(name, fallback) {
+  const n = readNumericParam(name);
+  return n !== null && n >= 0 ? n : fallback;
+}
 
   function pickNumber(...values) {
     for (const value of values) {
