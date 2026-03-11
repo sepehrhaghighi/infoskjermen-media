@@ -23,13 +23,8 @@
       background: #000;
     }
 
-    #posterScene {
-      z-index: 1;
-    }
-
-    #calendarScene {
-      z-index: 2;
-    }
+    #posterScene { z-index: 1; }
+    #calendarScene { z-index: 2; }
 
     #posterScene.active,
     #calendarScene.active {
@@ -53,9 +48,7 @@
       background: #000;
     }
 
-    .layer.show {
-      opacity: 1;
-    }
+    .layer.show { opacity: 1; }
 
     .mediaImg {
       position: absolute;
@@ -107,9 +100,7 @@
       will-change: opacity;
     }
 
-    .qrWrap.show {
-      opacity: 1;
-    }
+    .qrWrap.show { opacity: 1; }
 
     .qrImg {
       width: 146px;
@@ -159,7 +150,6 @@
       opacity: 0;
       transition: opacity 900ms ease-in-out;
       will-change: opacity;
-
       color: #fff;
       background: rgba(0,0,0,0.74);
       padding: 10px 16px;
@@ -167,7 +157,6 @@
       box-shadow:
         0 10px 26px rgba(0,0,0,0.45),
         0 2px 8px rgba(0,0,0,0.28);
-
       font: 24px/1.2 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
       letter-spacing: 0.2px;
       pointer-events: none;
@@ -177,9 +166,7 @@
       text-overflow: ellipsis;
     }
 
-    .dateLayer.show {
-      opacity: 1;
-    }
+    .dateLayer.show { opacity: 1; }
   </style>
 </head>
 <body>
@@ -257,7 +244,6 @@
   function readNumericParam(name) {
     const v = new URLSearchParams(location.search).get(name);
     if (v === null || v === "") return null;
-
     const n = Number(v);
     return Number.isFinite(n) ? n : null;
   }
@@ -309,7 +295,6 @@
   function isMeaningfulCfg(raw) {
     const cfg = normalizeConfig(raw);
     const refresh = cfg.manifestRefreshSeconds ?? cfg.refreshSeconds;
-
     return (
       pickNumber(cfg.posterSeconds) !== null ||
       pickNumber(cfg.calendarSlideSeconds) !== null ||
@@ -521,11 +506,8 @@
     const text = (item.date || "").trim();
     dateA.textContent = text;
     dateB.textContent = "";
-    if (text) {
-      dateA.classList.add("show");
-    } else {
-      dateA.classList.remove("show");
-    }
+    if (text) dateA.classList.add("show");
+    else dateA.classList.remove("show");
     dateB.classList.remove("show");
 
     qrWrap.classList.add("show");
@@ -561,11 +543,8 @@
     const text = (item.date || "").trim();
     backDate.textContent = text;
 
-    if (text) {
-      backDate.classList.add("show");
-    } else {
-      backDate.classList.remove("show");
-    }
+    if (text) backDate.classList.add("show");
+    else backDate.classList.remove("show");
 
     qrWrap.classList.add("show");
 
@@ -690,10 +669,6 @@
     if (changed) idx = 0;
 
     emptyEl.style.display = items.length ? "none" : "flex";
-
-    if (calendarSlideSeconds > 0 && !isCalendarActive() && !calendarLoadingPromise) {
-      void refreshCalendarInBackground(true);
-    }
   }
 
   async function tick() {
@@ -716,28 +691,42 @@
       await fadeToCalendar();
 
       tickTimer = setTimeout(async () => {
+        const nextItem = items[idx % items.length];
+
+        if (nextItem?.kind === "image") {
+          await preloadPoster(nextItem);
+          swapToPoster(nextItem);
+          idx += 1;
+        }
+
         await fadeToPoster();
 
         if (calendarSlideSeconds > 0) {
           void refreshCalendarInBackground(true);
         }
 
-        tick();
+        if (nextItem?.kind === "image") {
+          tickTimer = setTimeout(tick, (nextItem.seconds || posterSeconds) * 1000);
+        } else {
+          tick();
+        }
       }, (item.seconds || 15) * 1000);
 
       return;
     }
 
+    await preloadPoster(item);
+
     if (isCalendarActive()) {
+      swapToPoster(item);
       await fadeToPoster();
 
       if (calendarSlideSeconds > 0) {
         void refreshCalendarInBackground(true);
       }
+    } else {
+      swapToPoster(item);
     }
-
-    await preloadPoster(item);
-    swapToPoster(item);
 
     tickTimer = setTimeout(tick, (item.seconds || posterSeconds) * 1000);
   }
@@ -770,13 +759,13 @@
       dateB.classList.remove("show");
       calendarScene.classList.add("active");
       idx = 1;
-
-      tickTimer = setTimeout(() => {
-        tick();
-      }, calendarSlideSeconds * 1000);
+      tickTimer = setTimeout(tick, calendarSlideSeconds * 1000);
     } else {
       await primeFirstPoster();
       posterScene.classList.add("active");
+      if (calendarSlideSeconds > 0) {
+        void refreshCalendarInBackground(true);
+      }
       tick();
     }
   } else {
