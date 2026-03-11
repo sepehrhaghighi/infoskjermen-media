@@ -19,12 +19,10 @@
       opacity: 0;
       pointer-events: none;
       transition: opacity 900ms ease-in-out;
+      will-change: opacity;
     }
 
-    #posterScene {
-      z-index: 1;
-    }
-
+    #posterScene { z-index: 1; }
     #calendarScene {
       z-index: 2;
       background: #000;
@@ -53,9 +51,7 @@
       will-change: opacity;
     }
 
-    .layer.show {
-      opacity: 1;
-    }
+    .layer.show { opacity: 1; }
 
     #empty {
       position: fixed;
@@ -139,7 +135,6 @@
   function readNumericParam(name) {
     const v = new URLSearchParams(location.search).get(name);
     if (v === null || v === "") return null;
-
     const n = Number(v);
     return Number.isFinite(n) ? n : null;
   }
@@ -191,7 +186,6 @@
   function isMeaningfulCfg(raw) {
     const cfg = normalizeConfig(raw);
     const refresh = cfg.manifestRefreshSeconds ?? cfg.refreshSeconds;
-
     return (
       pickNumber(cfg.posterSeconds) !== null ||
       pickNumber(cfg.calendarSlideSeconds) !== null ||
@@ -203,7 +197,6 @@
   async function fetchJson(url, timeoutMs = 12000) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
-
     try {
       const r = await fetch(url, {
         cache: "no-store",
@@ -270,7 +263,6 @@
     try {
       const raw = await loadConfigJSONP({}, timeoutMs);
       const cfg = normalizeConfig(raw);
-
       if (isMeaningfulCfg(cfg)) {
         writeCachedConfig(cfg);
         return cfg;
@@ -360,6 +352,15 @@
     if (fadeMs > 0) await sleep(fadeMs);
   }
 
+  async function preloadPoster(item) {
+    await new Promise((resolve) => {
+      const img = new Image();
+      img.onload = resolve;
+      img.onerror = resolve;
+      img.src = item.url + (item.v || "");
+    });
+  }
+
   function setPosterImmediate(item) {
     A.src = item.url + (item.v || "");
     A.classList.add("show");
@@ -372,78 +373,6 @@
     if (!firstPoster) return;
     await preloadPoster(firstPoster);
     setPosterImmediate(firstPoster);
-  }
-
-  async function load() {
-    const cachedCfg = readCachedConfig();
-
-    const [cfg, data] = await Promise.all([
-      loadConfigFromService(CONFIG_TIMEOUT_MS),
-      fetchJson(MANIFEST_URL, 12000)
-    ]);
-
-    posterSeconds = positiveParam(
-      "p",
-      pickNumber(cfg.posterSeconds, cachedCfg.posterSeconds, 12)
-    );
-
-    calendarSlideSeconds = nonNegativeParam(
-      "cal",
-      pickNumber(cfg.calendarSlideSeconds, cachedCfg.calendarSlideSeconds, 0)
-    );
-
-    fadeMs = positiveParam(
-      "fade",
-      pickNumber(cfg.fadeMs, cachedCfg.fadeMs, 900)
-    );
-
-    refreshSeconds = positiveParam(
-      "r",
-      pickNumber(
-        cfg.manifestRefreshSeconds,
-        cfg.refreshSeconds,
-        cachedCfg.manifestRefreshSeconds,
-        cachedCfg.refreshSeconds,
-        300
-      )
-    );
-
-    applyFadeDurations();
-
-    const baseVersion = data.updated ? ("?v=" + encodeURIComponent(data.updated)) : "";
-
-    const posters = (data.films || [])
-      .map((x) => x?.[FIELD])
-      .filter(Boolean)
-      .map((url) => ({
-        kind: "poster",
-        url,
-        v: baseVersion,
-        seconds: posterSeconds
-      }));
-
-    const extraItems = await loadManualExtras(EXTRA_MANIFEST_URL, posterSeconds);
-    let nextItems = mergeUniqueItems(posters, extraItems);
-
-    if (calendarSlideSeconds > 0) {
-      nextItems.unshift({ kind: "calendar", seconds: calendarSlideSeconds });
-    }
-
-    const changed = itemsChanged(nextItems);
-    items = nextItems;
-
-    if (changed) idx = 0;
-
-    emptyEl.style.display = items.length ? "none" : "flex";
-  }
-
-  async function preloadPoster(item) {
-    await new Promise((resolve) => {
-      const img = new Image();
-      img.onload = resolve;
-      img.onerror = resolve;
-      img.src = item.url + (item.v || "");
-    });
   }
 
   function swapToPoster(item) {
@@ -510,6 +439,68 @@
     return await refreshCalendarInBackground(true);
   }
 
+  async function load() {
+    const cachedCfg = readCachedConfig();
+
+    const [cfg, data] = await Promise.all([
+      loadConfigFromService(CONFIG_TIMEOUT_MS),
+      fetchJson(MANIFEST_URL, 12000)
+    ]);
+
+    posterSeconds = positiveParam(
+      "p",
+      pickNumber(cfg.posterSeconds, cachedCfg.posterSeconds, 12)
+    );
+
+    calendarSlideSeconds = nonNegativeParam(
+      "cal",
+      pickNumber(cfg.calendarSlideSeconds, cachedCfg.calendarSlideSeconds, 0)
+    );
+
+    fadeMs = positiveParam(
+      "fade",
+      pickNumber(cfg.fadeMs, cachedCfg.fadeMs, 900)
+    );
+
+    refreshSeconds = positiveParam(
+      "r",
+      pickNumber(
+        cfg.manifestRefreshSeconds,
+        cfg.refreshSeconds,
+        cachedCfg.manifestRefreshSeconds,
+        cachedCfg.refreshSeconds,
+        300
+      )
+    );
+
+    applyFadeDurations();
+
+    const baseVersion = data.updated ? ("?v=" + encodeURIComponent(data.updated)) : "";
+
+    const posters = (data.films || [])
+      .map((x) => x?.[FIELD])
+      .filter(Boolean)
+      .map((url) => ({
+        kind: "poster",
+        url,
+        v: baseVersion,
+        seconds: posterSeconds
+      }));
+
+    const extraItems = await loadManualExtras(EXTRA_MANIFEST_URL, posterSeconds);
+    let nextItems = mergeUniqueItems(posters, extraItems);
+
+    if (calendarSlideSeconds > 0) {
+      nextItems.unshift({ kind: "calendar", seconds: calendarSlideSeconds });
+    }
+
+    const changed = itemsChanged(nextItems);
+    items = nextItems;
+    if (changed) idx = 0;
+
+    emptyEl.style.display = items.length ? "none" : "flex";
+  }
+
   async function tick() {
     if (!items.length) {
       setTimeout(tick, 2000);
@@ -530,28 +521,42 @@
       await fadeToCalendar();
 
       setTimeout(async () => {
+        const nextItem = items[idx % items.length];
+
+        if (nextItem?.kind === "poster") {
+          await preloadPoster(nextItem);
+          swapToPoster(nextItem);
+          idx += 1;
+        }
+
         await fadeToPoster();
 
         if (calendarSlideSeconds > 0) {
           void refreshCalendarInBackground(true);
         }
 
-        tick();
+        if (nextItem?.kind === "poster") {
+          setTimeout(tick, (nextItem.seconds || posterSeconds) * 1000);
+        } else {
+          tick();
+        }
       }, (item.seconds || 15) * 1000);
 
       return;
     }
 
+    await preloadPoster(item);
+
     if (isCalendarActive()) {
+      swapToPoster(item);
       await fadeToPoster();
 
       if (calendarSlideSeconds > 0) {
         void refreshCalendarInBackground(true);
       }
+    } else {
+      swapToPoster(item);
     }
-
-    await preloadPoster(item);
-    swapToPoster(item);
 
     setTimeout(tick, (item.seconds || posterSeconds) * 1000);
   }
@@ -581,13 +586,13 @@
     if (ready) {
       calendarScene.classList.add("active");
       idx = 1;
-
-      setTimeout(() => {
-        tick();
-      }, calendarSlideSeconds * 1000);
+      setTimeout(tick, calendarSlideSeconds * 1000);
     } else {
       await primeFirstPoster();
       posterScene.classList.add("active");
+      if (calendarSlideSeconds > 0) {
+        void refreshCalendarInBackground(true);
+      }
       tick();
     }
   } else {
