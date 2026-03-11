@@ -12,7 +12,6 @@
       overflow: hidden;
     }
 
-    /* Poster scene */
     #posterScene {
       position: absolute;
       inset: 0;
@@ -55,7 +54,6 @@
       z-index: 100;
     }
 
-    /* Calendar scene */
     #calendarScene {
       position: absolute;
       inset: 0;
@@ -118,19 +116,15 @@
 
 <script>
 (async () => {
-  const CONFIG_URLS = [
-  "https://drive.google.com/uc?export=download&id=1eUx7tmPVUHyQPFPi78PyzMGSwzDhnYx9",
-  "https://drive.googleusercontent.com/uc?id=1eUx7tmPVUHyQPFPi78PyzMGSwzDhnYx9&export=download"
-  ];
-
+  const CONFIG_SERVICE_URL = "https://script.google.com/macros/s/AKfycbyeAHLzvmNUTGn_FWr8fTr1GDHVocivJG7M6Fpe6Lfcm0MjIQ-KjLZIhmkiNc7q00HLHA/exec";
   const CALENDAR_FRAME_URL = "https://sepehrhaghighi.github.io/infoskjermen-media/calendar-slide.html";
   const MANIFEST_URL = "./assets/films.json";
   const EXTRA_MANIFEST_URL = "./assets/landscape_extra/manifest.json";
   const FIELD = "landscape";
 
-  const CONFIG_TIMEOUT_MS = 20000;
+  const CONFIG_TIMEOUT_MS = 7000;
   const CALENDAR_FRAME_TIMEOUT_MS = 12000;
-  const CONFIG_CACHE_KEY = "infoskjermenSharedConfigFromDrive";
+  const CONFIG_CACHE_KEY = "infoskjermenSharedConfigFromService";
 
   let posterSeconds = 12;
   let calendarSlideSeconds = 0;
@@ -179,11 +173,28 @@
   }
 
   function normalizeConfig(raw) {
-    if (!raw || typeof raw !== "object") return {};
-    return raw;
+    if (!raw) return {};
+    if (typeof raw === "string") {
+      try { return JSON.parse(raw); } catch { return {}; }
+    }
+    if (raw.data && typeof raw.data === "object") return raw.data;
+    if (raw.config && typeof raw.config === "object") return raw.config;
+    if (typeof raw === "object") return raw;
+    return {};
   }
 
-  async function fetchJson(url, timeoutMs = CONFIG_TIMEOUT_MS) {
+  function isMeaningfulCfg(raw) {
+    const cfg = normalizeConfig(raw);
+    const refresh = cfg.manifestRefreshSeconds ?? cfg.refreshSeconds;
+    return (
+      cfg.posterSeconds != null ||
+      cfg.calendarSlideSeconds != null ||
+      cfg.fadeMs != null ||
+      refresh != null
+    );
+  }
+
+  async function fetchJson(url, timeoutMs = 12000) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -199,16 +210,69 @@
     }
   }
 
-  async function loadConfigFromDrive(timeoutMs = CONFIG_TIMEOUT_MS) {
-    for (const url of CONFIG_URLS) {
-      try {
-        const cfg = normalizeConfig(await fetchJson(url + "&_=" + Date.now(), timeoutMs));
-        if (cfg && Object.keys(cfg).length) {
-          writeCachedConfig(cfg);
-          return cfg;
-        }
-      } catch {}
+  function loadConfigJSONP(extraParams = {}, timeoutMs = CONFIG_TIMEOUT_MS) {
+    return new Promise((resolve) => {
+      const cbName = "__cfgcb_" + Math.random().toString(16).slice(2);
+      let finished = false;
+      let called = false;
+
+      window[cbName] = (cfg) => {
+        called = true;
+        finish(cfg || {});
+      };
+
+      const params = new URLSearchParams({
+        callback: cbName,
+        _: String(Date.now()),
+        ...Object.fromEntries(
+          Object.entries(extraParams).filter(([, v]) => v != null && String(v).length > 0)
+        )
+      });
+
+      const s = document.createElement("script");
+      s.src = CONFIG_SERVICE_URL + "?" + params.toString();
+
+      s.onerror = () => finish({});
+      s.onload = () => {
+        setTimeout(() => {
+          if (!finished && !called) finish({});
+        }, 250);
+      };
+
+      document.head.appendChild(s);
+
+      const t = setTimeout(() => {
+        if (!finished) finish({});
+      }, timeoutMs);
+
+      function cleanup() {
+        clearTimeout(t);
+        try { delete window[cbName]; } catch {}
+        s.remove();
+      }
+
+      function finish(val) {
+        if (finished) return;
+        finished = true;
+        cleanup();
+        resolve(val);
+      }
+    });
+  }
+
+  async function loadConfigFromService(timeoutMs = CONFIG_TIMEOUT_MS) {
+    try {
+      const raw = await loadConfigJSONP({}, timeoutMs);
+      const cfg = normalizeConfig(raw);
+
+      if (isMeaningfulCfg(cfg)) {
+        writeCachedConfig(cfg);
+        return cfg;
+      }
+    } catch (err) {
+      console.error("Config service read failed:", err);
     }
+
     return normalizeConfig(readCachedConfig());
   }
 
@@ -266,8 +330,9 @@
 
   async function load() {
     const cachedCfg = readCachedConfig();
+
     const [cfg, data] = await Promise.all([
-      loadConfigFromDrive(CONFIG_TIMEOUT_MS),
+      loadConfigFromService(CONFIG_TIMEOUT_MS),
       fetchJson(MANIFEST_URL, 12000)
     ]);
 
@@ -414,7 +479,9 @@
     refreshTimer = setTimeout(async () => {
       try {
         await load();
-      } catch {}
+      } catch (err) {
+        console.error("Manifest/config reload failed:", err);
+      }
       scheduleReload();
     }, refreshSeconds * 1000);
   }
