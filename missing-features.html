@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Mangler landscape – filmer</title>
+  <title>Missing Features</title>
   <style>
     :root { color-scheme: dark; }
 
@@ -13,18 +13,18 @@
       min-height: 100%;
       background: #0b0b0b;
       color: #f2f2f2;
-      font: 15px/1.45 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      font: 16px/1.45 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
     }
 
     .wrap {
-      max-width: 1100px;
-      margin: 24px auto;
-      padding: 0 16px 40px;
+      max-width: 900px;
+      margin: 28px auto;
+      padding: 0 18px 40px;
     }
 
     h1 {
       margin: 0 0 10px;
-      font-size: 26px;
+      font-size: 28px;
       line-height: 1.15;
     }
 
@@ -36,8 +36,8 @@
     .toolbar {
       display: flex;
       gap: 10px;
-      flex-wrap: wrap;
       align-items: center;
+      flex-wrap: wrap;
       margin-bottom: 18px;
     }
 
@@ -58,38 +58,9 @@
       background: rgba(21,21,21,0.92);
       border: 1px solid rgba(36,36,36,0.95);
       border-radius: 14px;
-      padding: 14px;
-      margin: 12px 0;
+      padding: 14px 16px;
+      margin: 10px 0;
       box-shadow: 0 6px 24px rgba(0,0,0,0.28);
-    }
-
-    .ok {
-      color: #bfffd0;
-    }
-
-    .warn {
-      color: #ffd59b;
-    }
-
-    .mono {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      word-break: break-all;
-    }
-
-    .row {
-      display: grid;
-      grid-template-columns: 120px 1fr;
-      gap: 8px 12px;
-      margin-top: 8px;
-    }
-
-    .label {
-      color: #bdbdbd;
-    }
-
-    .small {
-      font-size: 13px;
-      color: #bdbdbd;
     }
 
     .empty {
@@ -98,12 +69,29 @@
       background: #121212;
       border: 1px solid #242424;
     }
+
+    .ok { color: #bfffd0; }
+    .warn { color: #ffd59b; }
+
+    ol {
+      margin: 0;
+      padding-left: 24px;
+    }
+
+    li {
+      margin: 10px 0;
+    }
+
+    .small {
+      font-size: 13px;
+      color: #bdbdbd;
+    }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <h1>Filmer som mangler landscape</h1>
-    <div class="meta" id="meta">Laster…</div>
+    <h1>Missing Features</h1>
+    <div id="meta" class="meta">Laster…</div>
 
     <div class="toolbar">
       <button id="reloadBtn" type="button">Oppdater nå</button>
@@ -158,22 +146,19 @@
           .map((item, index) => ({ item, index }))
           .filter(({ item }) => item?.poster && !item?.landscape)
           .map(({ item, index }) => ({
-            index,
-            title: guessTitle(item, index),
-            poster: item.poster || "",
-            landscape: item.landscape || "",
-            raw: item
+            label: `Film ${index + 1}`,
+            title: guessTitle(item, index)
           }));
 
         const updatedText = data?.updated
           ? `films.json oppdatert: ${data.updated}`
-          : "films.json har ingen 'updated'-verdi";
+          : "films.json har ingen updated-verdi";
 
         metaEl.innerHTML = `
           <span class="${missing.length ? "warn" : "ok"}">
             ${missing.length
               ? `${missing.length} film(er) mangler landscape`
-              : `Ingen filmer mangler landscape`}
+              : "Ingen filmer mangler landscape"}
           </span>
           · ${escapeHtml(updatedText)}
           · Sist sjekket: ${escapeHtml(new Date().toLocaleString("nb-NO"))}
@@ -182,27 +167,21 @@
         if (!missing.length) {
           listEl.innerHTML = `
             <div class="empty ok">
-              Alt ser bra ut. Ingen filmer med poster mangler landscape akkurat nå.
+              Ingen filmer mangler landscape akkurat nå.
             </div>
           `;
           return;
         }
 
-        listEl.innerHTML = missing.map(entry => `
+        listEl.innerHTML = `
           <div class="card">
-            <div><strong>${escapeHtml(entry.title)}</strong></div>
-            <div class="row">
-              <div class="label">Index</div>
-              <div>${entry.index}</div>
-
-              <div class="label">Poster</div>
-              <div class="mono">${escapeHtml(entry.poster)}</div>
-
-              <div class="label">Landscape</div>
-              <div class="mono">${entry.landscape ? escapeHtml(entry.landscape) : "<span class='warn'>Mangler</span>"}</div>
-            </div>
+            <ol>
+              ${missing.map(entry => `
+                <li><strong>${escapeHtml(entry.label)}</strong> — ${escapeHtml(entry.title)}</li>
+              `).join("")}
+            </ol>
           </div>
-        `).join("");
+        `;
       }
 
       async function load() {
@@ -214,8 +193,7 @@
           metaEl.innerHTML = `<span class="warn">Kunne ikke laste films.json</span>`;
           listEl.innerHTML = `
             <div class="empty">
-              <div><strong>Feil ved lasting</strong></div>
-              <div class="small mono">${escapeHtml(err?.message || err)}</div>
+              Feil ved lasting: ${escapeHtml(err?.message || err)}
             </div>
           `;
         }
