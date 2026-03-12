@@ -131,6 +131,13 @@
         );
       }
 
+      function normalizeTitle(title) {
+        return String(title || "")
+          .toLowerCase()
+          .trim()
+          .replace(/\s+/g, " ");
+      }
+
       async function fetchJson(url) {
         const response = await fetch(url, { cache: "no-store" });
         if (!response.ok) {
@@ -142,13 +149,22 @@
       function renderMissing(data) {
         const films = Array.isArray(data?.films) ? data.films : [];
 
-        const missing = films
+        const rawMissing = films
           .map((item, index) => ({ item, index }))
           .filter(({ item }) => item?.poster && !item?.landscape)
           .map(({ item, index }) => ({
-            label: `Film ${index + 1}`,
             title: guessTitle(item, index)
           }));
+
+        const seen = new Set();
+        const missing = [];
+
+        for (const entry of rawMissing) {
+          const key = normalizeTitle(entry.title);
+          if (!key || seen.has(key)) continue;
+          seen.add(key);
+          missing.push(entry);
+        }
 
         const updatedText = data?.updated
           ? `films.json oppdatert: ${data.updated}`
@@ -176,8 +192,8 @@
         listEl.innerHTML = `
           <div class="card">
             <ol>
-              ${missing.map(entry => `
-                <li><strong>${escapeHtml(entry.label)}</strong> — ${escapeHtml(entry.title)}</li>
+              ${missing.map((entry, i) => `
+                <li><strong>Film ${i + 1}</strong> — ${escapeHtml(entry.title)}</li>
               `).join("")}
             </ol>
           </div>
