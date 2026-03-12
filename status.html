@@ -1,225 +1,551 @@
 <!doctype html>
-<html lang="no">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Missing Features</title>
+  <title>Status & Timing Control</title>
+
   <style>
     :root { color-scheme: dark; }
 
-    html, body {
-      margin: 0;
-      padding: 0;
-      min-height: 100%;
-      background: #0b0b0b;
-      color: #f2f2f2;
-      font: 16px/1.45 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    html, body{
+      margin:0; padding:0; min-height:100%;
+      color:#f2f2f2;
+      font: 15px/1.4 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background:#0b0b0b;
     }
 
-    .wrap {
-      max-width: 900px;
-      margin: 28px auto;
-      padding: 0 18px 40px;
+    #bgLayer, #bgOverlay{
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+    }
+    #bgLayer{
+      z-index: 0;
+      background-color:#0b0b0b;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      transform: none;
+      filter: saturate(1.05) contrast(1.05);
+    }
+    #bgOverlay{
+      z-index: 1;
+      background: rgba(0,0,0,0.14);
     }
 
-    h1 {
-      margin: 0 0 10px;
-      font-size: 28px;
-      line-height: 1.15;
+    .wrap{
+      position: relative;
+      z-index: 2;
+      max-width: 1040px;
+      margin: 24px auto;
+      padding: 0 16px;
     }
 
-    .meta {
-      color: #bdbdbd;
-      margin-bottom: 18px;
+    h1{ font-size: 20px; margin: 0 0 12px; }
+    .muted{ color:#bdbdbd; }
+    .small{ font-size:12px; }
+
+    .card{
+      background: rgba(21,21,21,0.82);
+      border: 1px solid rgba(36,36,36,0.9);
+      border-radius: 14px;
+      padding: 14px;
+      margin: 12px 0;
+      box-shadow: 0 6px 28px rgba(0,0,0,0.35);
     }
 
-    .toolbar {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      flex-wrap: wrap;
-      margin-bottom: 18px;
-    }
+    .row{ display:flex; gap:12px; flex-wrap: wrap; align-items:center; }
+    label{ display:flex; gap:8px; align-items:center; }
 
-    button {
-      padding: 8px 12px;
+    input[type="number"], input[type="password"]{
+      width: 150px;
+      padding: 6px 8px;
       border-radius: 10px;
-      border: 1px solid #2b2b2b;
-      background: #161616;
-      color: #fff;
-      cursor: pointer;
+      border:1px solid #2b2b2b;
+      background: rgba(15,15,15,0.9);
+      color:#fff;
+    }
+    input[type="password"]{ width: 220px; }
+
+    button{
+      padding: 8px 10px;
+      border-radius: 10px;
+      border:1px solid #2b2b2b;
+      background: rgba(15,15,15,0.9);
+      color:#fff;
+      cursor:pointer;
+    }
+    button:hover{ background: rgba(20,20,20,0.95); }
+    button:disabled, input:disabled{
+      opacity: 0.6;
+      cursor: not-allowed;
     }
 
-    button:hover {
-      background: #1d1d1d;
+    table{ width:100%; border-collapse: collapse; }
+    th, td{
+      text-align:left;
+      padding: 10px 8px;
+      border-bottom: 1px solid rgba(36,36,36,0.9);
+      vertical-align: top;
     }
+    th{ color:#cfcfcf; font-weight:600; }
 
-    .card {
-      background: rgba(21,21,21,0.92);
-      border: 1px solid rgba(36,36,36,0.95);
-      border-radius: 14px;
-      padding: 14px 16px;
-      margin: 10px 0;
-      box-shadow: 0 6px 24px rgba(0,0,0,0.28);
+    .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    .right{ text-align:right; }
+
+    a{ color:#9dd1ff; text-decoration:none; }
+    a:hover{ text-decoration:underline; }
+
+    .pill{
+      display:inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border:1px solid #2b2b2b;
+      background: rgba(15,15,15,0.9);
+      color:#eaeaea;
+      font-size: 12px;
     }
+    .ok{ border-color:#2e5; color:#bfffd0; }
+    .bad{ border-color:#e55; color:#ffd0d0; }
 
-    .empty {
-      padding: 18px;
-      border-radius: 14px;
-      background: #121212;
-      border: 1px solid #242424;
+    .tableWrap{
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      border-radius: 12px;
     }
-
-    .ok { color: #bfffd0; }
-    .warn { color: #ffd59b; }
-
-    ol {
-      margin: 0;
-      padding-left: 24px;
+    .tableWrap table{
+      min-width: 860px;
     }
-
-    li {
-      margin: 10px 0;
-    }
-
-    .small {
-      font-size: 13px;
-      color: #bdbdbd;
+    @media (max-width: 700px){
+      th, td{ padding: 8px 6px; }
     }
   </style>
 </head>
-<body>
-  <div class="wrap">
-    <h1>Missing Features</h1>
-    <div id="meta" class="meta">Laster…</div>
 
-    <div class="toolbar">
-      <button id="reloadBtn" type="button">Oppdater nå</button>
-      <div class="small">Siden oppdaterer automatisk hvert 30. minutt.</div>
+<body>
+  <div id="bgLayer"></div>
+  <div id="bgOverlay"></div>
+
+  <div class="wrap">
+    <h1>Status & timing control</h1>
+
+    <div class="card">
+      <div class="row">
+        <label>Seconds per poster
+          <input id="posterSeconds" type="number" min="1" placeholder="12">
+        </label>
+
+        <label>Calendar slide (sec, 0=off)
+          <input id="calendarSlideSeconds" type="number" min="0" placeholder="0">
+        </label>
+
+        <label>Fade (ms)
+          <input id="fadeMs" type="number" min="0" placeholder="900">
+        </label>
+
+        <label>Refresh (sec)
+          <input id="refreshSeconds" type="number" min="30" placeholder="300">
+        </label>
+      </div>
+
+      <div class="row" style="margin-top:10px;">
+        <label>Update key
+          <input id="updateKey" type="password" placeholder="(required)">
+        </label>
+        <button id="applyBtn">Apply</button>
+        <span id="info" class="muted small"></span>
+      </div>
+
+      <div class="muted small" style="margin-top:10px;">
+        Apply updates the shared config in Script Properties. The same calendar slide time is used by both
+        <span class="mono">films-landscape.html</span> and
+        <span class="mono">arrangements-landscape.html</span>.
+      </div>
     </div>
 
-    <div id="list"></div>
+    <div class="card">
+      <div class="muted small" style="margin-bottom:10px;">
+        Counts are based on <span class="mono">assets/films.json</span>, <span class="mono">assets/arrangements.json</span>, and <span class="mono">assets/landscape_extra/manifest.json</span>.
+        Suggested duration = count × seconds-per-poster, plus calendar slide time where enabled.
+      </div>
+
+      <div class="tableWrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Page</th>
+              <th>What it shows</th>
+              <th class="right">Count</th>
+              <th class="right">Suggested duration</th>
+            </tr>
+          </thead>
+          <tbody id="tbody">
+            <tr><td colspan="4" class="muted">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="row" style="gap:10px;">
+        <a href="./calendar-slide.html" target="_blank">calendar-slide</a>
+        <a href="./missing-features.html" target="_blank">missing-features</a>
+      </div>
+    </div>
   </div>
 
-  <script>
-    (() => {
-      const FILMS_URL = "./assets/films.json";
-      const REFRESH_MS = 30 * 60 * 1000;
+<script>
+(() => {
+  const CONFIG_SERVICE_URL = "https://script.google.com/macros/s/AKfycbzE-Tg7R9VX8i8jsbRd-Tg97_hFt6pbUel5lfz3_2Gs5HkrpCylxXIrdWYpWFc7-2qllw/exec";
+  const FILMS_URL = "./assets/films.json";
+  const ARR_URL   = "./assets/arrangements.json";
+  const EXTRA_URL = "./assets/landscape_extra/manifest.json";
+  const BG_REL    = "./assets/status-bg.jpg";
 
-      const metaEl = document.getElementById("meta");
-      const listEl = document.getElementById("list");
-      const reloadBtn = document.getElementById("reloadBtn");
+  const DEFAULTS = {
+    posterSeconds: 12,
+    calendarSlideSeconds: 0,
+    fadeMs: 900,
+    manifestRefreshSeconds: 300
+  };
 
-      function escapeHtml(value) {
-        return String(value ?? "")
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;")
-          .replace(/"/g, "&quot;")
-          .replace(/'/g, "&#39;");
+  const els = {
+    posterSeconds: document.getElementById("posterSeconds"),
+    calendarSlideSeconds: document.getElementById("calendarSlideSeconds"),
+    fadeMs: document.getElementById("fadeMs"),
+    refreshSeconds: document.getElementById("refreshSeconds"),
+    updateKey: document.getElementById("updateKey"),
+    applyBtn: document.getElementById("applyBtn"),
+    tbody: document.getElementById("tbody"),
+    info: document.getElementById("info"),
+    bgLayer: document.getElementById("bgLayer")
+  };
+
+  function setInfo(msg) { els.info.textContent = msg || ""; }
+
+  function disableUi(disabled) {
+    els.posterSeconds.disabled = disabled;
+    els.calendarSlideSeconds.disabled = disabled;
+    els.fadeMs.disabled = disabled;
+    els.refreshSeconds.disabled = disabled;
+    els.applyBtn.disabled = disabled;
+  }
+
+  function pill(text, cls = "ok") {
+    return `<span class="pill ${cls}">${text}</span>`;
+  }
+
+  function fmtDuration(seconds) {
+    seconds = Math.max(0, Math.round(seconds));
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${String(s).padStart(2, "0")}`;
+  }
+
+  async function fetchJson(url) {
+    const r = await fetch(url, { cache: "no-store" });
+    if (!r.ok) throw new Error(`${r.status} ${r.statusText} for ${url}`);
+    return await r.json();
+  }
+
+  function safeNumber(x) {
+    const n = Number(x);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  function normalizeCfg(raw) {
+    if (!raw) return {};
+    if (typeof raw === "string") {
+      try { return JSON.parse(raw); } catch { return {}; }
+    }
+    if (raw.data && typeof raw.data === "object") return raw.data;
+    if (raw.config && typeof raw.config === "object") return raw.config;
+    return raw;
+  }
+
+  function isMeaningfulCfg(raw) {
+    const cfg = normalizeCfg(raw);
+    const refresh = cfg.manifestRefreshSeconds ?? cfg.refreshSeconds;
+    return (
+      cfg.posterSeconds != null ||
+      cfg.calendarSlideSeconds != null ||
+      cfg.fadeMs != null ||
+      refresh != null
+    );
+  }
+
+  function loadConfigJSONP(extraParams = {}, timeoutMs = 7000) {
+    return new Promise((resolve) => {
+      const cbName = "__cfgcb_" + Math.random().toString(16).slice(2);
+      let called = false;
+      let finished = false;
+
+      window[cbName] = (cfg) => {
+        called = true;
+        finish(cfg || {});
+      };
+
+      const params = new URLSearchParams({
+        callback: cbName,
+        _: String(Date.now()),
+        ...Object.fromEntries(
+          Object.entries(extraParams).filter(([, v]) => v != null && String(v).length > 0)
+        )
+      });
+
+      const s = document.createElement("script");
+      s.src = CONFIG_SERVICE_URL + "?" + params.toString();
+
+      s.onerror = () => finish({});
+      s.onload = () => {
+        setTimeout(() => {
+          if (!finished && !called) finish({});
+        }, 250);
+      };
+
+      document.head.appendChild(s);
+
+      const t = setTimeout(() => {
+        if (!finished) finish({});
+      }, timeoutMs);
+
+      function cleanup() {
+        clearTimeout(t);
+        try { delete window[cbName]; } catch {}
+        s.remove();
       }
 
-      function guessTitle(item, index) {
-        return (
-          item.title ||
-          item.name ||
-          item.film ||
-          item.movie ||
-          item.programTitle ||
-          item.originalTitle ||
-          `Film ${index + 1}`
-        );
+      function finish(val) {
+        if (finished) return;
+        finished = true;
+        cleanup();
+        resolve(val);
       }
+    });
+  }
 
-      function normalizeTitle(title) {
-        return String(title || "")
-          .toLowerCase()
-          .trim()
-          .replace(/\s+/g, " ");
-      }
+  function setUiConfig(rawCfg) {
+    const cfg = normalizeCfg(rawCfg);
+    const refresh = cfg.manifestRefreshSeconds ?? cfg.refreshSeconds;
 
-      async function fetchJson(url) {
-        const response = await fetch(url, { cache: "no-store" });
-        if (!response.ok) {
-          throw new Error(`${response.status} ${response.statusText}`);
+    if (cfg.posterSeconds != null) els.posterSeconds.value = cfg.posterSeconds;
+    if (cfg.calendarSlideSeconds != null) els.calendarSlideSeconds.value = cfg.calendarSlideSeconds;
+    if (cfg.fadeMs != null) els.fadeMs.value = cfg.fadeMs;
+    if (refresh != null) els.refreshSeconds.value = refresh;
+  }
+
+  function readUiConfig() {
+    return {
+      posterSeconds: Math.max(1, safeNumber(els.posterSeconds.value) ?? DEFAULTS.posterSeconds),
+      calendarSlideSeconds: Math.max(0, safeNumber(els.calendarSlideSeconds.value) ?? DEFAULTS.calendarSlideSeconds),
+      fadeMs: Math.max(0, safeNumber(els.fadeMs.value) ?? DEFAULTS.fadeMs),
+      manifestRefreshSeconds: Math.max(30, safeNumber(els.refreshSeconds.value) ?? DEFAULTS.manifestRefreshSeconds)
+    };
+  }
+
+  function countField(items, field) {
+    return (items || []).map(x => x?.[field]).filter(Boolean).length;
+  }
+
+  function countExtraItems(extraData) {
+    return Array.isArray(extraData?.items) ? extraData.items.filter(x => x?.url).length : 0;
+  }
+
+  async function renderCounts() {
+    const posterSeconds = Math.max(1, safeNumber(els.posterSeconds.value) ?? DEFAULTS.posterSeconds);
+    const calendarSlideSeconds = Math.max(0, safeNumber(els.calendarSlideSeconds.value) ?? DEFAULTS.calendarSlideSeconds);
+
+    els.tbody.innerHTML = `<tr><td colspan="4" class="muted">Loading…</td></tr>`;
+
+    try {
+      const [filmsData, arrData, extraData] = await Promise.all([
+        fetchJson(FILMS_URL),
+        fetchJson(ARR_URL),
+        fetchJson(EXTRA_URL).catch(() => ({ items: [] }))
+      ]);
+
+      const films = filmsData.films || [];
+      const arrs  = arrData.arrangements || [];
+      const extraLandscape = countExtraItems(extraData);
+
+      const filmsPortrait      = countField(films, "poster");
+      const filmsLandscapeBase = countField(films, "landscape");
+      const arrPortrait        = countField(arrs, "poster");
+      const arrLandscape       = countField(arrs, "landscape");
+
+      const filmsLandscapeImageCount = filmsLandscapeBase + extraLandscape;
+      const filmsLandscapeTotalCount = filmsLandscapeImageCount + (calendarSlideSeconds > 0 ? 1 : 0);
+
+      const arrangementsLandscapeImageCount = arrLandscape;
+      const arrangementsLandscapeTotalCount = arrangementsLandscapeImageCount + (calendarSlideSeconds > 0 ? 1 : 0);
+
+      const portraitAll  = filmsPortrait + arrPortrait;
+      const landscapeAll = filmsLandscapeBase + arrLandscape + extraLandscape;
+
+      const rows = [
+        {
+          page:"films-portrait.html",
+          desc:"Films portrait (poster)",
+          count: filmsPortrait,
+          seconds: filmsPortrait * posterSeconds
+        },
+        {
+          page:"films-landscape.html",
+          desc:`Films landscape (subset + ${extraLandscape} manual extra${calendarSlideSeconds > 0 ? " + calendar slide" : ""})`,
+          count: filmsLandscapeTotalCount,
+          seconds: (filmsLandscapeImageCount * posterSeconds) + calendarSlideSeconds
+        },
+        {
+          page:"arrangements-portrait.html",
+          desc:"Arrangements portrait (poster)",
+          count: arrPortrait,
+          seconds: arrPortrait * posterSeconds
+        },
+        {
+          page:"arrangements-landscape.html",
+          desc:`Arrangements landscape (subset${calendarSlideSeconds > 0 ? " + calendar slide" : ""})`,
+          count: arrangementsLandscapeTotalCount,
+          seconds: (arrangementsLandscapeImageCount * posterSeconds) + calendarSlideSeconds
+        },
+        {
+          page:"portrait-all.html",
+          desc:"Films then arrangements (portrait)",
+          count: portraitAll,
+          seconds: portraitAll * posterSeconds
+        },
+        {
+          page:"landscape-all.html",
+          desc:`Films + arrangements landscape (+ ${extraLandscape} manual extra)`,
+          count: landscapeAll,
+          seconds: landscapeAll * posterSeconds
         }
-        return await response.json();
+      ];
+
+      els.tbody.innerHTML = rows.map(r => `
+        <tr>
+          <td>${pill("ok","ok")} <a href="./${r.page}" target="_blank">${r.page}</a></td>
+          <td class="muted">${r.desc}</td>
+          <td class="right mono">${r.count}</td>
+          <td class="right mono">${fmtDuration(r.seconds)}</td>
+        </tr>
+      `).join("");
+
+      const u1 = filmsData.updated ? `films: ${filmsData.updated}` : `films: (no updated)`;
+      const u2 = arrData.updated ? `arr: ${arrData.updated}` : `arr: (no updated)`;
+      const u3 = extraData.generatedAt ? `extra: ${extraData.generatedAt}` : `extra: ${extraLandscape} item(s)`;
+
+      if (!els.info.textContent || els.info.textContent.includes("Loading") || els.info.textContent.includes("Applied") || els.info.textContent.includes("Update sent")) {
+        els.info.textContent = `${u1} | ${u2} | ${u3}`;
       }
+    } catch (e) {
+      els.tbody.innerHTML = `<tr><td colspan="4">${pill("ERROR","bad")} <span class="mono">${String(e.message || e)}</span></td></tr>`;
+    }
+  }
 
-      function renderMissing(data) {
-        const films = Array.isArray(data?.films) ? data.films : [];
+  async function reloadConfig() {
+    const cfg = await loadConfigJSONP({});
+    if (isMeaningfulCfg(cfg)) {
+      setUiConfig(cfg);
+      return true;
+    }
+    return false;
+  }
 
-        const rawMissing = films
-          .map((item, index) => ({ item, index }))
-          .filter(({ item }) => item?.poster && !item?.landscape)
-          .map(({ item, index }) => ({
-            title: guessTitle(item, index)
-          }));
+  async function applyConfig() {
+    const key = (els.updateKey.value || "").trim();
+    if (!key) {
+      setInfo("Update key is required.");
+      return;
+    }
 
-        const seen = new Set();
-        const missing = [];
+    const cfg = readUiConfig();
 
-        for (const entry of rawMissing) {
-          const key = normalizeTitle(entry.title);
-          if (!key || seen.has(key)) continue;
-          seen.add(key);
-          missing.push(entry);
-        }
+    const body = new URLSearchParams({
+      posterSeconds: String(cfg.posterSeconds),
+      calendarSlideSeconds: String(cfg.calendarSlideSeconds),
+      fadeMs: String(cfg.fadeMs),
+      manifestRefreshSeconds: String(cfg.manifestRefreshSeconds)
+    }).toString();
 
-        const updatedText = data?.updated
-          ? `films.json oppdatert: ${data.updated}`
-          : "films.json har ingen updated-verdi";
+    const url = CONFIG_SERVICE_URL + "?key=" + encodeURIComponent(key);
 
-        metaEl.innerHTML = `
-          <span class="${missing.length ? "warn" : "ok"}">
-            ${missing.length
-              ? `${missing.length} film(er) mangler landscape`
-              : "Ingen filmer mangler landscape"}
-          </span>
-          · ${escapeHtml(updatedText)}
-          · Sist sjekket: ${escapeHtml(new Date().toLocaleString("nb-NO"))}
-        `;
+    setInfo("Applying…");
 
-        if (!missing.length) {
-          listEl.innerHTML = `
-            <div class="empty ok">
-              Ingen filmer mangler landscape akkurat nå.
-            </div>
-          `;
-          return;
-        }
+    try {
+      await fetch(url, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body
+      });
 
-        listEl.innerHTML = `
-          <div class="card">
-            <ol>
-              ${missing.map((entry, i) => `
-                <li><strong>Film ${i + 1}</strong> — ${escapeHtml(entry.title)}</li>
-              `).join("")}
-            </ol>
-          </div>
-        `;
+      setTimeout(async () => {
+        const ok = await reloadConfig();
+        await renderCounts();
+        setInfo(ok ? "Applied ✓" : "Update sent, but config read-back failed");
+      }, 1200);
+
+    } catch (e) {
+      setInfo("Apply failed: " + String(e.message || e));
+    }
+  }
+
+  function preload(url) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve(true);
+      img.onerror = () => resolve(false);
+      const u = new URL(url, location.href);
+      u.searchParams.set("v", String(Date.now()));
+      img.src = u.href;
+    });
+  }
+
+  async function initBackground() {
+    const repo = location.pathname.split("/")[1] || "";
+    const candidates = [
+      new URL(BG_REL, location.href).href,
+      new URL("/" + repo + "/assets/status-bg.jpg", location.origin).href,
+      new URL("/assets/status-bg.jpg", location.origin).href
+    ];
+
+    for (const c of candidates) {
+      if (await preload(c)) {
+        const u = new URL(c);
+        u.searchParams.set("v", "1");
+        els.bgLayer.style.backgroundImage = `url("${u.href}")`;
+        return;
       }
+    }
+  }
 
-      async function load() {
-        metaEl.textContent = "Laster…";
-        try {
-          const data = await fetchJson(FILMS_URL);
-          renderMissing(data);
-        } catch (err) {
-          metaEl.innerHTML = `<span class="warn">Kunne ikke laste films.json</span>`;
-          listEl.innerHTML = `
-            <div class="empty">
-              Feil ved lasting: ${escapeHtml(err?.message || err)}
-            </div>
-          `;
-        }
-      }
+  els.applyBtn.addEventListener("click", applyConfig);
+  window.addEventListener("beforeunload", () => { els.updateKey.value = ""; });
 
-      reloadBtn.addEventListener("click", load);
+  els.posterSeconds.addEventListener("input", renderCounts);
+  els.calendarSlideSeconds.addEventListener("input", renderCounts);
 
-      load();
-      setInterval(load, REFRESH_MS);
-    })();
-  </script>
+  (async () => {
+    disableUi(true);
+    setInfo("Loading config…");
+    els.updateKey.value = "";
+    initBackground();
+
+    const ok = await reloadConfig();
+    if (!ok) {
+      els.posterSeconds.value = DEFAULTS.posterSeconds;
+      els.calendarSlideSeconds.value = DEFAULTS.calendarSlideSeconds;
+      els.fadeMs.value = DEFAULTS.fadeMs;
+      els.refreshSeconds.value = DEFAULTS.manifestRefreshSeconds;
+      setInfo("Using defaults (config read failed).");
+    }
+
+    disableUi(false);
+    await renderCounts();
+  })();
+})();
+</script>
 </body>
 </html>
