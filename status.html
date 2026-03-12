@@ -159,7 +159,7 @@
       </div>
 
       <div class="muted small" style="margin-top:10px;">
-        Apply updates the shared config in Drive. The same calendar slide time is used by both
+        Apply updates the shared config in Script Properties. The same calendar slide time is used by both
         <span class="mono">films-landscape.html</span> and
         <span class="mono">arrangements-landscape.html</span>.
       </div>
@@ -190,13 +190,8 @@
 
     <div class="card">
       <div class="row" style="gap:10px;">
-        <a href="./films-portrait.html" target="_blank">films-portrait</a>
-        <a href="./films-landscape.html" target="_blank">films-landscape</a>
-        <a href="./arrangements-portrait.html" target="_blank">arrangements-portrait</a>
-        <a href="./arrangements-landscape.html" target="_blank">arrangements-landscape</a>
-        <a href="./portrait-all.html" target="_blank">portrait-all</a>
-        <a href="./landscape-all.html" target="_blank">landscape-all</a>
         <a href="./calendar-slide.html" target="_blank">calendar-slide</a>
+        <a href="./missing-features.html" target="_blank">missing-features</a>
       </div>
     </div>
   </div>
@@ -441,7 +436,7 @@
       const u2 = arrData.updated ? `arr: ${arrData.updated}` : `arr: (no updated)`;
       const u3 = extraData.generatedAt ? `extra: ${extraData.generatedAt}` : `extra: ${extraLandscape} item(s)`;
 
-      if (!els.info.textContent || els.info.textContent.includes("Loading") || els.info.textContent.includes("Applied")) {
+      if (!els.info.textContent || els.info.textContent.includes("Loading") || els.info.textContent.includes("Applied") || els.info.textContent.includes("Update sent")) {
         els.info.textContent = `${u1} | ${u2} | ${u3}`;
       }
     } catch (e) {
@@ -489,7 +484,7 @@
       setTimeout(async () => {
         const ok = await reloadConfig();
         await renderCounts();
-        setInfo(ok ? "Applied ✓" : "Applied ✓ (saved, but reload returned empty)");
+        setInfo(ok ? "Applied ✓" : "Update sent, but config read-back failed");
       }, 1200);
 
     } catch (e) {
