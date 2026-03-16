@@ -446,7 +446,7 @@
 (function () {
   var EVENTS_URL = "https://script.google.com/macros/s/AKfycbxbR39HV5Nl7O5AyG5rrjyLrGbkKyqPpC5U5YstRiEEHwruiQCWl0VEOCNtt2hJsPnKzA/exec";
   var REFRESH_MS = 5 * 60 * 1000;
-  var LOAD_TIMEOUT_MS = 10000;
+  var LOAD_TIMEOUT_MS = 25000;
 
   var WEATHER_API_URL = "https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=61.1348&lon=11.3641&altitude=223";
   var WEATHER_REFRESH_MS = 30 * 60 * 1000;
@@ -831,26 +831,45 @@
     }, LOAD_TIMEOUT_MS);
   }
 
-  window.addEventListener("resize", function () {
-    clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(refreshLayout, 120);
-  });
+ window.addEventListener("resize", function () {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(refreshLayout, 120);
+});
 
-  window.addEventListener("load", stableRefresh);
+window.addEventListener("load", stableRefresh);
 
-  if (document.fonts && document.fonts.ready) {
-    document.fonts.ready.then(stableRefresh);
+var resumeRefreshTimer = null;
+
+function scheduleResumeRefresh() {
+  clearTimeout(resumeRefreshTimer);
+  resumeRefreshTimer = setTimeout(function () {
+    loadCalendar();
+  }, 150);
+}
+
+document.addEventListener("visibilitychange", function () {
+  if (!document.hidden) {
+    scheduleResumeRefresh();
   }
+});
 
-  els.empty.textContent = "Laster kalenderdata…";
-  els.empty.style.display = "flex";
-  els.app.style.display = "none";
+window.addEventListener("focus", function () {
+  scheduleResumeRefresh();
+});
 
-  loadCalendar();
-  loadWeather();
+if (document.fonts && document.fonts.ready) {
+  document.fonts.ready.then(stableRefresh);
+}
 
-  setInterval(loadCalendar, REFRESH_MS);
-  setInterval(loadWeather, WEATHER_REFRESH_MS);
+els.empty.textContent = "Laster kalenderdata…";
+els.empty.style.display = "flex";
+els.app.style.display = "none";
+
+loadCalendar();
+loadWeather();
+
+setInterval(loadCalendar, REFRESH_MS);
+setInterval(loadWeather, WEATHER_REFRESH_MS);
 })();
 </script>
 </body>
