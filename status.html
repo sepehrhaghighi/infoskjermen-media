@@ -108,6 +108,7 @@
     }
     .ok{ border-color:#2e5; color:#bfffd0; }
     .bad{ border-color:#e55; color:#ffd0d0; }
+    .warn{ border-color:#fa3; color:#ffe1a8; }
 
     .tableWrap{
       width: 100%;
@@ -120,6 +121,28 @@
     }
     @media (max-width: 700px){
       th, td{ padding: 8px 6px; }
+    }
+
+    .statusLine{
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border:1px solid #2b2b2b;
+      background: rgba(15,15,15,0.9);
+    }
+    .status-ok{ border-color:#2e5; color:#bfffd0; }
+    .status-bad{ border-color:#e55; color:#ffd0d0; }
+    .status-warn{ border-color:#fa3; color:#ffe1a8; }
+    .status-muted{ color:#c8c8c8; }
+
+    .diag{
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border:1px solid #2b2b2b;
+      background: rgba(8,8,8,0.85);
+      white-space: pre-wrap;
+      word-break: break-word;
     }
   </style>
 </head>
@@ -134,19 +157,19 @@
     <div class="card">
       <div class="row">
         <label>Seconds per poster
-          <input id="posterSeconds" type="number" min="1" placeholder="12">
+          <input id="posterSeconds" type="number" min="1" placeholder="7">
         </label>
 
         <label>Calendar slide (sec, 0=off)
-          <input id="calendarSlideSeconds" type="number" min="0" placeholder="0">
+          <input id="calendarSlideSeconds" type="number" min="0" placeholder="20">
         </label>
 
         <label>Fade (ms)
-          <input id="fadeMs" type="number" min="0" placeholder="900">
+          <input id="fadeMs" type="number" min="0" placeholder="500">
         </label>
 
         <label>Refresh (sec)
-          <input id="refreshSeconds" type="number" min="30" placeholder="300">
+          <input id="refreshSeconds" type="number" min="30" placeholder="60">
         </label>
       </div>
 
@@ -155,8 +178,10 @@
           <input id="updateKey" type="password" placeholder="(required)">
         </label>
         <button id="applyBtn">Apply</button>
-        <span id="info" class="muted small"></span>
       </div>
+
+      <div id="statusBox" class="statusLine status-muted small">Ready.</div>
+      <div id="diagBox" class="diag small muted">No diagnostics yet.</div>
 
       <div class="muted small" style="margin-top:10px;">
         Apply updates the shared config in Script Properties. The same calendar slide time is used by both
@@ -205,10 +230,10 @@
   const BG_REL    = "./assets/status-bg.jpg";
 
   const DEFAULTS = {
-    posterSeconds: 12,
-    calendarSlideSeconds: 0,
-    fadeMs: 900,
-    manifestRefreshSeconds: 300
+    posterSeconds: 7,
+    calendarSlideSeconds: 20,
+    fadeMs: 500,
+    manifestRefreshSeconds: 60
   };
 
   const els = {
@@ -219,11 +244,32 @@
     updateKey: document.getElementById("updateKey"),
     applyBtn: document.getElementById("applyBtn"),
     tbody: document.getElementById("tbody"),
-    info: document.getElementById("info"),
+    statusBox: document.getElementById("statusBox"),
+    diagBox: document.getElementById("diagBox"),
     bgLayer: document.getElementById("bgLayer")
   };
 
-  function setInfo(msg) { els.info.textContent = msg || ""; }
+  function setStatus(msg, tone = "muted") {
+    els.statusBox.textContent = msg || "";
+    els.statusBox.className = "statusLine small " + (
+      tone === "ok" ? "status-ok" :
+      tone === "bad" ? "status-bad" :
+      tone === "warn" ? "status-warn" :
+      "status-muted"
+    );
+  }
+
+  function setDiag(obj) {
+    if (typeof obj === "string") {
+      els.diagBox.textContent = obj;
+      return;
+    }
+    try {
+      els.diagBox.textContent = JSON.stringify(obj, null, 2);
+    } catch {
+      els.diagBox.textContent = String(obj);
+    }
+  }
 
   function disableUi(disabled) {
     els.posterSeconds.disabled = disabled;
@@ -276,15 +322,24 @@
     );
   }
 
+  function configsMatch(a, b) {
+    return (
+      Number(a.posterSeconds) === Number(b.posterSeconds) &&
+      Number(a.calendarSlideSeconds) === Number(b.calendarSlideSeconds) &&
+      Number(a.fadeMs) === Number(b.fadeMs) &&
+      Number(a.manifestRefreshSeconds) === Number(b.manifestRefreshSeconds)
+    );
+  }
+
   function loadConfigJSONP(extraParams = {}, timeoutMs = 7000) {
     return new Promise((resolve) => {
       const cbName = "__cfgcb_" + Math.random().toString(16).slice(2);
       let called = false;
       let finished = false;
 
-      window[cbName] = (cfg) => {
+      window[cbName] = (payload) => {
         called = true;
-        finish(cfg || {});
+        finish({ ok: true, payload: payload || {} });
       };
 
       const params = new URLSearchParams({
@@ -298,17 +353,34 @@
       const s = document.createElement("script");
       s.src = CONFIG_SERVICE_URL + "?" + params.toString();
 
-      s.onerror = () => finish({});
+      s.onerror = () => finish({
+        ok: false,
+        error: "network_error",
+        message: "Could not load config service."
+      });
+
       s.onload = () => {
         setTimeout(() => {
-          if (!finished && !called) finish({});
+          if (!finished && !called) {
+            finish({
+              ok: false,
+              error: "empty_response",
+              message: "Config service returned no callback payload."
+            });
+          }
         }, 250);
       };
 
       document.head.appendChild(s);
 
       const t = setTimeout(() => {
-        if (!finished) finish({});
+        if (!finished) {
+          finish({
+            ok: false,
+            error: "timeout",
+            message: "Config service request timed out."
+          });
+        }
       }, timeoutMs);
 
       function cleanup() {
@@ -432,64 +504,144 @@
         </tr>
       `).join("");
 
-      const u1 = filmsData.updated ? `films: ${filmsData.updated}` : `films: (no updated)`;
-      const u2 = arrData.updated ? `arr: ${arrData.updated}` : `arr: (no updated)`;
-      const u3 = extraData.generatedAt ? `extra: ${extraData.generatedAt}` : `extra: ${extraLandscape} item(s)`;
-
-      if (!els.info.textContent || els.info.textContent.includes("Loading") || els.info.textContent.includes("Applied") || els.info.textContent.includes("Update sent")) {
-        els.info.textContent = `${u1} | ${u2} | ${u3}`;
-      }
     } catch (e) {
       els.tbody.innerHTML = `<tr><td colspan="4">${pill("ERROR","bad")} <span class="mono">${String(e.message || e)}</span></td></tr>`;
     }
   }
 
   async function reloadConfig() {
-    const cfg = await loadConfigJSONP({});
+    const result = await loadConfigJSONP({});
+
+    if (!result.ok) {
+      return {
+        ok: false,
+        error: result.error || "read_failed",
+        message: result.message || "Config read failed."
+      };
+    }
+
+    const payload = result.payload || {};
+
+    if (payload.ok === false) {
+      return {
+        ok: false,
+        error: payload.error || "read_failed",
+        message: payload.message || "Config read failed."
+      };
+    }
+
+    const cfg = normalizeCfg(payload);
     if (isMeaningfulCfg(cfg)) {
       setUiConfig(cfg);
-      return true;
+      return { ok: true, config: normalizeCfg(cfg) };
     }
-    return false;
+
+    return {
+      ok: false,
+      error: "empty_config",
+      message: "Config service returned no usable config."
+    };
   }
 
   async function applyConfig() {
     const key = (els.updateKey.value || "").trim();
     if (!key) {
-      setInfo("Update key is required.");
+      setStatus("Update key is required.", "bad");
+      setDiag({ stage: "precheck", error: "missing_key" });
       return;
     }
 
     const cfg = readUiConfig();
 
-    const body = new URLSearchParams({
+    setStatus("Applying config…", "warn");
+    setDiag({
+      stage: "write_request",
+      url: CONFIG_SERVICE_URL,
+      sent: cfg
+    });
+
+    const result = await loadConfigJSONP({
+      action: "update",
+      key,
       posterSeconds: String(cfg.posterSeconds),
       calendarSlideSeconds: String(cfg.calendarSlideSeconds),
       fadeMs: String(cfg.fadeMs),
       manifestRefreshSeconds: String(cfg.manifestRefreshSeconds)
-    }).toString();
+    });
 
-    const url = CONFIG_SERVICE_URL + "?key=" + encodeURIComponent(key);
-
-    setInfo("Applying…");
-
-    try {
-      await fetch(url, {
-        method: "POST",
-        mode: "no-cors",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body
+    if (!result.ok) {
+      setStatus("Write failed: could not reach the config service.", "bad");
+      setDiag({
+        stage: "write_request",
+        error: result.error,
+        message: result.message,
+        sent: cfg
       });
-
-      setTimeout(async () => {
-        const ok = await reloadConfig();
-        await renderCounts();
-        setInfo(ok ? "Applied ✓" : "Update sent, but config read-back failed");
-      }, 1200);
-
-    } catch (e) {
-      setInfo("Apply failed: " + String(e.message || e));
+      return;
     }
+
+    const payload = result.payload || {};
+
+    if (payload.ok === false) {
+      if (payload.error === "unauthorized") {
+        setStatus("Key incorrect.", "bad");
+      } else {
+        setStatus("Write failed on server.", "bad");
+      }
+      setDiag({
+        stage: "write_response",
+        response: payload,
+        sent: cfg
+      });
+      return;
+    }
+
+    const returnedCfg = normalizeCfg(payload);
+    const returnedConfigOnly = normalizeCfg(payload.config || payload);
+
+    if (!isMeaningfulCfg(returnedConfigOnly)) {
+      setStatus("Write failed: server returned no usable config.", "bad");
+      setDiag({
+        stage: "write_response",
+        response: payload,
+        sent: cfg
+      });
+      return;
+    }
+
+    setUiConfig(returnedConfigOnly);
+    await renderCounts();
+
+    const readBack = await reloadConfig();
+
+    if (!readBack.ok) {
+      setStatus("Write may have happened, but read-back failed.", "warn");
+      setDiag({
+        stage: "read_back",
+        writeResponse: payload,
+        readBack: readBack,
+        sent: cfg
+      });
+      return;
+    }
+
+    if (!configsMatch(cfg, readBack.config)) {
+      setStatus("Write failed: read-back does not match what was sent.", "bad");
+      setDiag({
+        stage: "verify",
+        sent: cfg,
+        received: readBack.config
+      });
+      return;
+    }
+
+    setStatus("Applied successfully.", "ok");
+    setDiag({
+      stage: "verify",
+      sent: cfg,
+      received: readBack.config,
+      result: "match"
+    });
   }
 
   function preload(url) {
@@ -529,17 +681,37 @@
 
   (async () => {
     disableUi(true);
-    setInfo("Loading config…");
+    setStatus("Loading config…", "warn");
+    setDiag({
+      stage: "init",
+      configServiceUrl: CONFIG_SERVICE_URL,
+      defaults: DEFAULTS
+    });
+
     els.updateKey.value = "";
     initBackground();
 
-    const ok = await reloadConfig();
-    if (!ok) {
+    const loaded = await reloadConfig();
+
+    if (!loaded.ok) {
       els.posterSeconds.value = DEFAULTS.posterSeconds;
       els.calendarSlideSeconds.value = DEFAULTS.calendarSlideSeconds;
       els.fadeMs.value = DEFAULTS.fadeMs;
       els.refreshSeconds.value = DEFAULTS.manifestRefreshSeconds;
-      setInfo("Using defaults (config read failed).");
+
+      setStatus("Read failed. Using defaults.", "warn");
+      setDiag({
+        stage: "init_read",
+        error: loaded.error,
+        message: loaded.message,
+        defaultsUsed: DEFAULTS
+      });
+    } else {
+      setStatus("Config loaded.", "ok");
+      setDiag({
+        stage: "init_read",
+        loadedConfig: loaded.config
+      });
     }
 
     disableUi(false);
