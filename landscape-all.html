@@ -164,6 +164,9 @@
   const EXTRA_MANIFEST_URL = "./assets/landscape_extra/manifest.json";
   const FIELD = "landscape";
 
+  const CONFIG_TIMEOUT_MS = 7000;
+  const CONFIG_CACHE_KEY = "infoskjermenSharedConfigFromService";
+
   let posterSeconds = 7;
   let fadeMs = 500;
   let refreshSeconds = 60;
@@ -180,10 +183,60 @@
   const dateB = document.getElementById("dateB");
   const qrWrap = document.getElementById("qrWrap");
 
-  function numParam(name, fallback) {
+  function readNumericParam(name) {
     const v = new URLSearchParams(location.search).get(name);
+    if (v === null || v === "") return null;
     const n = Number(v);
-    return Number.isFinite(n) && n > 0 ? n : fallback;
+    return Number.isFinite(n) ? n : null;
+  }
+
+  function positiveParam(name, fallback) {
+    const n = readNumericParam(name);
+    return n !== null && n > 0 ? n : fallback;
+  }
+
+  function pickNumber(...values) {
+    for (const value of values) {
+      if (value === "" || value == null) continue;
+      const n = Number(value);
+      if (Number.isFinite(n)) return n;
+    }
+    return null;
+  }
+
+  function readCachedConfig() {
+    try {
+      return JSON.parse(localStorage.getItem(CONFIG_CACHE_KEY) || "{}");
+    } catch {
+      return {};
+    }
+  }
+
+  function writeCachedConfig(cfg) {
+    try {
+      localStorage.setItem(CONFIG_CACHE_KEY, JSON.stringify(cfg || {}));
+    } catch {}
+  }
+
+  function normalizeConfig(raw) {
+    if (!raw) return {};
+    if (typeof raw === "string") {
+      try { return JSON.parse(raw); } catch { return {}; }
+    }
+    if (raw.data && typeof raw.data === "object") return raw.data;
+    if (raw.config && typeof raw.config === "object") return raw.config;
+    if (typeof raw === "object") return raw;
+    return {};
+  }
+
+  function isMeaningfulCfg(raw) {
+    const cfg = normalizeConfig(raw);
+    const refresh = cfg.manifestRefreshSeconds ?? cfg.refreshSeconds;
+    return (
+      pickNumber(cfg.posterSeconds) !== null ||
+      pickNumber(cfg.fadeMs) !== null ||
+      pickNumber(refresh) !== null
+    );
   }
 
   function parseDateParts(value) {
@@ -235,10 +288,17 @@
     return `${dateText} kl. ${beginTime} - ${endTime}`;
   }
 
-  async function fetchJson(url) {
-    const r = await fetch(url, { cache: "no-store" });
-    if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
-    return await r.json();
+  async function fetchJson(url, timeoutMs = 12000) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const r = await fetch(url, { cache: "no-store", signal: controller.signal });
+      if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+      return await r.json();
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   function normalizeExtraUrl(url) {
@@ -274,49 +334,103 @@
     return out;
   }
 
-  function loadConfigJSONP(timeoutMs = 4000) {
+  function loadConfigJSONP(timeoutMs = CONFIG_TIMEOUT_MS) {
     return new Promise((resolve) => {
       const cbName = "__cfgcb_" + Math.random().toString(16).slice(2);
-      let done = false;
+      let finished = false;
+      let called = false;
 
       window[cbName] = (cfg) => {
-        done = true;
-        cleanup();
-        resolve(cfg || {});
+        called = true;
+        finish(cfg || {});
       };
 
       const s = document.createElement("script");
       s.src = CONFIG_SERVICE_URL + "?callback=" + cbName + "&_=" + Date.now();
-      s.onerror = () => { cleanup(); resolve({}); };
+      s.onerror = () => finish({});
+      s.onload = () => {
+        setTimeout(() => {
+          if (!finished && !called) finish({});
+        }, 250);
+      };
       document.head.appendChild(s);
 
-      const t = setTimeout(() => { if (!done) { cleanup(); resolve({}); } }, timeoutMs);
+      const t = setTimeout(() => {
+        if (!finished) finish({});
+      }, timeoutMs);
 
       function cleanup() {
         clearTimeout(t);
         try { delete window[cbName]; } catch {}
         s.remove();
       }
+
+      function finish(val) {
+        if (finished) return;
+        finished = true;
+        cleanup();
+        resolve(val);
+      }
     });
   }
 
+  async function loadConfigFromService(timeoutMs = CONFIG_TIMEOUT_MS) {
+    try {
+      const raw = await loadConfigJSONP(timeoutMs);
+      const cfg = normalizeConfig(raw);
+
+      if (isMeaningfulCfg(cfg)) {
+        writeCachedConfig(cfg);
+        return cfg;
+      }
+    } catch (err) {
+      console.error("Config service read failed:", err);
+    }
+
+    return normalizeConfig(readCachedConfig());
+  }
+
+  function applyConfigToUi() {
+    const dur = fadeMs + "ms";
+    A.style.transitionDuration = dur;
+    B.style.transitionDuration = dur;
+    dateA.style.transitionDuration = dur;
+    dateB.style.transitionDuration = dur;
+    if (qrWrap) qrWrap.style.transitionDuration = dur;
+  }
+
   async function load() {
+    const cachedCfg = readCachedConfig();
+
     const [cfg, filmsData, arrData, extraItems] = await Promise.all([
-      loadConfigJSONP(),
+      loadConfigFromService(CONFIG_TIMEOUT_MS),
       fetchJson(FILMS_URL),
       fetchJson(ARR_URL),
       loadManualExtras(EXTRA_MANIFEST_URL)
     ]);
 
-    posterSeconds  = numParam("p", cfg.posterSeconds ?? 12);
-    fadeMs         = numParam("fade", cfg.fadeMs ?? 900);
-    refreshSeconds = numParam("r", cfg.manifestRefreshSeconds ?? 300);
+    posterSeconds = positiveParam(
+      "p",
+      pickNumber(cfg.posterSeconds, cachedCfg.posterSeconds, 12)
+    );
 
-    A.style.transitionDuration = fadeMs + "ms";
-    B.style.transitionDuration = fadeMs + "ms";
-    dateA.style.transitionDuration = fadeMs + "ms";
-    dateB.style.transitionDuration = fadeMs + "ms";
-    if (qrWrap) qrWrap.style.transitionDuration = fadeMs + "ms";
+    fadeMs = positiveParam(
+      "fade",
+      pickNumber(cfg.fadeMs, cachedCfg.fadeMs, 900)
+    );
+
+    refreshSeconds = positiveParam(
+      "r",
+      pickNumber(
+        cfg.manifestRefreshSeconds,
+        cfg.refreshSeconds,
+        cachedCfg.manifestRefreshSeconds,
+        cachedCfg.refreshSeconds,
+        300
+      )
+    );
+
+    applyConfigToUi();
 
     const v1 = filmsData.updated ? ("?v=" + encodeURIComponent(filmsData.updated)) : "";
     const v2 = arrData.updated ? ("?v=" + encodeURIComponent(arrData.updated)) : "";
@@ -423,7 +537,9 @@
     refreshTimer = setTimeout(async () => {
       try {
         await load();
-      } catch {}
+      } catch (err) {
+        console.error("Landscape manifest/config reload failed:", err);
+      }
       scheduleReload();
     }, refreshSeconds * 1000);
   }
