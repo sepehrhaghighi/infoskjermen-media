@@ -6,15 +6,45 @@
   <title>Arrangements – Portrait</title>
   <style>
     html, body { margin:0; height:100%; background:#000; overflow:hidden; }
-    .stage { position:relative; width:100%; height:100%; }
-    .layer { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; opacity:0; transition: opacity 900ms ease-in-out; will-change: opacity; }
-    .layer.show { opacity:1; }
-    #empty { position:fixed; inset:0; display:none; align-items:center; justify-content:center; color:#fff; background:#000; text-align:center; padding:40px;
-      font: 26px/1.2 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+
+    .stage {
+      position:relative;
+      width:100%;
+      height:100%;
+    }
+
+    .layer {
+      position:absolute;
+      inset:0;
+      width:100%;
+      height:100%;
+      object-fit:contain;
+      opacity:0;
+      transition: opacity 900ms ease-in-out;
+      will-change: opacity;
+    }
+
+    .layer.show {
+      opacity:1;
+    }
+
+    #empty {
+      position:fixed;
+      inset:0;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      color:#fff;
+      background:#000;
+      text-align:center;
+      padding:40px;
+      font:26px/1.2 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    }
   </style>
 </head>
 <body>
   <div id="empty">No arrangement posters available.</div>
+
   <div class="stage">
     <img id="a" class="layer show" alt="">
     <img id="b" class="layer" alt="">
@@ -22,11 +52,12 @@
 
 <script>
 (async () => {
-  // ✅ ONE config service for all pages
   const CONFIG_SERVICE_URL = "https://script.google.com/macros/s/AKfycbwTw7_A4V68NbmGn2aFmo-r3ddEWvO9G9VcIf0pc4W_EaMhiVgCi4JV3jNIqtQTa9pqsA/exec";
-
   const MANIFEST_URL = "./assets/arrangements.json";
   const FIELD = "poster";
+
+  const CONFIG_TIMEOUT_MS = 7000;
+  const CONFIG_CACHE_KEY = "infoskjermenSharedConfigFromService";
 
   let posterSeconds = 7;
   let fadeMs = 500;
@@ -42,56 +73,173 @@
   const A = document.getElementById("a");
   const B = document.getElementById("b");
 
-  function numParam(name, fallback) {
+  function readNumericParam(name) {
     const v = new URLSearchParams(location.search).get(name);
+    if (v === null || v === "") return null;
     const n = Number(v);
-    return Number.isFinite(n) && n > 0 ? n : fallback;
+    return Number.isFinite(n) ? n : null;
   }
 
-  async function fetchJson(url) {
-    const r = await fetch(url, { cache: "no-store" });
-    if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
-    return await r.json();
+  function positiveParam(name, fallback) {
+    const n = readNumericParam(name);
+    return n !== null && n > 0 ? n : fallback;
   }
 
-  function loadConfigJSONP(timeoutMs = 4000) {
+  function pickNumber(...values) {
+    for (const value of values) {
+      if (value === "" || value == null) continue;
+      const n = Number(value);
+      if (Number.isFinite(n)) return n;
+    }
+    return null;
+  }
+
+  function readCachedConfig() {
+    try {
+      return JSON.parse(localStorage.getItem(CONFIG_CACHE_KEY) || "{}");
+    } catch {
+      return {};
+    }
+  }
+
+  function writeCachedConfig(cfg) {
+    try {
+      localStorage.setItem(CONFIG_CACHE_KEY, JSON.stringify(cfg || {}));
+    } catch {}
+  }
+
+  function normalizeConfig(raw) {
+    if (!raw) return {};
+    if (typeof raw === "string") {
+      try { return JSON.parse(raw); } catch { return {}; }
+    }
+    if (raw.data && typeof raw.data === "object") return raw.data;
+    if (raw.config && typeof raw.config === "object") return raw.config;
+    if (typeof raw === "object") return raw;
+    return {};
+  }
+
+  function isMeaningfulCfg(raw) {
+    const cfg = normalizeConfig(raw);
+    const refresh = cfg.manifestRefreshSeconds ?? cfg.refreshSeconds;
+    return (
+      pickNumber(cfg.posterSeconds) !== null ||
+      pickNumber(cfg.fadeMs) !== null ||
+      pickNumber(refresh) !== null
+    );
+  }
+
+  function loadConfigJSONP(timeoutMs = CONFIG_TIMEOUT_MS) {
     return new Promise((resolve) => {
       const cbName = "__cfgcb_" + Math.random().toString(16).slice(2);
-      let done = false;
+      let finished = false;
+      let called = false;
 
       window[cbName] = (cfg) => {
-        done = true;
-        cleanup();
-        resolve(cfg || {});
+        called = true;
+        finish(cfg || {});
       };
 
       const s = document.createElement("script");
       s.src = CONFIG_SERVICE_URL + "?callback=" + cbName + "&_=" + Date.now();
-      s.onerror = () => { cleanup(); resolve({}); };
+      s.onerror = () => finish({});
+      s.onload = () => {
+        setTimeout(() => {
+          if (!finished && !called) finish({});
+        }, 250);
+      };
       document.head.appendChild(s);
 
-      const t = setTimeout(() => { if (!done) { cleanup(); resolve({}); } }, timeoutMs);
+      const t = setTimeout(() => {
+        if (!finished) finish({});
+      }, timeoutMs);
 
       function cleanup() {
         clearTimeout(t);
         try { delete window[cbName]; } catch {}
         s.remove();
       }
+
+      function finish(val) {
+        if (finished) return;
+        finished = true;
+        cleanup();
+        resolve(val);
+      }
     });
   }
 
+  async function loadConfigFromService(timeoutMs = CONFIG_TIMEOUT_MS) {
+    try {
+      const raw = await loadConfigJSONP(timeoutMs);
+      const cfg = normalizeConfig(raw);
+
+      if (isMeaningfulCfg(cfg)) {
+        writeCachedConfig(cfg);
+        return cfg;
+      }
+    } catch (err) {
+      console.error("Config service read failed:", err);
+    }
+
+    return normalizeConfig(readCachedConfig());
+  }
+
+  async function fetchJson(url, timeoutMs = 12000) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const r = await fetch(url, { cache: "no-store", signal: controller.signal });
+      if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+      return await r.json();
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  function applyConfigToUi() {
+    const dur = fadeMs + "ms";
+    A.style.transitionDuration = dur;
+    B.style.transitionDuration = dur;
+  }
+
   async function load() {
-    const [cfg, data] = await Promise.all([loadConfigJSONP(), fetchJson(MANIFEST_URL)]);
+    const cachedCfg = readCachedConfig();
 
-    posterSeconds  = numParam("p", cfg.posterSeconds ?? 12);
-    fadeMs         = numParam("fade", cfg.fadeMs ?? 900);
-    refreshSeconds = numParam("r", cfg.manifestRefreshSeconds ?? 300);
+    const [cfg, data] = await Promise.all([
+      loadConfigFromService(CONFIG_TIMEOUT_MS),
+      fetchJson(MANIFEST_URL)
+    ]);
 
-    A.style.transitionDuration = fadeMs + "ms";
-    B.style.transitionDuration = fadeMs + "ms";
+    posterSeconds = positiveParam(
+      "p",
+      pickNumber(cfg.posterSeconds, cachedCfg.posterSeconds, 12)
+    );
+
+    fadeMs = positiveParam(
+      "fade",
+      pickNumber(cfg.fadeMs, cachedCfg.fadeMs, 900)
+    );
+
+    refreshSeconds = positiveParam(
+      "r",
+      pickNumber(
+        cfg.manifestRefreshSeconds,
+        cfg.refreshSeconds,
+        cachedCfg.manifestRefreshSeconds,
+        cachedCfg.refreshSeconds,
+        300
+      )
+    );
+
+    applyConfigToUi();
 
     version = data.updated ? ("?v=" + encodeURIComponent(data.updated)) : "";
-    urls = (data.arrangements || []).map(x => x?.[FIELD]).filter(Boolean);
+    urls = (data.arrangements || [])
+      .map(x => x?.[FIELD])
+      .filter(Boolean);
+
     emptyEl.style.display = urls.length ? "none" : "flex";
   }
 
@@ -107,25 +255,37 @@
   function swapTo(url) {
     const front = frontIsA ? A : B;
     const back  = frontIsA ? B : A;
+
     back.src = url + version;
     back.classList.add("show");
     front.classList.remove("show");
+
     frontIsA = !frontIsA;
   }
 
   async function tick() {
-    if (!urls.length) { setTimeout(tick, 2000); return; }
+    if (!urls.length) {
+      setTimeout(tick, 2000);
+      return;
+    }
+
     const url = urls[idx % urls.length];
     idx += 1;
+
     await preload(url);
     swapTo(url);
+
     setTimeout(tick, posterSeconds * 1000);
   }
 
   function scheduleReload() {
     clearTimeout(refreshTimer);
     refreshTimer = setTimeout(async () => {
-      try { await load(); } catch {}
+      try {
+        await load();
+      } catch (err) {
+        console.error("Arrangements portrait manifest/config reload failed:", err);
+      }
       scheduleReload();
     }, refreshSeconds * 1000);
   }
