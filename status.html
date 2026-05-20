@@ -192,7 +192,7 @@
 
     <div class="card">
       <div class="muted small" style="margin-bottom:10px;">
-        Counts are based on <span class="mono">assets/films.json</span>, <span class="mono">assets/arrangements.json</span>, and <span class="mono">assets/landscape_extra/manifest.json</span>.
+        Counts are based on <span class="mono">assets/films.json</span>, <span class="mono">assets/arrangements.json</span>, <span class="mono">assets/landscape_extra/manifest.json</span>, and <span class="mono">assets/landscape_extra_arrangements/manifest.json</span>.
         Suggested duration = count × seconds-per-poster, plus calendar slide time where enabled.
       </div>
 
@@ -227,6 +227,7 @@
   const FILMS_URL = "./assets/films.json";
   const ARR_URL   = "./assets/arrangements.json";
   const EXTRA_URL = "./assets/landscape_extra/manifest.json";
+  const ARR_EXTRA_URL = "./assets/landscape_extra_arrangements/manifest.json";
   const BG_REL    = "./assets/status-bg.jpg";
 
   const DEFAULTS = {
@@ -432,15 +433,17 @@
     els.tbody.innerHTML = `<tr><td colspan="4" class="muted">Loading…</td></tr>`;
 
     try {
-      const [filmsData, arrData, extraData] = await Promise.all([
+      const [filmsData, arrData, extraData, arrExtraData] = await Promise.all([
         fetchJson(FILMS_URL),
         fetchJson(ARR_URL),
-        fetchJson(EXTRA_URL).catch(() => ({ items: [] }))
+        fetchJson(EXTRA_URL).catch(() => ({ items: [] })),
+        fetchJson(ARR_EXTRA_URL).catch(() => ({ items: [] }))
       ]);
 
       const films = filmsData.films || [];
       const arrs  = arrData.arrangements || [];
       const extraLandscape = countExtraItems(extraData);
+      const extraArrLandscape = countExtraItems(arrExtraData);
 
       const filmsPortrait      = countField(films, "poster");
       const filmsLandscapeBase = countField(films, "landscape");
@@ -450,11 +453,11 @@
       const filmsLandscapeImageCount = filmsLandscapeBase + extraLandscape;
       const filmsLandscapeTotalCount = filmsLandscapeImageCount + (calendarSlideSeconds > 0 ? 1 : 0);
 
-      const arrangementsLandscapeImageCount = arrLandscape;
+      const arrangementsLandscapeImageCount = arrLandscape + extraArrLandscape;
       const arrangementsLandscapeTotalCount = arrangementsLandscapeImageCount + (calendarSlideSeconds > 0 ? 1 : 0);
 
       const portraitAll  = filmsPortrait + arrPortrait;
-      const landscapeAll = filmsLandscapeBase + arrLandscape + extraLandscape;
+      const landscapeAll = filmsLandscapeBase + arrLandscape + extraLandscape + extraArrLandscape;
 
       const rows = [
         {
@@ -477,7 +480,7 @@
         },
         {
           page:"arrangements-landscape.html",
-          desc:`Arrangements landscape (subset${calendarSlideSeconds > 0 ? " + calendar slide" : ""})`,
+          desc:`Arrangements landscape (subset + ${extraArrLandscape} manual extra${calendarSlideSeconds > 0 ? " + calendar slide" : ""})`,
           count: arrangementsLandscapeTotalCount,
           seconds: (arrangementsLandscapeImageCount * posterSeconds) + calendarSlideSeconds
         },
@@ -489,7 +492,7 @@
         },
         {
           page:"landscape-all.html",
-          desc:`Films + arrangements landscape (+ ${extraLandscape} manual extra)`,
+          desc:`Films + arrangements landscape (+ ${extraLandscape} film extra + ${extraArrLandscape} arrangement extra)`,
           count: landscapeAll,
           seconds: landscapeAll * posterSeconds
         }
