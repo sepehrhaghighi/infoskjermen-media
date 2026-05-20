@@ -206,6 +206,7 @@
 (async () => {
   const CONFIG_SERVICE_URL = "https://script.google.com/macros/s/AKfycbwTw7_A4V68NbmGn2aFmo-r3ddEWvO9G9VcIf0pc4W_EaMhiVgCi4JV3jNIqtQTa9pqsA/exec";
   const MANIFEST_URL = "./assets/arrangements.json";
+  const EXTRA_MANIFEST_URL = "./assets/landscape_extra_arrangements/manifest.json";
   const CALENDAR_SLIDE_URL = "https://sepehrhaghighi.github.io/infoskjermen-media/calendar-slide.html";
   const FIELD = "landscape";
 
@@ -224,7 +225,6 @@
   let items = [];
   let idx = 0;
   let frontIsA = true;
-  let version = "";
 
   let calendarReady = false;
   let calendarLoadingPromise = null;
@@ -442,6 +442,45 @@
     return normalizeConfig(readCachedConfig());
   }
 
+  function normalizeExtraUrl(url) {
+    if (!url) return "";
+    if (url.startsWith("/assets/")) return "." + url;
+    return url;
+  }
+
+  async function loadManualExtras(manifestUrl, baseSeconds) {
+    try {
+      const m = await fetchJson(manifestUrl, 12000);
+      const rawItems = Array.isArray(m.items) ? m.items : [];
+
+      return rawItems
+        .map((it) => ({
+          kind: "image",
+          url: normalizeExtraUrl(it?.url || ""),
+          v: it?.v ? ("?v=" + encodeURIComponent(it.v)) : "",
+          date: "",
+          seconds: baseSeconds
+        }))
+        .filter((it) => it.url);
+    } catch {
+      return [];
+    }
+  }
+
+  function mergeUniqueItems(primary, extra) {
+    const seen = new Set(primary.map((it) => it.url));
+    const out = primary.slice();
+
+    for (const it of extra) {
+      if (it.url && !seen.has(it.url)) {
+        seen.add(it.url);
+        out.push(it);
+      }
+    }
+
+    return out;
+  }
+
   function itemsChanged(nextItems) {
     if (nextItems.length !== items.length) return true;
 
@@ -451,6 +490,7 @@
       if (!b) return true;
       if (a.kind !== b.kind) return true;
       if ((a.url || "") !== (b.url || "")) return true;
+      if ((a.v || "") !== (b.v || "")) return true;
       if ((a.date || "") !== (b.date || "")) return true;
       if ((a.seconds || 0) !== (b.seconds || 0)) return true;
     }
@@ -497,7 +537,7 @@
     const img = document.createElement("img");
     img.className = "mediaImg";
     img.alt = "";
-    img.src = item.url + version;
+    img.src = item.url + (item.v || "");
     el.appendChild(img);
   }
 
@@ -524,7 +564,7 @@
       const img = new Image();
       img.onload = resolve;
       img.onerror = resolve;
-      img.src = item.url + version;
+      img.src = item.url + (item.v || "");
     });
   }
 
@@ -647,16 +687,20 @@
 
     applyFadeDurations();
 
-    version = data.updated ? ("?v=" + encodeURIComponent(data.updated)) : "";
+    const baseVersion = data.updated ? ("?v=" + encodeURIComponent(data.updated)) : "";
 
-    let nextItems = (data.arrangements || [])
+    const posters = (data.arrangements || [])
       .filter((x) => x?.[FIELD])
       .map((x) => ({
         kind: "image",
         url: x[FIELD],
+        v: baseVersion,
         date: formatArrangementDateTimeRange(x.begin, x.end),
         seconds: posterSeconds
       }));
+
+    const extraItems = await loadManualExtras(EXTRA_MANIFEST_URL, posterSeconds);
+    let nextItems = mergeUniqueItems(posters, extraItems);
 
     if (calendarSlideSeconds > 0) {
       nextItems.unshift({
