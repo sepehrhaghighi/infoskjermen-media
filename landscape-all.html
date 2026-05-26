@@ -161,7 +161,10 @@
   const CONFIG_SERVICE_URL = "https://script.google.com/macros/s/AKfycbwTw7_A4V68NbmGn2aFmo-r3ddEWvO9G9VcIf0pc4W_EaMhiVgCi4JV3jNIqtQTa9pqsA/exec";
   const FILMS_URL = "./assets/films.json";
   const ARR_URL   = "./assets/arrangements.json";
+
   const EXTRA_MANIFEST_URL = "./assets/landscape_extra/manifest.json";
+  const ARR_EXTRA_MANIFEST_URL = "./assets/landscape_extra_arrangements/manifest.json";
+
   const FIELD = "landscape";
 
   const CONFIG_TIMEOUT_MS = 7000;
@@ -311,6 +314,7 @@
     try {
       const m = await fetchJson(manifestUrl);
       const rawItems = Array.isArray(m.items) ? m.items : [];
+
       return rawItems
         .map(it => ({
           url: normalizeExtraUrl(it?.url || ""),
@@ -325,12 +329,14 @@
   function mergeUniqueItems(primary, extra) {
     const seen = new Set(primary.map(it => it.url));
     const out = primary.slice();
+
     for (const it of extra) {
       if (it.url && !seen.has(it.url)) {
         seen.add(it.url);
         out.push(it);
       }
     }
+
     return out;
   }
 
@@ -347,12 +353,14 @@
 
       const s = document.createElement("script");
       s.src = CONFIG_SERVICE_URL + "?callback=" + cbName + "&_=" + Date.now();
+
       s.onerror = () => finish({});
       s.onload = () => {
         setTimeout(() => {
           if (!finished && !called) finish({});
         }, 250);
       };
+
       document.head.appendChild(s);
 
       const t = setTimeout(() => {
@@ -402,11 +410,12 @@
   async function load() {
     const cachedCfg = readCachedConfig();
 
-    const [cfg, filmsData, arrData, extraItems] = await Promise.all([
+    const [cfg, filmsData, arrData, filmExtraItems, arrExtraItems] = await Promise.all([
       loadConfigFromService(CONFIG_TIMEOUT_MS),
       fetchJson(FILMS_URL),
       fetchJson(ARR_URL),
-      loadManualExtras(EXTRA_MANIFEST_URL)
+      loadManualExtras(EXTRA_MANIFEST_URL),
+      loadManualExtras(ARR_EXTRA_MANIFEST_URL)
     ]);
 
     posterSeconds = positiveParam(
@@ -444,9 +453,9 @@
         date: ""
       }));
 
-    const extras = extraItems.map(it => ({
+    const filmExtras = filmExtraItems.map(it => ({
       ...it,
-      source: "extra",
+      source: "film_extra",
       date: ""
     }));
 
@@ -459,8 +468,17 @@
         date: formatArrangementDateTimeRange(x.begin, x.end)
       }));
 
-    // Order: films -> manual extras -> arrangements
-    const nextItems = mergeUniqueItems(films, extras.concat(arrs));
+    const arrExtras = arrExtraItems.map(it => ({
+      ...it,
+      source: "arrangement_extra",
+      date: ""
+    }));
+
+    // Order: films -> film manual extras -> arrangements -> arrangement manual extras
+    const nextItems = mergeUniqueItems(
+      films,
+      filmExtras.concat(arrs, arrExtras)
+    );
 
     const changed =
       nextItems.length !== items.length ||
@@ -494,10 +512,14 @@
 
     backImg.src = item.url + item.v;
 
-    const showArrangementOverlay = item.source === "arrangement";
+    const showArrangementOverlay =
+      item.source === "arrangement" ||
+      item.source === "arrangement_extra";
+
     const text = showArrangementOverlay ? (item.date || "").trim() : "";
 
     backDate.textContent = text;
+
     if (text) {
       backDate.classList.add("show");
     } else {
@@ -527,19 +549,23 @@
 
     const item = items[idx % items.length];
     idx += 1;
+
     await preload(item);
     swapTo(item);
+
     setTimeout(tick, posterSeconds * 1000);
   }
 
   function scheduleReload() {
     clearTimeout(refreshTimer);
+
     refreshTimer = setTimeout(async () => {
       try {
         await load();
       } catch (err) {
         console.error("Landscape manifest/config reload failed:", err);
       }
+
       scheduleReload();
     }, refreshSeconds * 1000);
   }
