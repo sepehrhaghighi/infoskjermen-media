@@ -386,15 +386,17 @@
     frontIsA = !frontIsA;
   }
 
-  function refreshCalendarInBackground(forceReload = true) {
+  function initializeCalendarFrame() {
     if (calendarSlideSeconds <= 0) {
       calendarReady = false;
       return Promise.resolve(false);
     }
 
+    if (calendarFrame.src) {
+      calendarReady = true;
+      return Promise.resolve(true);
+    }
     if (calendarLoadingPromise) return calendarLoadingPromise;
-
-    calendarReady = false;
 
     calendarLoadingPromise = new Promise((resolve) => {
       let settled = false;
@@ -419,15 +421,7 @@
       }
 
       calendarFrame.addEventListener("load", onLoad, { once: true });
-
-      if (forceReload || !calendarFrame.src) {
-        const sep = CALENDAR_FRAME_URL.includes("?") ? "&" : "?";
-        calendarFrame.src = CALENDAR_FRAME_URL + sep + "_=" + Date.now();
-      } else {
-        clearTimeout(timer);
-        calendarFrame.removeEventListener("load", onLoad);
-        finish(true);
-      }
+      calendarFrame.src = CALENDAR_FRAME_URL;
     });
 
     return calendarLoadingPromise;
@@ -436,7 +430,7 @@
   async function ensureCalendarReady() {
     if (calendarSlideSeconds <= 0) return false;
     if (calendarReady && calendarFrame.src) return true;
-    return await refreshCalendarInBackground(true);
+    return await initializeCalendarFrame();
   }
 
   async function load() {
@@ -531,9 +525,6 @@
 
         await fadeToPoster();
 
-        if (calendarSlideSeconds > 0) {
-          void refreshCalendarInBackground(true);
-        }
 
         if (nextItem?.kind === "poster") {
           setTimeout(tick, (nextItem.seconds || posterSeconds) * 1000);
@@ -551,9 +542,6 @@
       swapToPoster(item);
       await fadeToPoster();
 
-      if (calendarSlideSeconds > 0) {
-        void refreshCalendarInBackground(true);
-      }
     } else {
       swapToPoster(item);
     }
@@ -581,7 +569,7 @@
   const startsWithCalendar = items[0]?.kind === "calendar";
 
   if (startsWithCalendar) {
-    const ready = await refreshCalendarInBackground(true);
+    const ready = await initializeCalendarFrame();
 
     if (ready) {
       calendarScene.classList.add("active");
@@ -590,9 +578,6 @@
     } else {
       await primeFirstPoster();
       posterScene.classList.add("active");
-      if (calendarSlideSeconds > 0) {
-        void refreshCalendarInBackground(true);
-      }
       tick();
     }
   } else {
@@ -600,7 +585,7 @@
     posterScene.classList.add("active");
 
     if (calendarSlideSeconds > 0) {
-      void refreshCalendarInBackground(true);
+      void initializeCalendarFrame();
     }
 
     tick();
