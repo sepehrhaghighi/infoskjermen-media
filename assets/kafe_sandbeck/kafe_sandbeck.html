@@ -10,11 +10,10 @@
     html,
     body {
       margin: 0;
-      padding: 0;
       width: 100%;
       height: 100%;
-      overflow: hidden;
       background: #000;
+      overflow: hidden;
     }
 
     #stage {
@@ -55,8 +54,7 @@
       color: #fff;
       background: #000;
 
-      font-family: system-ui, sans-serif;
-      font-size: 24px;
+      font: 24px/1.3 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
 
       text-align: center;
     }
@@ -66,42 +64,36 @@
 <body>
 
   <div id="stage">
-
     <img id="posterA" class="poster" alt="">
     <img id="posterB" class="poster" alt="">
 
     <div id="message">
       Ingen bilder tilgjengelig.
     </div>
-
   </div>
 
 
   <script>
-    (() => {
+    (async () => {
 
       /* =====================================================
          SETTINGS
          ===================================================== */
 
-      const DISPLAY_TIME = 10000; // 10 seconds
-      const FADE_TIME = 300;      // 300 ms
+      const ASSET_FOLDER =
+        "./assets/kafe_sandbeck/";
 
-      /*
-       * Check GitHub every five minutes for added/removed
-       * posters.
-       *
-       * This is intentionally not every few seconds because
-       * the public GitHub API has rate limits.
-       */
-      const FOLDER_REFRESH_TIME = 5 * 60 * 1000;
+      const MANIFEST_URL =
+        "./assets/kafe_sandbeck/manifest.json";
 
+      // Each poster stays for 10 seconds
+      const DISPLAY_TIME = 10000;
 
-      const API_URL =
-        "https://api.github.com/repos/" +
-        "sepehrhaghighi/infoskjermen-media/" +
-        "contents/assets/kafe_sandbeck" +
-        "?ref=main";
+      // Crossfade duration
+      const FADE_TIME = 300;
+
+      // Check Power Automate's manifest every 60 seconds
+      const REFRESH_TIME = 60000;
 
 
       /* =====================================================
@@ -128,37 +120,75 @@
 
       let frontIsA = true;
 
-      let slideTimer = null;
+      let slideshowTimer = null;
+
+      let refreshTimer = null;
+
+      let started = false;
 
 
       /* =====================================================
-         IMAGE FILE CHECK
+         BUILD IMAGE URL
          ===================================================== */
 
-      function isImageFile(filename) {
+      function buildImageUrl(item) {
 
-        return /\.(jpg|jpeg|png|webp|gif|avif)$/i
-          .test(filename);
+        if (!item || !item.name) {
+          return "";
+        }
 
+        /*
+         * IMPORTANT:
+         *
+         * We DO NOT use:
+         *
+         * item.url
+         *
+         * because Power Automate currently writes the
+         * old landscape_extra_arrangements path there.
+         *
+         * Instead, we know that all these images belong
+         * inside assets/kafe_sandbeck/.
+         */
+
+        let url =
+          ASSET_FOLDER +
+          encodeURIComponent(item.name);
+
+
+        /*
+         * Use the version timestamp created by
+         * Power Automate as cache busting.
+         */
+
+        if (item.v) {
+
+          url +=
+            "?v=" +
+            encodeURIComponent(item.v);
+
+        }
+
+
+        return url;
       }
 
 
       /* =====================================================
-         READ THE KAFE SANDBECK FOLDER
+         LOAD MANIFEST
          ===================================================== */
 
-      async function loadPosterList() {
+      async function loadManifest() {
 
         try {
 
           const response =
             await fetch(
-              API_URL + "&_=" + Date.now(),
+              MANIFEST_URL +
+              "?_=" +
+              Date.now(),
               {
-                cache: "no-store",
-                headers: {
-                  "Accept": "application/vnd.github+json"
-                }
+                cache: "no-store"
               }
             );
 
@@ -166,42 +196,43 @@
           if (!response.ok) {
 
             throw new Error(
-              "GitHub API returned " +
+              "Manifest error: " +
               response.status
             );
 
           }
 
 
-          const files =
+          const data =
             await response.json();
 
 
+          const manifestItems =
+            Array.isArray(data.items)
+              ? data.items
+              : [];
+
+
           const newPosters =
-            files
+            manifestItems
 
-              .filter(file =>
-                file.type === "file" &&
-                isImageFile(file.name) &&
-                file.download_url
+              .filter(item =>
+                item &&
+                item.name &&
+                /\.(jpg|jpeg|png|webp|gif|avif)$/i
+                  .test(item.name)
               )
 
-              .sort((a, b) =>
-                a.name.localeCompare(
-                  b.name,
-                  undefined,
-                  {
-                    numeric: true,
-                    sensitivity: "base"
-                  }
-                )
-              )
-
-              .map(file => ({
-                name: file.name,
-                url: file.download_url
+              .map(item => ({
+                name: item.name,
+                url: buildImageUrl(item),
+                version: item.v || ""
               }));
 
+
+          /* ---------------------------------------------
+             NO POSTERS
+             --------------------------------------------- */
 
           if (!newPosters.length) {
 
@@ -220,53 +251,65 @@
           message.style.display = "none";
 
 
+          /* ---------------------------------------------
+             CHECK IF MANIFEST CHANGED
+             --------------------------------------------- */
+
+          const oldSignature =
+            JSON.stringify(
+              posters.map(
+                p => [p.name, p.version]
+              )
+            );
+
+
+          const newSignature =
+            JSON.stringify(
+              newPosters.map(
+                p => [p.name, p.version]
+              )
+            );
+
+
+          const changed =
+            oldSignature !== newSignature;
+
+
+          posters =
+            newPosters;
+
+
           /*
-           * Remember which poster is currently visible
-           * so refreshing the folder does not suddenly
-           * restart the slideshow.
+           * Don't restart the screen every time we
+           * refresh manifest.json.
+           *
+           * Only make sure index is still valid.
            */
 
-          const currentPoster =
-            posters[currentIndex]?.name;
+          if (
+            changed &&
+            currentIndex >= posters.length
+          ) {
 
-
-          posters = newPosters;
-
-
-          if (currentPoster) {
-
-            const newIndex =
-              posters.findIndex(
-                poster =>
-                  poster.name === currentPoster
-              );
-
-
-            if (newIndex !== -1) {
-
-              currentIndex = newIndex;
-
-            } else {
-
-              currentIndex = 0;
-
-            }
+            currentIndex = 0;
 
           }
+
+
+          return changed;
 
 
         } catch (error) {
 
           console.error(
-            "Could not read Kafé Sandbeck folder:",
+            "Could not load Kafé Sandbeck manifest:",
             error
           );
 
 
           /*
-           * If posters were already loaded, keep showing
-           * them even if GitHub temporarily cannot be
-           * reached.
+           * If images were already loaded,
+           * keep showing them.
            */
 
           if (!posters.length) {
@@ -274,9 +317,13 @@
             message.textContent =
               "Kunne ikke laste bilder.";
 
-            message.style.display = "flex";
+            message.style.display =
+              "flex";
 
           }
+
+
+          return false;
 
         }
 
@@ -287,22 +334,24 @@
          PRELOAD IMAGE
          ===================================================== */
 
-      function preload(url) {
+      function preloadImage(url) {
 
         return new Promise(resolve => {
 
-          const img = new Image();
+          const img =
+            new Image();
 
 
-          img.onload = () =>
-            resolve(true);
+          img.onload =
+            () => resolve(true);
 
 
-          img.onerror = () =>
-            resolve(false);
+          img.onerror =
+            () => resolve(false);
 
 
-          img.src = url;
+          img.src =
+            url;
 
         });
 
@@ -324,16 +373,20 @@
 
 
         const poster =
-          posters[currentIndex];
+          posters[0];
 
 
         const loaded =
-          await preload(poster.url);
+          await preloadImage(
+            poster.url
+          );
 
 
         if (!loaded) {
 
-          nextPoster();
+          currentIndex = 1;
+
+          scheduleNext(500);
 
           return;
 
@@ -344,26 +397,42 @@
           poster.url;
 
 
-        posterA.classList.add("show");
-
-        posterB.classList.remove("show");
-
-
-        frontIsA = true;
+        posterA.classList.add(
+          "show"
+        );
 
 
-        scheduleNextPoster();
+        posterB.classList.remove(
+          "show"
+        );
+
+
+        frontIsA =
+          true;
+
+
+        currentIndex =
+          1;
+
+
+        started =
+          true;
+
+
+        scheduleNext();
 
       }
 
 
       /* =====================================================
-         GO TO NEXT POSTER
+         SHOW NEXT POSTER
          ===================================================== */
 
-      async function nextPoster() {
+      async function showNextPoster() {
 
-        clearTimeout(slideTimer);
+        clearTimeout(
+          slideshowTimer
+        );
 
 
         if (!posters.length) {
@@ -372,17 +441,47 @@
 
 
         /*
-         * If only one poster exists, simply leave it
-         * on screen.
+         * Only one poster:
+         * simply leave it displayed.
          */
 
         if (posters.length === 1) {
 
-          scheduleNextPoster();
+          const poster =
+            posters[0];
+
+
+          const front =
+            frontIsA
+              ? posterA
+              : posterB;
+
+
+          /*
+           * Update the image if Power Automate
+           * replaced it with a new version.
+           */
+
+          if (front.src !== poster.url) {
+
+            front.src =
+              poster.url;
+
+          }
+
+
+          scheduleNext();
 
           return;
 
         }
+
+
+        const poster =
+          posters[
+            currentIndex %
+            posters.length
+          ];
 
 
         currentIndex =
@@ -390,21 +489,20 @@
           posters.length;
 
 
-        const poster =
-          posters[currentIndex];
-
-
         const loaded =
-          await preload(poster.url);
+          await preloadImage(
+            poster.url
+          );
 
 
         /*
-         * Skip an image if it cannot be loaded.
+         * If one image is temporarily broken,
+         * skip it instead of freezing the display.
          */
 
         if (!loaded) {
 
-          scheduleNextPoster(500);
+          scheduleNext(500);
 
           return;
 
@@ -424,7 +522,7 @@
 
 
         /*
-         * Load next poster into hidden layer.
+         * Put next image behind current image.
          */
 
         back.src =
@@ -432,17 +530,22 @@
 
 
         /*
-         * Give the browser a frame to render the new
-         * image before starting the crossfade.
+         * Give the browser time to render it
+         * before starting the 300 ms fade.
          */
 
         requestAnimationFrame(() => {
 
           requestAnimationFrame(() => {
 
-            back.classList.add("show");
+            back.classList.add(
+              "show"
+            );
 
-            front.classList.remove("show");
+
+            front.classList.remove(
+              "show"
+            );
 
 
             frontIsA =
@@ -450,17 +553,18 @@
 
 
             /*
-             * Remove old image after fade has completed.
+             * After fade finishes, clear the old
+             * image to avoid unnecessary memory use.
              */
 
             setTimeout(() => {
 
               front.src = "";
 
-            }, FADE_TIME);
+            }, FADE_TIME + 50);
 
 
-            scheduleNextPoster();
+            scheduleNext();
 
           });
 
@@ -470,19 +574,21 @@
 
 
       /* =====================================================
-         TIMER
+         SLIDESHOW TIMER
          ===================================================== */
 
-      function scheduleNextPoster(
+      function scheduleNext(
         delay = DISPLAY_TIME
       ) {
 
-        clearTimeout(slideTimer);
+        clearTimeout(
+          slideshowTimer
+        );
 
 
-        slideTimer =
+        slideshowTimer =
           setTimeout(
-            nextPoster,
+            showNextPoster,
             delay
           );
 
@@ -490,18 +596,35 @@
 
 
       /* =====================================================
-         CHECK FOLDER FOR CHANGES
+         REFRESH MANIFEST
          ===================================================== */
 
-      async function refreshFolder() {
+      async function refreshManifest() {
 
-        await loadPosterList();
+        await loadManifest();
 
 
-        setTimeout(
-          refreshFolder,
-          FOLDER_REFRESH_TIME
-        );
+        /*
+         * If the folder used to be empty and Power
+         * Automate later adds an image, start the
+         * slideshow automatically.
+         */
+
+        if (
+          posters.length &&
+          !started
+        ) {
+
+          await showFirstPoster();
+
+        }
+
+
+        refreshTimer =
+          setTimeout(
+            refreshManifest,
+            REFRESH_TIME
+          );
 
       }
 
@@ -510,27 +633,21 @@
          START
          ===================================================== */
 
-      async function start() {
-
-        await loadPosterList();
+      await loadManifest();
 
 
-        if (posters.length) {
+      if (posters.length) {
 
-          await showFirstPoster();
-
-        }
-
-
-        setTimeout(
-          refreshFolder,
-          FOLDER_REFRESH_TIME
-        );
+        await showFirstPoster();
 
       }
 
 
-      start();
+      refreshTimer =
+        setTimeout(
+          refreshManifest,
+          REFRESH_TIME
+        );
 
 
     })();
