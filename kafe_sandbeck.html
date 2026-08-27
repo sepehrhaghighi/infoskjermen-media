@@ -12,8 +12,8 @@
       margin: 0;
       width: 100%;
       height: 100%;
-      background: #000;
       overflow: hidden;
+      background: #000;
     }
 
     #stage {
@@ -26,17 +26,14 @@
     .poster {
       position: absolute;
       inset: 0;
-
       width: 100%;
       height: 100%;
 
       object-fit: contain;
+      background: #000;
 
       opacity: 0;
-
       transition: opacity 300ms ease-in-out;
-
-      background: #000;
     }
 
     .poster.show {
@@ -54,9 +51,7 @@
       color: #fff;
       background: #000;
 
-      font: 24px/1.3 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-
-      text-align: center;
+      font: 24px system-ui, sans-serif;
     }
   </style>
 </head>
@@ -72,33 +67,16 @@
     </div>
   </div>
 
-
   <script>
-    (async () => {
-
-      /* =====================================================
-         SETTINGS
-         ===================================================== */
-
-      const ASSET_FOLDER =
-        "./assets/kafe_sandbeck/";
+    (() => {
 
       const MANIFEST_URL =
         "./assets/kafe_sandbeck/manifest.json";
 
-      // Each poster stays for 10 seconds
       const DISPLAY_TIME = 10000;
-
-      // Crossfade duration
       const FADE_TIME = 300;
-
-      // Check Power Automate's manifest every 60 seconds
       const REFRESH_TIME = 60000;
 
-
-      /* =====================================================
-         ELEMENTS
-         ===================================================== */
 
       const posterA =
         document.getElementById("posterA");
@@ -110,73 +88,35 @@
         document.getElementById("message");
 
 
-      /* =====================================================
-         STATE
-         ===================================================== */
-
       let posters = [];
-
       let currentIndex = 0;
-
       let frontIsA = true;
-
-      let slideshowTimer = null;
-
-      let refreshTimer = null;
-
-      let started = false;
+      let slideTimer = null;
 
 
-      /* =====================================================
-         BUILD IMAGE URL
-         ===================================================== */
+      function getPosterUrl(item) {
 
-      function buildImageUrl(item) {
-
-        if (!item || !item.name) {
+        if (!item || !item.url) {
           return "";
         }
 
-        /*
-         * IMPORTANT:
-         *
-         * We DO NOT use:
-         *
-         * item.url
-         *
-         * because Power Automate currently writes the
-         * old landscape_extra_arrangements path there.
-         *
-         * Instead, we know that all these images belong
-         * inside assets/kafe_sandbeck/.
-         */
-
-        let url =
-          ASSET_FOLDER +
-          encodeURIComponent(item.name);
-
-
-        /*
-         * Use the version timestamp created by
-         * Power Automate as cache busting.
-         */
+        let url = item.url;
 
         if (item.v) {
 
+          const separator =
+            url.includes("?") ? "&" : "?";
+
           url +=
-            "?v=" +
+            separator +
+            "v=" +
             encodeURIComponent(item.v);
 
         }
 
-
         return url;
       }
 
-
-      /* =====================================================
-         LOAD MANIFEST
-         ===================================================== */
 
       async function loadManifest() {
 
@@ -196,7 +136,7 @@
           if (!response.ok) {
 
             throw new Error(
-              "Manifest error: " +
+              "Manifest request failed: " +
               response.status
             );
 
@@ -207,43 +147,32 @@
             await response.json();
 
 
-          const manifestItems =
-            Array.isArray(data.items)
+          posters =
+            (Array.isArray(data.items)
               ? data.items
-              : [];
-
-
-          const newPosters =
-            manifestItems
+              : [])
 
               .filter(item =>
                 item &&
-                item.name &&
-                /\.(jpg|jpeg|png|webp|gif|avif)$/i
-                  .test(item.name)
+                item.url &&
+                /\.(jpg|jpeg|png|webp|gif|avif)(\?|$)/i
+                  .test(item.url)
               )
 
               .map(item => ({
-                name: item.name,
-                url: buildImageUrl(item),
-                version: item.v || ""
+                name: item.name || "",
+                url: getPosterUrl(item)
               }));
 
 
-          /* ---------------------------------------------
-             NO POSTERS
-             --------------------------------------------- */
-
-          if (!newPosters.length) {
-
-            posters = [];
+          if (!posters.length) {
 
             posterA.classList.remove("show");
             posterB.classList.remove("show");
 
             message.style.display = "flex";
 
-            return;
+            return false;
 
           }
 
@@ -251,74 +180,28 @@
           message.style.display = "none";
 
 
-          /* ---------------------------------------------
-             CHECK IF MANIFEST CHANGED
-             --------------------------------------------- */
-
-          const oldSignature =
-            JSON.stringify(
-              posters.map(
-                p => [p.name, p.version]
-              )
-            );
-
-
-          const newSignature =
-            JSON.stringify(
-              newPosters.map(
-                p => [p.name, p.version]
-              )
-            );
-
-
-          const changed =
-            oldSignature !== newSignature;
-
-
-          posters =
-            newPosters;
-
-
-          /*
-           * Don't restart the screen every time we
-           * refresh manifest.json.
-           *
-           * Only make sure index is still valid.
-           */
-
-          if (
-            changed &&
-            currentIndex >= posters.length
-          ) {
-
+          if (currentIndex >= posters.length) {
             currentIndex = 0;
-
           }
 
 
-          return changed;
+          return true;
 
 
         } catch (error) {
 
           console.error(
-            "Could not load Kafé Sandbeck manifest:",
+            "Could not load manifest:",
             error
           );
 
-
-          /*
-           * If images were already loaded,
-           * keep showing them.
-           */
 
           if (!posters.length) {
 
             message.textContent =
               "Kunne ikke laste bilder.";
 
-            message.style.display =
-              "flex";
+            message.style.display = "flex";
 
           }
 
@@ -330,37 +213,24 @@
       }
 
 
-      /* =====================================================
-         PRELOAD IMAGE
-         ===================================================== */
-
-      function preloadImage(url) {
+      function preload(url) {
 
         return new Promise(resolve => {
 
-          const img =
-            new Image();
+          const image = new Image();
 
-
-          img.onload =
+          image.onload =
             () => resolve(true);
 
-
-          img.onerror =
+          image.onerror =
             () => resolve(false);
 
-
-          img.src =
-            url;
+          image.src = url;
 
         });
 
       }
 
-
-      /* =====================================================
-         SHOW FIRST POSTER
-         ===================================================== */
 
       async function showFirstPoster() {
 
@@ -377,46 +247,27 @@
 
 
         const loaded =
-          await preloadImage(
-            poster.url
-          );
+          await preload(poster.url);
 
 
         if (!loaded) {
-
-          currentIndex = 1;
-
-          scheduleNext(500);
-
           return;
-
         }
 
 
         posterA.src =
           poster.url;
 
+        posterA.classList.add("show");
+        posterB.classList.remove("show");
 
-        posterA.classList.add(
-          "show"
-        );
-
-
-        posterB.classList.remove(
-          "show"
-        );
-
-
-        frontIsA =
-          true;
+        frontIsA = true;
 
 
         currentIndex =
-          1;
-
-
-        started =
-          true;
+          posters.length > 1
+            ? 1
+            : 0;
 
 
         scheduleNext();
@@ -424,15 +275,9 @@
       }
 
 
-      /* =====================================================
-         SHOW NEXT POSTER
-         ===================================================== */
-
       async function showNextPoster() {
 
-        clearTimeout(
-          slideshowTimer
-        );
+        clearTimeout(slideTimer);
 
 
         if (!posters.length) {
@@ -440,48 +285,16 @@
         }
 
 
-        /*
-         * Only one poster:
-         * simply leave it displayed.
-         */
-
         if (posters.length === 1) {
 
-          const poster =
-            posters[0];
-
-
-          const front =
-            frontIsA
-              ? posterA
-              : posterB;
-
-
-          /*
-           * Update the image if Power Automate
-           * replaced it with a new version.
-           */
-
-          if (front.src !== poster.url) {
-
-            front.src =
-              poster.url;
-
-          }
-
-
           scheduleNext();
-
           return;
 
         }
 
 
         const poster =
-          posters[
-            currentIndex %
-            posters.length
-          ];
+          posters[currentIndex];
 
 
         currentIndex =
@@ -490,20 +303,12 @@
 
 
         const loaded =
-          await preloadImage(
-            poster.url
-          );
+          await preload(poster.url);
 
-
-        /*
-         * If one image is temporarily broken,
-         * skip it instead of freezing the display.
-         */
 
         if (!loaded) {
 
           scheduleNext(500);
-
           return;
 
         }
@@ -521,41 +326,20 @@
             : posterA;
 
 
-        /*
-         * Put next image behind current image.
-         */
-
         back.src =
           poster.url;
 
-
-        /*
-         * Give the browser time to render it
-         * before starting the 300 ms fade.
-         */
 
         requestAnimationFrame(() => {
 
           requestAnimationFrame(() => {
 
-            back.classList.add(
-              "show"
-            );
-
-
-            front.classList.remove(
-              "show"
-            );
-
+            back.classList.add("show");
+            front.classList.remove("show");
 
             frontIsA =
               !frontIsA;
 
-
-            /*
-             * After fade finishes, clear the old
-             * image to avoid unnecessary memory use.
-             */
 
             setTimeout(() => {
 
@@ -573,20 +357,13 @@
       }
 
 
-      /* =====================================================
-         SLIDESHOW TIMER
-         ===================================================== */
-
       function scheduleNext(
         delay = DISPLAY_TIME
       ) {
 
-        clearTimeout(
-          slideshowTimer
-        );
+        clearTimeout(slideTimer);
 
-
-        slideshowTimer =
+        slideTimer =
           setTimeout(
             showNextPoster,
             delay
@@ -595,24 +372,18 @@
       }
 
 
-      /* =====================================================
-         REFRESH MANIFEST
-         ===================================================== */
-
       async function refreshManifest() {
+
+        const hadNoPosters =
+          posters.length === 0;
+
 
         await loadManifest();
 
 
-        /*
-         * If the folder used to be empty and Power
-         * Automate later adds an image, start the
-         * slideshow automatically.
-         */
-
         if (
-          posters.length &&
-          !started
+          hadNoPosters &&
+          posters.length
         ) {
 
           await showFirstPoster();
@@ -620,35 +391,36 @@
         }
 
 
-        refreshTimer =
-          setTimeout(
-            refreshManifest,
-            REFRESH_TIME
-          );
-
-      }
-
-
-      /* =====================================================
-         START
-         ===================================================== */
-
-      await loadManifest();
-
-
-      if (posters.length) {
-
-        await showFirstPoster();
-
-      }
-
-
-      refreshTimer =
         setTimeout(
           refreshManifest,
           REFRESH_TIME
         );
 
+      }
+
+
+      async function start() {
+
+        const loaded =
+          await loadManifest();
+
+
+        if (loaded) {
+
+          await showFirstPoster();
+
+        }
+
+
+        setTimeout(
+          refreshManifest,
+          REFRESH_TIME
+        );
+
+      }
+
+
+      start();
 
     })();
   </script>
