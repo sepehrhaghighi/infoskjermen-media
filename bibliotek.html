@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="no">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>Bibliotek</title>
+
+  <style>
+    html,
+    body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #000;
+    }
+
+    #stage {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      background: #000;
+    }
+
+    .poster {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+
+      object-fit: contain;
+      background: #000;
+
+      opacity: 0;
+      transition: opacity 300ms ease-in-out;
+    }
+
+    .poster.show {
+      opacity: 1;
+    }
+
+    #message {
+      position: absolute;
+      inset: 0;
+
+      display: none;
+      align-items: center;
+      justify-content: center;
+
+      color: #fff;
+      background: #000;
+
+      font: 24px system-ui, sans-serif;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="stage">
+    <img id="posterA" class="poster" alt="">
+    <img id="posterB" class="poster" alt="">
+
+    <div id="message">
+      Ingen bilder tilgjengelig.
+    </div>
+  </div>
+
+  <script>
+    (() => {
+
+      const MANIFEST_URL =
+        "./assets/bibliotek/manifest.json";
+
+      const DISPLAY_TIME = 10000;
+      const FADE_TIME = 300;
+      const REFRESH_TIME = 60000;
+
+
+      const posterA =
+        document.getElementById("posterA");
+
+      const posterB =
+        document.getElementById("posterB");
+
+      const message =
+        document.getElementById("message");
+
+
+      let posters = [];
+      let currentIndex = 0;
+      let frontIsA = true;
+      let slideTimer = null;
+
+
+      function getPosterUrl(item) {
+
+        if (!item || !item.url) {
+          return "";
+        }
+
+        let url = item.url;
+
+        if (item.v) {
+
+          const separator =
+            url.includes("?") ? "&" : "?";
+
+          url +=
+            separator +
+            "v=" +
+            encodeURIComponent(item.v);
+
+        }
+
+        return url;
+      }
+
+
+      async function loadManifest() {
+
+        try {
+
+          const response =
+            await fetch(
+              MANIFEST_URL +
+              "?_=" +
+              Date.now(),
+              {
+                cache: "no-store"
+              }
+            );
+
+
+          if (!response.ok) {
+
+            throw new Error(
+              "Manifest request failed: " +
+              response.status
+            );
+
+          }
+
+
+          const data =
+            await response.json();
+
+
+          posters =
+            (Array.isArray(data.items)
+              ? data.items
+              : [])
+
+              .filter(item =>
+                item &&
+                item.url &&
+                /\.(jpg|jpeg|png|webp|gif|avif)(\?|$)/i
+                  .test(item.url)
+              )
+
+              .map(item => ({
+                name: item.name || "",
+                url: getPosterUrl(item)
+              }));
+
+
+          if (!posters.length) {
+
+            posterA.classList.remove("show");
+            posterB.classList.remove("show");
+
+            message.style.display = "flex";
+
+            return false;
+
+          }
+
+
+          message.style.display = "none";
+
+
+          if (currentIndex >= posters.length) {
+            currentIndex = 0;
+          }
+
+
+          return true;
+
+
+        } catch (error) {
+
+          console.error(
+            "Could not load manifest:",
+            error
+          );
+
+
+          if (!posters.length) {
+
+            message.textContent =
+              "Kunne ikke laste bilder.";
+
+            message.style.display = "flex";
+
+          }
+
+
+          return false;
+
+        }
+
+      }
+
+
+      function preload(url) {
+
+        return new Promise(resolve => {
+
+          const image = new Image();
+
+          image.onload =
+            () => resolve(true);
+
+          image.onerror =
+            () => resolve(false);
+
+          image.src = url;
+
+        });
+
+      }
+
+
+      async function showFirstPoster() {
+
+        if (!posters.length) {
+          return;
+        }
+
+
+        currentIndex = 0;
+
+
+        const poster =
+          posters[0];
+
+
+        const loaded =
+          await preload(poster.url);
+
+
+        if (!loaded) {
+          return;
+        }
+
+
+        posterA.src =
+          poster.url;
+
+        posterA.classList.add("show");
+        posterB.classList.remove("show");
+
+        frontIsA = true;
+
+
+        currentIndex =
+          posters.length > 1
+            ? 1
+            : 0;
+
+
+        scheduleNext();
+
+      }
+
+
+      async function showNextPoster() {
+
+        clearTimeout(slideTimer);
+
+
+        if (!posters.length) {
+          return;
+        }
+
+
+        if (posters.length === 1) {
+
+          scheduleNext();
+          return;
+
+        }
+
+
+        const poster =
+          posters[currentIndex];
+
+
+        currentIndex =
+          (currentIndex + 1) %
+          posters.length;
+
+
+        const loaded =
+          await preload(poster.url);
+
+
+        if (!loaded) {
+
+          scheduleNext(500);
+          return;
+
+        }
+
+
+        const front =
+          frontIsA
+            ? posterA
+            : posterB;
+
+
+        const back =
+          frontIsA
+            ? posterB
+            : posterA;
+
+
+        back.src =
+          poster.url;
+
+
+        requestAnimationFrame(() => {
+
+          requestAnimationFrame(() => {
+
+            back.classList.add("show");
+            front.classList.remove("show");
+
+            frontIsA =
+              !frontIsA;
+
+
+            setTimeout(() => {
+
+              front.src = "";
+
+            }, FADE_TIME + 50);
+
+
+            scheduleNext();
+
+          });
+
+        });
+
+      }
+
+
+      function scheduleNext(
+        delay = DISPLAY_TIME
+      ) {
+
+        clearTimeout(slideTimer);
+
+        slideTimer =
+          setTimeout(
+            showNextPoster,
+            delay
+          );
+
+      }
+
+
+      async function refreshManifest() {
+
+        const hadNoPosters =
+          posters.length === 0;
+
+
+        await loadManifest();
+
+
+        if (
+          hadNoPosters &&
+          posters.length
+        ) {
+
+          await showFirstPoster();
+
+        }
+
+
+        setTimeout(
+          refreshManifest,
+          REFRESH_TIME
+        );
+
+      }
+
+
+      async function start() {
+
+        const loaded =
+          await loadManifest();
+
+
+        if (loaded) {
+
+          await showFirstPoster();
+
+        }
+
+
+        setTimeout(
+          refreshManifest,
+          REFRESH_TIME
+        );
+
+      }
+
+
+      start();
+
+    })();
+  </script>
+
+</body>
+</html>
