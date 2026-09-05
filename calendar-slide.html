@@ -447,6 +447,7 @@
   var EVENTS_URL = "https://script.google.com/macros/s/AKfycbwnvrJZd6-WzII-JGFSsTImflx4I27AodQvmKeB6RTzuUA4Mqf_0JDJDhQRcQ3D2zk4kA/exec";
   var REFRESH_MS = 5 * 60 * 1000;
   var LOAD_TIMEOUT_MS = 25000;
+  var CALENDAR_CACHE_KEY = "infoskjermenCalendarFeed";
 
   var WEATHER_API_URL = "https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=61.1348&lon=11.3641&altitude=223";
   var WEATHER_REFRESH_MS = 30 * 60 * 1000;
@@ -468,6 +469,8 @@
   var lastData = null;
   var loadTimer = null;
   var callbackFired = false;
+  var refreshInProgress = false;
+  var lastSuccessfulRefresh = 0;
   var resizeTimer = null;
 
   function isLandscape() {
@@ -630,6 +633,31 @@
     els.app.style.display = "none";
     els.empty.style.display = "flex";
     els.empty.textContent = "Kunne ikke laste kalenderdata.";
+  }
+
+  function readCalendarCache() {
+    try {
+      var cached = JSON.parse(localStorage.getItem(CALENDAR_CACHE_KEY) || "null");
+      if (!cached || !cached.data || !Number.isFinite(cached.savedAt)) return null;
+      return cached;
+    } catch (err) {
+      return null;
+    }
+  }
+
+  function writeCalendarCache(data) {
+    try {
+      localStorage.setItem(CALENDAR_CACHE_KEY, JSON.stringify({
+        data: data,
+        savedAt: Date.now()
+      }));
+    } catch (err) {
+      // Rendering fresh data is more important than storage availability.
+    }
+  }
+
+  function calendarCacheIsStale() {
+    return !lastSuccessfulRefresh || Date.now() - lastSuccessfulRefresh >= REFRESH_MS;
   }
 
   function weatherIcon(symbolCode) {
@@ -795,13 +823,18 @@
 
   window.__calendarFeedLoaded = function (data) {
     callbackFired = true;
+    refreshInProgress = false;
     clearTimeout(loadTimer);
     lastData = data || {};
+    lastSuccessfulRefresh = Date.now();
+    writeCalendarCache(lastData);
     render(lastData);
     stableRefresh();
   };
 
   function loadCalendar() {
+    if (refreshInProgress) return;
+    refreshInProgress = true;
     callbackFired = false;
     clearTimeout(loadTimer);
 
@@ -814,19 +847,24 @@
     s.src = EVENTS_URL + "?_=" + Date.now();
 
     s.onerror = function () {
+      refreshInProgress = false;
       clearTimeout(loadTimer);
       showError();
     };
 
     s.onload = function () {
       setTimeout(function () {
-        if (!callbackFired) showError();
+        if (!callbackFired) {
+          refreshInProgress = false;
+          showError();
+        }
       }, 300);
     };
 
     document.head.appendChild(s);
 
     loadTimer = setTimeout(function () {
+      refreshInProgress = false;
       showError();
     }, LOAD_TIMEOUT_MS);
   }
@@ -841,9 +879,10 @@ window.addEventListener("load", stableRefresh);
 var resumeRefreshTimer = null;
 
 function scheduleResumeRefresh() {
+  if (!calendarCacheIsStale()) return;
   clearTimeout(resumeRefreshTimer);
   resumeRefreshTimer = setTimeout(function () {
-    loadCalendar();
+    if (calendarCacheIsStale()) loadCalendar();
   }, 150);
 }
 
@@ -864,6 +903,13 @@ if (document.fonts && document.fonts.ready) {
 els.empty.textContent = "Laster kalenderdata…";
 els.empty.style.display = "flex";
 els.app.style.display = "none";
+
+var cachedCalendar = readCalendarCache();
+if (cachedCalendar) {
+  lastData = cachedCalendar.data;
+  lastSuccessfulRefresh = cachedCalendar.savedAt;
+  render(lastData);
+}
 
 loadCalendar();
 loadWeather();
