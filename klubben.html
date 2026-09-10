@@ -3,6 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
   <meta name="theme-color" content="#f5f2eb" />
   <title>Klubben</title>
   <style>
@@ -12,6 +15,7 @@
       --text: #20252b;
       --blue: #2f708c;
       --red: #b43b42;
+      --green: #78995b;
       --line: #ded8cc;
     }
 
@@ -19,25 +23,22 @@
     html, body { margin: 0; min-height: 100%; }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background:
-        radial-gradient(circle at 15% 12%, rgba(47,112,140,.10), transparent 32%),
-        radial-gradient(circle at 88% 86%, rgba(180,59,66,.07), transparent 30%),
-        var(--bg);
-      color: var(--text);
-      display: grid;
-      place-items: center;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #f5f2eb;
+      color: #20252b;
+      text-align: center;
       padding: 28px 18px;
     }
 
     main {
-      width: min(760px, 100%);
-      background: var(--card);
-      border: 1px solid var(--line);
+      width: 760px;
+      max-width: 100%;
+      margin: 0 auto;
+      background: #fffdf8;
+      border: 1px solid #ded8cc;
       border-radius: 24px;
-      padding: clamp(30px, 6vw, 64px);
+      padding: 54px;
       box-shadow: 0 18px 50px rgba(32,37,43,.09);
-      text-align: center;
     }
 
     .sr-only {
@@ -54,7 +55,8 @@
 
     .logo {
       display: block;
-      width: min(300px, 76vw);
+      width: 300px;
+      max-width: 76%;
       height: auto;
       margin: 0 auto 38px;
       border-radius: 18px;
@@ -62,71 +64,146 @@
     }
 
     .instructions {
-      display: grid;
-      gap: 30px;
-      font-size: clamp(22px, 4vw, 34px);
+      font-size: 30px;
       line-height: 1.35;
     }
 
-    .instructions p { margin: 0; }
+    .instructions p {
+      margin: 0 0 30px;
+    }
 
     .divider {
       width: 72px;
       height: 1px;
-      background: var(--line);
-      margin: 42px auto 34px;
+      background: #ded8cc;
+      margin: 40px auto 34px;
     }
 
     .emergency-label {
       margin: 0 0 16px;
-      color: var(--red);
-      font-size: clamp(22px, 4vw, 32px);
-      font-weight: 750;
+      color: #b43b42;
+      font-size: 29px;
+      font-weight: bold;
     }
 
     .phone {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 12px;
+      display: inline-block;
       min-height: 64px;
       padding: 14px 24px;
-      border-radius: 999px;
-      border: 1px solid rgba(180,59,66,.24);
-      background: rgba(180,59,66,.06);
-      color: var(--text);
-      font-size: clamp(26px, 5vw, 38px);
-      font-weight: 650;
+      border-radius: 36px;
+      border: 1px solid #d9a6aa;
+      background: #fbf1f2;
+      color: #20252b;
+      font-size: 34px;
+      font-weight: bold;
       text-decoration: none;
+      line-height: 36px;
     }
 
-    .phone:hover, .phone:focus-visible {
-      background: rgba(180,59,66,.11);
-      outline: none;
+    #rules-page { display: none; }
+
+    .rules-title {
+      margin: 0 0 38px;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 56px;
+      font-weight: normal;
+      letter-spacing: 2px;
+      color: #454a4e;
     }
+
+    .rules-logo {
+      display: block;
+      width: 190px;
+      max-width: 50%;
+      height: auto;
+      margin: 0 auto 34px;
+      border-radius: 14px;
+    }
+
+    .rules-list {
+      margin: 0 auto;
+      max-width: 620px;
+      text-align: left;
+      font-size: 38px;
+      line-height: 1.35;
+    }
+
+    .rule {
+      margin: 0 0 24px;
+      padding-left: 46px;
+      position: relative;
+    }
+
+    .rule:before {
+      content: "#";
+      position: absolute;
+      left: 0;
+      top: 0;
+      color: #78995b;
+      font-weight: bold;
+    }
+
+    .emphasis { font-weight: bold; }
 
     @media (max-width: 520px) {
       body { padding: 14px; }
       main { border-radius: 18px; padding: 30px 20px 34px; }
-      .logo { width: min(250px, 78vw); margin-bottom: 30px; }
-      .instructions { gap: 24px; }
+      .logo { width: 250px; max-width: 78%; margin-bottom: 30px; }
+      .instructions { font-size: 24px; }
+      .emergency-label { font-size: 24px; }
+      .phone { font-size: 28px; }
+      .rules-title { font-size: 40px; margin-bottom: 28px; }
+      .rules-logo { width: 150px; margin-bottom: 26px; }
+      .rules-list { font-size: 28px; }
+      .rule { padding-left: 34px; margin-bottom: 20px; }
     }
   </style>
 </head>
 <body>
   <main>
-    <h1 class="sr-only">Klubben</h1>
-    <img class="logo" src="assets/klubben-logo.svg" alt="Klubben" />
+    <section id="info-page">
+      <h1 class="sr-only">Klubben</h1>
+      <img class="logo" src="assets/klubben-logo.svg?v=2" alt="Klubben" />
 
-    <section class="instructions" aria-label="Instruksjoner">
-      <p>Skriv navnet ditt i boka og klokkeslettet du kommer!</p>
-      <p>Skriv en «X» etter navnet ditt når du går og si ifra til Sarah eller Sepehr at du går!</p>
+      <div class="instructions" aria-label="Instruksjoner">
+        <p>Skriv navnet ditt i boka og klokkeslettet du kommer!</p>
+        <p>Skriv en «X» etter navnet ditt når du går og si ifra til Sarah eller Sepehr at du går!</p>
+      </div>
+
+      <div class="divider"></div>
+
+      <p class="emergency-label">Ved nødstilfelle, ring:</p>
+      <a class="phone" href="tel:+4740232347" aria-label="Ring Sarah på 40232347">Sarah: 40232347</a>
     </section>
 
-    <div class="divider" aria-hidden="true"></div>
+    <section id="rules-page" aria-label="Klubb-regler">
+      <img class="rules-logo" src="assets/klubben-logo.svg?v=2" alt="Klubben" />
+      <h2 class="rules-title">KLUBB-REGLER</h2>
 
-    <p class="emergency-label">Ved nødstilfelle, ring:</p>
-    <a class="phone" href="tel:+4740232347" aria-label="Ring Sarah på 40232347">Sarah: 40232347</a>
+      <div class="rules-list">
+        <p class="rule">Respekt for <span class="emphasis">ALLE</span></p>
+        <p class="rule"><span class="emphasis">INGEN</span> rusmidler</p>
+        <p class="rule">Ta vare på <span class="emphasis">UTSTYRET</span></p>
+        <p class="rule"><span class="emphasis">FØLG BESKJED</span> fra ansatte</p>
+        <p class="rule">Bidra til <span class="emphasis">GOD STEMNING</span></p>
+      </div>
+    </section>
   </main>
+
+  <script type="text/javascript">
+    (function () {
+      var info = document.getElementById('info-page');
+      var rules = document.getElementById('rules-page');
+      var showingRules = false;
+
+      function swapPage() {
+        showingRules = !showingRules;
+        info.style.display = showingRules ? 'none' : 'block';
+        rules.style.display = showingRules ? 'block' : 'none';
+      }
+
+      window.setInterval(swapPage, 30000);
+    }());
+  </script>
 </body>
 </html>
