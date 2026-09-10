@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="nb">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#f5f2eb" />
+  <title>Klubben</title>
+  <style>
+    :root {
+      --bg: #f5f2eb;
+      --card: #fffdf8;
+      --text: #20252b;
+      --muted: #59636c;
+      --blue: #2f708c;
+      --red: #b43b42;
+      --line: #ded8cc;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { margin: 0; min-height: 100%; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background:
+        radial-gradient(circle at 15% 12%, rgba(47,112,140,.10), transparent 32%),
+        radial-gradient(circle at 88% 86%, rgba(180,59,66,.07), transparent 30%),
+        var(--bg);
+      color: var(--text);
+      display: grid;
+      place-items: center;
+      padding: 28px 18px;
+    }
+
+    main {
+      width: min(760px, 100%);
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      padding: clamp(30px, 6vw, 64px);
+      box-shadow: 0 18px 50px rgba(32,37,43,.09);
+      text-align: center;
+    }
+
+    h1 {
+      margin: 0 0 42px;
+      color: var(--blue);
+      font-size: clamp(54px, 10vw, 92px);
+      line-height: .95;
+      font-weight: 500;
+      letter-spacing: -.04em;
+      text-decoration: underline;
+      text-decoration-thickness: 2px;
+      text-underline-offset: 9px;
+    }
+
+    .instructions {
+      display: grid;
+      gap: 30px;
+      font-size: clamp(22px, 4vw, 34px);
+      line-height: 1.35;
+    }
+
+    .instructions p { margin: 0; }
+
+    .divider {
+      width: 72px;
+      height: 1px;
+      background: var(--line);
+      margin: 42px auto 34px;
+    }
+
+    .emergency-label {
+      margin: 0 0 16px;
+      color: var(--red);
+      font-size: clamp(22px, 4vw, 32px);
+      font-weight: 750;
+    }
+
+    .phone {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      min-height: 64px;
+      padding: 14px 24px;
+      border-radius: 999px;
+      border: 1px solid rgba(180,59,66,.24);
+      background: rgba(180,59,66,.06);
+      color: var(--text);
+      font-size: clamp(26px, 5vw, 38px);
+      font-weight: 650;
+      text-decoration: none;
+    }
+
+    .phone:hover, .phone:focus-visible {
+      background: rgba(180,59,66,.11);
+      outline: none;
+    }
+
+    .shoe-ring {
+      margin: 40px auto 0;
+      width: min(420px, 90%);
+      aspect-ratio: 2.2 / 1;
+      position: relative;
+      opacity: .92;
+    }
+
+    .shoe {
+      position: absolute;
+      width: 72px;
+      height: 28px;
+      border: 3px solid var(--blue);
+      border-radius: 55% 45% 48% 52%;
+      transform-origin: center;
+    }
+
+    .shoe::after {
+      content: "";
+      position: absolute;
+      right: 8px;
+      top: 6px;
+      width: 24px;
+      height: 2px;
+      background: var(--blue);
+      box-shadow: 0 6px 0 var(--blue), 0 12px 0 var(--blue);
+    }
+
+    .s1 { left: 4%; top: 48%; transform: rotate(16deg); }
+    .s2 { left: 19%; top: 8%; transform: rotate(54deg); }
+    .s3 { left: 43%; top: 0; transform: rotate(87deg); }
+    .s4 { right: 18%; top: 9%; transform: rotate(122deg); }
+    .s5 { right: 2%; top: 47%; transform: rotate(163deg); }
+    .s6 { right: 20%; bottom: 5%; transform: rotate(220deg); }
+    .s7 { left: 42%; bottom: 0; transform: rotate(265deg); }
+    .s8 { left: 17%; bottom: 8%; transform: rotate(309deg); }
+
+    .centre-dot {
+      position: absolute;
+      left: 50%;
+      top: 52%;
+      width: 8px;
+      height: 8px;
+      margin: -4px;
+      background: var(--red);
+      border-radius: 50%;
+    }
+
+    @media (max-width: 520px) {
+      body { padding: 14px; }
+      main { border-radius: 18px; padding: 34px 20px; }
+      h1 { margin-bottom: 34px; }
+      .instructions { gap: 24px; }
+      .shoe { width: 56px; height: 22px; border-width: 2px; }
+      .shoe::after { top: 4px; right: 7px; width: 19px; box-shadow: 0 5px 0 var(--blue), 0 10px 0 var(--blue); }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Klubben</h1>
+
+    <section class="instructions" aria-label="Instruksjoner">
+      <p>Skriv navnet ditt i boka og klokkeslettet du kommer!</p>
+      <p>Skriv en «X» etter navnet ditt når du går og si ifra til Sarah eller Sepehr at du går!</p>
+    </section>
+
+    <div class="divider" aria-hidden="true"></div>
+
+    <p class="emergency-label">In case of emergency, ring:</p>
+    <a class="phone" href="tel:+4740232347" aria-label="Ring Sarah på 40232347">Sarah: 40232347</a>
+
+    <div class="shoe-ring" aria-hidden="true">
+      <span class="shoe s1"></span><span class="shoe s2"></span><span class="shoe s3"></span><span class="shoe s4"></span>
+      <span class="shoe s5"></span><span class="shoe s6"></span><span class="shoe s7"></span><span class="shoe s8"></span>
+      <span class="centre-dot"></span>
+    </div>
+  </main>
+</body>
+</html>
