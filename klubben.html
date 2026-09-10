@@ -10,14 +10,12 @@
       --bg: #f5f2eb;
       --card: #fffdf8;
       --text: #20252b;
-      --muted: #59636c;
       --blue: #2f708c;
       --red: #b43b42;
       --line: #ded8cc;
     }
 
     * { box-sizing: border-box; }
-
     html, body { margin: 0; min-height: 100%; }
 
     body {
@@ -42,16 +40,25 @@
       text-align: center;
     }
 
-    h1 {
-      margin: 0 0 42px;
-      color: var(--blue);
-      font-size: clamp(54px, 10vw, 92px);
-      line-height: .95;
-      font-weight: 500;
-      letter-spacing: -.04em;
-      text-decoration: underline;
-      text-decoration-thickness: 2px;
-      text-underline-offset: 9px;
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .logo {
+      display: block;
+      width: min(300px, 76vw);
+      height: auto;
+      margin: 0 auto 38px;
+      border-radius: 18px;
+      box-shadow: 0 14px 34px rgba(0,0,0,.16);
     }
 
     .instructions {
@@ -98,67 +105,18 @@
       outline: none;
     }
 
-    .shoe-ring {
-      margin: 40px auto 0;
-      width: min(420px, 90%);
-      aspect-ratio: 2.2 / 1;
-      position: relative;
-      opacity: .92;
-    }
-
-    .shoe {
-      position: absolute;
-      width: 72px;
-      height: 28px;
-      border: 3px solid var(--blue);
-      border-radius: 55% 45% 48% 52%;
-      transform-origin: center;
-    }
-
-    .shoe::after {
-      content: "";
-      position: absolute;
-      right: 8px;
-      top: 6px;
-      width: 24px;
-      height: 2px;
-      background: var(--blue);
-      box-shadow: 0 6px 0 var(--blue), 0 12px 0 var(--blue);
-    }
-
-    .s1 { left: 4%; top: 48%; transform: rotate(16deg); }
-    .s2 { left: 19%; top: 8%; transform: rotate(54deg); }
-    .s3 { left: 43%; top: 0; transform: rotate(87deg); }
-    .s4 { right: 18%; top: 9%; transform: rotate(122deg); }
-    .s5 { right: 2%; top: 47%; transform: rotate(163deg); }
-    .s6 { right: 20%; bottom: 5%; transform: rotate(220deg); }
-    .s7 { left: 42%; bottom: 0; transform: rotate(265deg); }
-    .s8 { left: 17%; bottom: 8%; transform: rotate(309deg); }
-
-    .centre-dot {
-      position: absolute;
-      left: 50%;
-      top: 52%;
-      width: 8px;
-      height: 8px;
-      margin: -4px;
-      background: var(--red);
-      border-radius: 50%;
-    }
-
     @media (max-width: 520px) {
       body { padding: 14px; }
-      main { border-radius: 18px; padding: 34px 20px; }
-      h1 { margin-bottom: 34px; }
+      main { border-radius: 18px; padding: 30px 20px 34px; }
+      .logo { width: min(250px, 78vw); margin-bottom: 30px; }
       .instructions { gap: 24px; }
-      .shoe { width: 56px; height: 22px; border-width: 2px; }
-      .shoe::after { top: 4px; right: 7px; width: 19px; box-shadow: 0 5px 0 var(--blue), 0 10px 0 var(--blue); }
     }
   </style>
 </head>
 <body>
   <main>
-    <h1>Klubben</h1>
+    <h1 class="sr-only">Klubben</h1>
+    <img class="logo" src="assets/klubben-logo.svg" alt="Klubben" />
 
     <section class="instructions" aria-label="Instruksjoner">
       <p>Skriv navnet ditt i boka og klokkeslettet du kommer!</p>
@@ -169,12 +127,6 @@
 
     <p class="emergency-label">Ved nødstilfelle, ring:</p>
     <a class="phone" href="tel:+4740232347" aria-label="Ring Sarah på 40232347">Sarah: 40232347</a>
-
-    <div class="shoe-ring" aria-hidden="true">
-      <span class="shoe s1"></span><span class="shoe s2"></span><span class="shoe s3"></span><span class="shoe s4"></span>
-      <span class="shoe s5"></span><span class="shoe s6"></span><span class="shoe s7"></span><span class="shoe s8"></span>
-      <span class="centre-dot"></span>
-    </div>
   </main>
 </body>
 </html>
