@@ -110,6 +110,7 @@
   const MANIFEST_URL = "./assets/films.json";
   const EXTRA_MANIFEST_URL = "./assets/landscape_extra/manifest.json";
   const FIELD = "landscape";
+  const ENTUR_TAVLA_URL = "https://vis-tavla.entur.no/vB3ZXkgI42ecuHXY9X7I";
 
   const CONFIG_TIMEOUT_MS = 7000;
   const CALENDAR_FRAME_TIMEOUT_MS = 12000;
@@ -117,9 +118,7 @@
 
   let posterSeconds = 7;
   let calendarSlideSeconds = 20;
-  let enturSlideEnabled = false;
-  let enturSlideSeconds = 20;
-  let enturSlideUrl = "";
+  let enturSlideSeconds = 0;
   let fadeMs = 500;
   let refreshSeconds = 60;
   
@@ -515,13 +514,15 @@
       pickNumber(cfg.posterSeconds, cachedCfg.posterSeconds, 12)
     );
 
-    calendarSlideSeconds = nonNegativeParam(
-      "cal",
-      pickNumber(cfg.calendarSlideSeconds, cachedCfg.calendarSlideSeconds, 0)
-    );
-    enturSlideEnabled = pickBoolean(cfg.enturSlideEnabled, cachedCfg.enturSlideEnabled, false);
-    enturSlideSeconds = Math.max(1, pickNumber(cfg.enturSlideSeconds, cachedCfg.enturSlideSeconds, 20));
-    enturSlideUrl = String(cfg.enturSlideUrl ?? cachedCfg.enturSlideUrl ?? "").trim();
+    calendarSlideSeconds = Math.max(0, pickNumber(
+      cfg.calendarSlideSecondsByPage?.["films-landscape.html"],
+      cachedCfg.calendarSlideSecondsByPage?.["films-landscape.html"],
+      cfg.calendarSlideSeconds, cachedCfg.calendarSlideSeconds, 0
+    ));
+    enturSlideSeconds = Math.max(0, pickNumber(
+      cfg.enturSlideSecondsByPage?.["films-landscape.html"],
+      cachedCfg.enturSlideSecondsByPage?.["films-landscape.html"], 0
+    ));
 
     fadeMs = positiveParam(
       "fade",
@@ -556,8 +557,8 @@
     const extraItems = await loadManualExtras(EXTRA_MANIFEST_URL, posterSeconds);
     let nextItems = mergeUniqueItems(posters, extraItems);
 
-    if (enturSlideEnabled && validEnturUrl(enturSlideUrl)) {
-      nextItems.unshift({ kind: "entur", url: enturSlideUrl, seconds: enturSlideSeconds });
+    if (enturSlideSeconds > 0) {
+      nextItems.unshift({ kind: "entur", url: ENTUR_TAVLA_URL, seconds: enturSlideSeconds });
     }
 
     if (calendarSlideSeconds > 0) {

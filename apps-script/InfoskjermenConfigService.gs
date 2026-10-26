@@ -1,11 +1,11 @@
-const VERSION_TAG = "display-config-2026-10-26-entur-v2";
+const VERSION_TAG = "display-config-2026-10-26-calendar-entur-per-page-v4";
 
+const SCREEN_PAGES = ["films-portrait.html","films-landscape.html","arrangements-portrait.html","arrangements-landscape.html","portrait-all.html","landscape-all.html"];
 const DEFAULTS = {
   posterSeconds: 7,
   calendarSlideSeconds: 20,   // 0 = off
-  enturSlideEnabled: false,  // Entur Tavla off until explicitly enabled
-  enturSlideSeconds: 20,
-  enturSlideUrl: "",
+  calendarSlideSecondsByPage: {"films-portrait.html":0,"films-landscape.html":20,"arrangements-portrait.html":0,"arrangements-landscape.html":20,"portrait-all.html":0,"landscape-all.html":0},
+  enturSlideSecondsByPage: {"films-portrait.html":0,"films-landscape.html":0,"arrangements-portrait.html":0,"arrangements-landscape.html":0,"portrait-all.html":0,"landscape-all.html":0},
   fadeMs: 500,
   manifestRefreshSeconds: 60,
 };
@@ -31,6 +31,16 @@ function parseBoolean_(value) {
     String(value).toLowerCase() === "true" || String(value) === "1";
 }
 
+function normalizeDurationPages_(raw, fallbacks) {
+  const pages = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {};
+  const defaults = fallbacks || {};
+  const result = {};
+  SCREEN_PAGES.forEach(function(page) {
+    result[page] = clampInt(pages[page], 0, 3600, Number(defaults[page]) || 0);
+  });
+  return result;
+}
+
 function normalizeConfig_(cfg) {
   cfg = cfg || {};
 
@@ -49,16 +59,14 @@ function normalizeConfig_(cfg) {
       DEFAULTS.calendarSlideSeconds
     ),
 
-    enturSlideEnabled: parseBoolean_(cfg.enturSlideEnabled),
+    // When upgrading from the old global calendar setting, retain its value
+    // for the two screens which already showed the calendar.
+    calendarSlideSecondsByPage: normalizeDurationPages_(cfg.calendarSlideSecondsByPage, {
+      "films-landscape.html": clampInt(cfg.calendarSlideSeconds, 0, 3600, DEFAULTS.calendarSlideSeconds),
+      "arrangements-landscape.html": clampInt(cfg.calendarSlideSeconds, 0, 3600, DEFAULTS.calendarSlideSeconds)
+    }),
 
-    enturSlideSeconds: clampInt(
-      cfg.enturSlideSeconds,
-      1,
-      3600,
-      DEFAULTS.enturSlideSeconds
-    ),
-
-    enturSlideUrl: String(cfg.enturSlideUrl || "").trim(),
+    enturSlideSecondsByPage: normalizeDurationPages_(cfg.enturSlideSecondsByPage),
 
     fadeMs: clampInt(
       cfg.fadeMs,
@@ -152,16 +160,22 @@ function incomingFromParams_(params) {
     incoming.calendarSlideSeconds = Number(params.calendarSlideSeconds);
   }
 
-  if (Object.prototype.hasOwnProperty.call(params, "enturSlideEnabled")) {
-    incoming.enturSlideEnabled = parseBoolean_(params.enturSlideEnabled);
+  if (Object.prototype.hasOwnProperty.call(params, "calendarSlideSecondsByPage")) {
+    incoming.calendarSlideSecondsByPage = JSON.parse(String(params.calendarSlideSecondsByPage));
+    if (!incoming.calendarSlideSecondsByPage ||
+        Array.isArray(incoming.calendarSlideSecondsByPage) ||
+        typeof incoming.calendarSlideSecondsByPage !== "object") {
+      throw new Error("calendarSlideSecondsByPage must be a JSON object.");
+    }
   }
 
-  if (Object.prototype.hasOwnProperty.call(params, "enturSlideSeconds")) {
-    incoming.enturSlideSeconds = Number(params.enturSlideSeconds);
-  }
-
-  if (Object.prototype.hasOwnProperty.call(params, "enturSlideUrl")) {
-    incoming.enturSlideUrl = String(params.enturSlideUrl || "").trim();
+  if (Object.prototype.hasOwnProperty.call(params, "enturSlideSecondsByPage")) {
+    incoming.enturSlideSecondsByPage = JSON.parse(String(params.enturSlideSecondsByPage));
+    if (!incoming.enturSlideSecondsByPage ||
+        Array.isArray(incoming.enturSlideSecondsByPage) ||
+        typeof incoming.enturSlideSecondsByPage !== "object") {
+      throw new Error("enturSlideSecondsByPage must be a JSON object.");
+    }
   }
 
   if (Object.prototype.hasOwnProperty.call(params, "fadeMs")) {
@@ -198,17 +212,6 @@ function applyUpdateFromParams_(params) {
   }
 
   const incoming = incomingFromParams_(params);
-  const preview = normalizeConfig_(Object.assign({}, getConfig_(), incoming));
-
-  if (preview.enturSlideEnabled && !/^https:\/\/\S+$/i.test(preview.enturSlideUrl)) {
-    return {
-      ok: false,
-      error: "invalid_entur_url",
-      message: "Entur Tavla must have a public HTTPS display URL.",
-      version: VERSION_TAG
-    };
-  }
-
   const saved = setConfig_(incoming);
 
   return {
