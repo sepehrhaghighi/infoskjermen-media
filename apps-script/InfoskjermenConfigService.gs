@@ -1,123 +1,309 @@
-/**
- * InfoskjermenConfigService
- * Compatible JSONP API for status.html and the two landscape screens.
- * This is a prepared replacement: compare with the live Apps Script before deploying.
- *
- * Script Properties:
- *   UPDATE_KEY : existing control-page update password (must be set).
- *   INFOSKJERMEN_CONFIG : managed JSON config, created automatically on first update.
- *
- * IMPORTANT: The existing page sends the update key by GET/JSONP for compatibility.
- * Do not print or share this key. Limit deployment access appropriately.
- */
+const VERSION_TAG = "display-config-2026-10-26-entur-v2";
 
-var INFOSKJERMEN_DEFAULTS_ = {
+const DEFAULTS = {
   posterSeconds: 7,
-  calendarSlideSeconds: 20,
-  enturSlideEnabled: false,
+  calendarSlideSeconds: 20,   // 0 = off
+  enturSlideEnabled: false,  // Entur Tavla off until explicitly enabled
   enturSlideSeconds: 20,
   enturSlideUrl: "",
   fadeMs: 500,
-  manifestRefreshSeconds: 60
+  manifestRefreshSeconds: 60,
 };
 
-function doGet(e) {
-  var args = (e && e.parameter) || {};
-  var callback = args.callback || "";
-  try {
-    var response;
-    if (String(args.action || "") === "update") {
-      response = updateInfoskjermenConfig_(args);
-    } else {
-      response = { ok: true, config: readInfoskjermenConfig_() };
-    }
-    return outputJsonp_(response, callback);
-  } catch (err) {
-    return outputJsonp_({ ok: false, error: "server_error", message: String(err.message || err) }, callback);
-  }
+function getScriptProps_() {
+  return PropertiesService.getScriptProperties();
 }
 
-function readInfoskjermenConfig_() {
-  var props = PropertiesService.getScriptProperties();
-  var all = props.getProperties();
-  var cfg = {};
-  // Try common legacy JSON-property names before independent fields.
-  ["CONFIG", "CONFIG_JSON", "SCREEN_CONFIG", "INFOSKJERMEN_CONFIG"].forEach(function (name) {
-    try {
-      if (all[name]) {
-        var parsed = JSON.parse(all[name]);
-        var inner = parsed && (parsed.config || parsed.data || parsed);
-        if (inner && typeof inner === "object") Object.assign(cfg, inner);
-      }
-    } catch (ignore) {}
-  });
-  Object.keys(INFOSKJERMEN_DEFAULTS_).forEach(function (name) {
-    if (cfg[name] == null && all[name] != null) cfg[name] = all[name];
-  });
-  if (cfg.manifestRefreshSeconds == null && all.refreshSeconds != null) {
-    cfg.manifestRefreshSeconds = all.refreshSeconds;
-  }
+function getUpdateKey_() {
+  return String(getScriptProps_().getProperty("UPDATE_KEY") || "").trim();
+}
+
+function clampInt(v, min, max, fallback) {
+  v = Number(v);
+  if (!isFinite(v)) v = fallback;
+  if (!isFinite(v)) v = min;
+  v = Math.round(v);
+  return Math.min(max, Math.max(min, v));
+}
+
+function parseBoolean_(value) {
+  return value === true || value === 1 ||
+    String(value).toLowerCase() === "true" || String(value) === "1";
+}
+
+function normalizeConfig_(cfg) {
+  cfg = cfg || {};
+
   return {
-    posterSeconds: limitNumber_(cfg.posterSeconds, 1, 3600, 7),
-    calendarSlideSeconds: limitNumber_(cfg.calendarSlideSeconds, 0, 3600, 20),
-    enturSlideEnabled: asBoolean_(cfg.enturSlideEnabled),
-    enturSlideSeconds: limitNumber_(cfg.enturSlideSeconds, 1, 3600, 20),
-    enturSlideUrl: typeof cfg.enturSlideUrl === "string" ? cfg.enturSlideUrl : "",
-    fadeMs: limitNumber_(cfg.fadeMs, 0, 10000, 500),
-    manifestRefreshSeconds: limitNumber_(cfg.manifestRefreshSeconds, 30, 86400, 60)
+    posterSeconds: clampInt(
+      cfg.posterSeconds,
+      1,
+      60,
+      DEFAULTS.posterSeconds
+    ),
+
+    calendarSlideSeconds: clampInt(
+      cfg.calendarSlideSeconds,
+      0,
+      3600,
+      DEFAULTS.calendarSlideSeconds
+    ),
+
+    enturSlideEnabled: parseBoolean_(cfg.enturSlideEnabled),
+
+    enturSlideSeconds: clampInt(
+      cfg.enturSlideSeconds,
+      1,
+      3600,
+      DEFAULTS.enturSlideSeconds
+    ),
+
+    enturSlideUrl: String(cfg.enturSlideUrl || "").trim(),
+
+    fadeMs: clampInt(
+      cfg.fadeMs,
+      0,
+      5000,
+      DEFAULTS.fadeMs
+    ),
+
+    manifestRefreshSeconds: clampInt(
+      cfg.manifestRefreshSeconds,
+      30,
+      3600,
+      DEFAULTS.manifestRefreshSeconds
+    ),
   };
 }
 
-function updateInfoskjermenConfig_(args) {
-  var props = PropertiesService.getScriptProperties();
-  var expectedKey = props.getProperty("UPDATE_KEY") ||
-                    props.getProperty("CONFIG_UPDATE_KEY") ||
-                    props.getProperty("ADMIN_KEY");
-  if (!expectedKey || String(args.key || "") !== expectedKey) {
-    return { ok: false, error: "unauthorized" };
-  }
-  var lock = LockService.getScriptLock();
-  lock.waitLock(5000);
+function getConfig_() {
   try {
-    var cfg = readInfoskjermenConfig_();
-    if (args.posterSeconds != null) cfg.posterSeconds = limitNumber_(args.posterSeconds, 1, 3600, cfg.posterSeconds);
-    if (args.calendarSlideSeconds != null) cfg.calendarSlideSeconds = limitNumber_(args.calendarSlideSeconds, 0, 3600, cfg.calendarSlideSeconds);
-    if (args.enturSlideEnabled != null) cfg.enturSlideEnabled = asBoolean_(args.enturSlideEnabled);
-    if (args.enturSlideSeconds != null) cfg.enturSlideSeconds = limitNumber_(args.enturSlideSeconds, 1, 3600, cfg.enturSlideSeconds);
-    if (args.enturSlideUrl != null) cfg.enturSlideUrl = String(args.enturSlideUrl).trim();
-    if (args.fadeMs != null) cfg.fadeMs = limitNumber_(args.fadeMs, 0, 10000, cfg.fadeMs);
-    var refresh = args.manifestRefreshSeconds != null ? args.manifestRefreshSeconds : args.refreshSeconds;
-    if (refresh != null) cfg.manifestRefreshSeconds = limitNumber_(refresh, 30, 86400, cfg.manifestRefreshSeconds);
-    if (cfg.enturSlideUrl && !/^https:\/\/[^ ]+$/i.test(cfg.enturSlideUrl)) {
-      return { ok: false, error: "invalid_entur_url", message: "Entur URL must start with https://" };
-    }
-    if (cfg.enturSlideEnabled && !cfg.enturSlideUrl) {
-      return { ok: false, error: "missing_entur_url" };
-    }
-    props.setProperty("INFOSKJERMEN_CONFIG", JSON.stringify(cfg));
-    return { ok: true, config: cfg };
-  } finally {
-    lock.releaseLock();
+    const raw = getScriptProps_().getProperty("DISPLAY_CONFIG");
+    if (!raw) return normalizeConfig_({});
+    return normalizeConfig_(JSON.parse(raw));
+  } catch (err) {
+    return normalizeConfig_({});
   }
 }
 
-function limitNumber_(value, low, high, fallback) {
-  if (value == null || String(value).trim() === "") return fallback;
-  var n = Number(value);
-  return isFinite(n) && n >= low && n <= high ? n : fallback;
+function setConfig_(partialCfg) {
+  const current = getConfig_();
+  const merged = Object.assign({}, current, partialCfg || {});
+  const cleaned = normalizeConfig_(merged);
+
+  getScriptProps_().setProperty(
+    "DISPLAY_CONFIG",
+    JSON.stringify(cleaned)
+  );
+
+  return cleaned;
 }
 
-function asBoolean_(value) {
-  return value === true || value === 1 || value === "1" || value === "true";
+function parseFormBody_(body) {
+  const params = {};
+  if (!body) return params;
+
+  body.split("&").forEach(function (pair) {
+    if (!pair) return;
+
+    const parts = pair.split("=");
+    const rawKey = parts.shift();
+    const rawVal = parts.join("=");
+
+    if (!rawKey) return;
+
+    const key = decodeURIComponent(String(rawKey).replace(/\+/g, " "));
+    const val = decodeURIComponent(String(rawVal || "").replace(/\+/g, " "));
+
+    params[key] = val;
+  });
+
+  return params;
 }
 
-function outputJsonp_(payload, callback) {
-  var json = JSON.stringify(payload);
-  // The public pages use __cfgcb_... JSONP callbacks.
-  if (callback && /^[A-Za-z_$][A-Za-z0-9_$]{0,100}$/.test(callback)) {
-    return ContentService.createTextOutput(callback + "(" + json + ");")
+function sanitizeCallback_(cb) {
+  cb = String(cb || "").trim();
+  return /^[A-Za-z_$][0-9A-Za-z_$\.]{0,100}$/.test(cb) ? cb : "";
+}
+
+function buildResponse_(obj, callback) {
+  const text = JSON.stringify(obj);
+  const cb = sanitizeCallback_(callback);
+
+  if (cb) {
+    return ContentService
+      .createTextOutput(cb + "(" + text + ");")
       .setMimeType(ContentService.MimeType.JAVASCRIPT);
   }
-  return ContentService.createTextOutput(json)
+
+  return ContentService
+    .createTextOutput(text)
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+function incomingFromParams_(params) {
+  const incoming = {};
+
+  if (Object.prototype.hasOwnProperty.call(params, "posterSeconds")) {
+    incoming.posterSeconds = Number(params.posterSeconds);
+  }
+
+  if (Object.prototype.hasOwnProperty.call(params, "calendarSlideSeconds")) {
+    incoming.calendarSlideSeconds = Number(params.calendarSlideSeconds);
+  }
+
+  if (Object.prototype.hasOwnProperty.call(params, "enturSlideEnabled")) {
+    incoming.enturSlideEnabled = parseBoolean_(params.enturSlideEnabled);
+  }
+
+  if (Object.prototype.hasOwnProperty.call(params, "enturSlideSeconds")) {
+    incoming.enturSlideSeconds = Number(params.enturSlideSeconds);
+  }
+
+  if (Object.prototype.hasOwnProperty.call(params, "enturSlideUrl")) {
+    incoming.enturSlideUrl = String(params.enturSlideUrl || "").trim();
+  }
+
+  if (Object.prototype.hasOwnProperty.call(params, "fadeMs")) {
+    incoming.fadeMs = Number(params.fadeMs);
+  }
+
+  if (Object.prototype.hasOwnProperty.call(params, "manifestRefreshSeconds")) {
+    incoming.manifestRefreshSeconds = Number(params.manifestRefreshSeconds);
+  }
+
+  return incoming;
+}
+
+function applyUpdateFromParams_(params) {
+  const providedKey = String(params.key || "").trim();
+  const expectedKey = getUpdateKey_();
+
+  if (!expectedKey) {
+    return {
+      ok: false,
+      error: "missing_server_key",
+      message: "UPDATE_KEY is not set in Script Properties.",
+      version: VERSION_TAG
+    };
+  }
+
+  if (providedKey !== expectedKey) {
+    return {
+      ok: false,
+      error: "unauthorized",
+      message: "Incorrect update key.",
+      version: VERSION_TAG
+    };
+  }
+
+  const incoming = incomingFromParams_(params);
+  const preview = normalizeConfig_(Object.assign({}, getConfig_(), incoming));
+
+  if (preview.enturSlideEnabled && !/^https:\/\/\S+$/i.test(preview.enturSlideUrl)) {
+    return {
+      ok: false,
+      error: "invalid_entur_url",
+      message: "Entur Tavla must have a public HTTPS display URL.",
+      version: VERSION_TAG
+    };
+  }
+
+  const saved = setConfig_(incoming);
+
+  return {
+    ok: true,
+    message: "Config updated.",
+    version: VERSION_TAG,
+    config: saved
+  };
+}
+
+// Optional helper: reset property to defaults
+function resetConfigFile_() {
+  const config = normalizeConfig_(DEFAULTS);
+  getScriptProps_().setProperty("DISPLAY_CONFIG", JSON.stringify(config));
+  Logger.log("DISPLAY_CONFIG reset to: " + JSON.stringify(config));
+}
+
+// Optional helper: log current config
+function testConfig_() {
+  Logger.log(JSON.stringify({
+    version: VERSION_TAG,
+    config: getConfig_()
+  }, null, 2));
+}
+
+// Optional helper: test update logic directly from editor
+function testUpdateFlow_() {
+  const result = applyUpdateFromParams_({
+    key: getUpdateKey_(),
+    posterSeconds: "8",
+    calendarSlideSeconds: "20",
+    enturSlideEnabled: "false",
+    enturSlideSeconds: "20",
+    fadeMs: "500",
+    manifestRefreshSeconds: "60"
+  });
+
+  Logger.log(JSON.stringify(result, null, 2));
+  Logger.log(JSON.stringify(getConfig_(), null, 2));
+}
+
+// GET:
+// - default: read config
+// - action=update: update config using query params
+// Supports JSONP through ?callback=fnName
+function doGet(e) {
+  const params = (e && e.parameter) ? e.parameter : {};
+  const callback = params.callback || "";
+  const action = String(params.action || "").toLowerCase();
+
+  try {
+    if (action === "update") {
+      return buildResponse_(applyUpdateFromParams_(params), callback);
+    }
+
+    return buildResponse_({
+      ok: true,
+      version: VERSION_TAG,
+      mode: "read",
+      config: getConfig_()
+    }, callback);
+
+  } catch (err) {
+    return buildResponse_({
+      ok: false,
+      error: "server_error",
+      message: String((err && err.message) || err || "Unknown error"),
+      version: VERSION_TAG
+    }, callback);
+  }
+}
+
+// POST:
+// keeps compatibility with form posts to ?key=UPDATE_KEY
+function doPost(e) {
+  try {
+    const queryParams = (e && e.parameter) ? e.parameter : {};
+    const body = (e && e.postData && e.postData.contents) ? e.postData.contents : "";
+    const bodyParams = parseFormBody_(body);
+
+    const params = Object.assign({}, bodyParams, queryParams);
+    const result = applyUpdateFromParams_(params);
+
+    return ContentService
+      .createTextOutput(JSON.stringify(result))
+      .setMimeType(ContentService.MimeType.JSON);
+
+  } catch (err) {
+    return ContentService
+      .createTextOutput(JSON.stringify({
+        ok: false,
+        error: "server_error",
+        message: String((err && err.message) || err || "Unknown error"),
+        version: VERSION_TAG
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
 }
