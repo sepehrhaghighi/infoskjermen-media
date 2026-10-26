@@ -156,6 +156,7 @@
   <div id="dateA" class="dateLayer"></div>
   <div id="dateB" class="dateLayer"></div>
 
+<script src="./entur-slide.js"></script>
 <script>
 (async () => {
   const CONFIG_SERVICE_URL = "https://script.google.com/macros/s/AKfycbwTw7_A4V68NbmGn2aFmo-r3ddEWvO9G9VcIf0pc4W_EaMhiVgCi4JV3jNIqtQTa9pqsA/exec";
@@ -166,6 +167,7 @@
   const CONFIG_TIMEOUT_MS = 7000;
   const CONFIG_CACHE_KEY = "infoskjermenSharedConfigFromService";
 
+  let enturSeconds = 0;
   let posterSeconds = 7;
   let fadeMs = 500;
   let refreshSeconds = 60;
@@ -183,6 +185,7 @@
   const dateA = document.getElementById("dateA");
   const dateB = document.getElementById("dateB");
   const qrWrap = document.getElementById("qrWrap");
+  const enturSlide = window.EnturSlide.create(() => fadeMs);
 
   function readNumericParam(name) {
     const v = new URLSearchParams(location.search).get(name);
@@ -382,6 +385,11 @@
       pickNumber(cfg.posterSeconds, cachedCfg.posterSeconds, 12)
     );
 
+    enturSeconds = Math.max(0, pickNumber(
+      cfg.enturSlideSecondsByPage?.["portrait-all.html"],
+      cachedCfg.enturSlideSecondsByPage?.["portrait-all.html"], 0
+    ));
+
     fadeMs = positiveParam(
       "fade",
       pickNumber(cfg.fadeMs, cachedCfg.fadeMs, 900)
@@ -432,7 +440,7 @@
     items = nextItems;
     if (changed) idx = 0;
 
-    emptyEl.style.display = items.length ? "none" : "flex";
+    emptyEl.style.display = (items.length || enturSeconds > 0) ? "none" : "flex";
   }
 
   async function preload(item) {
@@ -474,17 +482,25 @@
   }
 
   async function tick() {
-    if (!items.length) {
+    const withEntur = enturSeconds > 0;
+    const count = items.length + (withEntur ? 1 : 0);
+    if (!count) {
       setTimeout(tick, 2000);
       return;
     }
 
-    const item = items[idx % items.length];
+    const slot = idx % count;
     idx += 1;
+    if (withEntur && slot === 0) {
+      const ready = await enturSlide.show();
+      setTimeout(tick, ready ? enturSeconds * 1000 : 1000);
+      return;
+    }
 
+    const item = items[slot - (withEntur ? 1 : 0)];
     await preload(item);
+    if (enturSlide.isActive()) await enturSlide.hide();
     swapTo(item);
-
     setTimeout(tick, posterSeconds * 1000);
   }
 
