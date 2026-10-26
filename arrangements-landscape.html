@@ -726,10 +726,11 @@
       pickNumber(cfg.posterSeconds, cachedCfg.posterSeconds, 12)
     );
 
-    calendarSlideSeconds = nonNegativeParam(
-      "cal",
-      pickNumber(cfg.calendarSlideSeconds, cachedCfg.calendarSlideSeconds, 0)
-    );
+    calendarSlideSeconds = Math.max(0, pickNumber(
+      cfg.calendarSlideSecondsByPage?.["arrangements-landscape.html"],
+      cachedCfg.calendarSlideSecondsByPage?.["arrangements-landscape.html"],
+      cfg.calendarSlideSeconds, cachedCfg.calendarSlideSeconds, 0
+    ));
     enturSlideSeconds = Math.max(0, pickNumber(
       cfg.enturSlideSecondsByPage?.["arrangements-landscape.html"],
       cachedCfg.enturSlideSecondsByPage?.["arrangements-landscape.html"], 0
