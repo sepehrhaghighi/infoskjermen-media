@@ -217,6 +217,7 @@
   const EXTRA_MANIFEST_URL = "./assets/landscape_extra_arrangements/manifest.json";
   const CALENDAR_SLIDE_URL = "https://sepehrhaghighi.github.io/infoskjermen-media/calendar-slide.html";
   const FIELD = "landscape";
+  const ENTUR_TAVLA_URL = "https://vis-tavla.entur.no/vB3ZXkgI42ecuHXY9X7I";
 
   const CONFIG_TIMEOUT_MS = 7000;
   const CALENDAR_FRAME_TIMEOUT_MS = 12000;
@@ -224,9 +225,7 @@
 
   let posterSeconds = 7;
   let calendarSlideSeconds = 20;
-  let enturSlideEnabled = false;
-  let enturSlideSeconds = 20;
-  let enturSlideUrl = "";
+  let enturSlideSeconds = 0;
   let fadeMs = 500;
   let refreshSeconds = 60;
 
@@ -731,9 +730,10 @@
       "cal",
       pickNumber(cfg.calendarSlideSeconds, cachedCfg.calendarSlideSeconds, 0)
     );
-    enturSlideEnabled = pickBoolean(cfg.enturSlideEnabled, cachedCfg.enturSlideEnabled, false);
-    enturSlideSeconds = Math.max(1, pickNumber(cfg.enturSlideSeconds, cachedCfg.enturSlideSeconds, 20));
-    enturSlideUrl = String(cfg.enturSlideUrl ?? cachedCfg.enturSlideUrl ?? "").trim();
+    enturSlideSeconds = Math.max(0, pickNumber(
+      cfg.enturSlideSecondsByPage?.["arrangements-landscape.html"],
+      cachedCfg.enturSlideSecondsByPage?.["arrangements-landscape.html"], 0
+    ));
 
     fadeMs = positiveParam(
       "fade",
@@ -768,8 +768,8 @@
     const extraItems = await loadManualExtras(EXTRA_MANIFEST_URL, posterSeconds);
     let nextItems = mergeUniqueItems(posters, extraItems);
 
-    if (enturSlideEnabled && validEnturUrl(enturSlideUrl)) {
-      nextItems.unshift({ kind: "entur", url: enturSlideUrl, seconds: enturSlideSeconds });
+    if (enturSlideSeconds > 0) {
+      nextItems.unshift({ kind: "entur", url: ENTUR_TAVLA_URL, seconds: enturSlideSeconds });
     }
 
     if (calendarSlideSeconds > 0) {
