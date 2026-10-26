@@ -1,31 +1,27 @@
-# Entur Tavla — deployment steps
+# Entur Tavla — independent duration for all six screens
 
-This change adds a separate **Show Entur Tavla** checkbox, duration, and HTTPS display URL to `status.html`. Entur is optionally shown in `films-landscape.html` and `arrangements-landscape.html`. The original calendar slide remains independently enabled by its duration (0 = off).
+This update follows the user-approved layout:
 
-## Important — authentic original Apps Script now provided
+- Top controls stay **Seconds per poster**, **Calendar slide**, **Fade**, **Refresh**, **Update key**, and **Apply**.
+- The existing table of six screen pages has an additional column **Entur Tavla (sec, 0=off)**, with one number input per page.
+- `0` means no Entur slide; `10` displays the board for 10 seconds; `20` for 20 seconds, independently for each page.
+- With a positive value, the Entur slide appears in the **What it shows** description, **Count** increases by 1, and the entered time is added to **Suggested duration**.
+- The Entur board URL is fixed in the screen code: **https://vis-tavla.entur.no/vB3ZXkgI42ecuHXY9X7I**. No URL field or checkbox is needed.
+- The calendar slide keeps its existing timing and remains present on the two landscape-specific screens.
 
-The user supplied the original **InfoskjermenConfigService** code (`display-config-2026-04-21-v1`). `apps-script/InfoskjermenConfigService.gs` is now based on that **exact original architecture**, rather than the earlier proposed replacement. It retains:
+## Google Apps Script: new version required
 
-- Script Property `UPDATE_KEY` (existing password)
-- Script Property `DISPLAY_CONFIG` (existing saved settings)
-- `doGet`, `doPost`, JSONP response format and update authentication
-- existing timing ranges, reset/test helpers and form parsing
+Your Apps Script **Version 8 (2026-10-26, 9:32 AM)** is the previous interface. The updated source `apps-script/InfoskjermenConfigService.gs` adds `enturSlideSecondsByPage`, an object with six keys (the HTML filenames). This is based on the exact `Code.gs` source you provided and preserves **UPDATE_KEY**, **DISPLAY_CONFIG**, JSONP, GET, POST and the old poster/calendar/fade/refresh values. Existing v8 Entur checkbox settings are superseded and all six per-page durations start at 0.
 
-It adds only `enturSlideEnabled`, `enturSlideSeconds`, `enturSlideUrl` and validation for an enabled board URL. By retaining `DISPLAY_CONFIG` and merging the existing data, it preserves current saved settings. The Entur checkbox defaults to **off**.
+1. **Back up** your current `Code.gs` in [InfoskjermenConfigService](https://script.google.com/d/1PeHcLj7ZHa3lecrp9DIbMyZYNcOri-27ldUstPAYJCZ6z3LCUyFdghja/edit).
+2. Replace its source with [the revised source](./InfoskjermenConfigService.gs) and **Save**. Keep Script Properties, especially `UPDATE_KEY` and `DISPLAY_CONFIG`.
+3. Choose **Deploy → Manage deployments → Edit → New version → Deploy** for the **existing** deployment. Do not create a separate new deployment. The `/exec` URL should remain the same.
+4. Open [your existing endpoint](https://script.google.com/macros/s/AKfycbwTw7_A4V68NbmGn2aFmo-r3ddEWvO9G9VcIf0pc4W_EaMhiVgCi4JV3jNIqtQTa9pqsA/exec); confirm the response includes `display-config-2026-10-26-entur-per-page-v3` and `enturSlideSecondsByPage`.
+5. Only **then** merge the GitHub feature pull request to `main`.
+6. Open [status.html](https://sepehrhaghighi.github.io/infoskjermen-media/status.html), set Entur seconds in whichever of the six page rows you want, enter the update key and click **Apply**. Confirm success, refresh to verify saved settings, and test the selected screens.
 
-## Deploy in this order
+### Important
 
-1. Open the existing [Google Apps Script project](https://script.google.com/d/1PeHcLj7ZHa3lecrp9DIbMyZYNcOri-27ldUstPAYJCZ6z3LCUyFdghja/edit).
-2. Back up the current `Code.gs`, then replace its contents with [the revised code](./InfoskjermenConfigService.gs). **Save**. Never post your update password in GitHub or chat.
-3. Use **Deploy → Manage deployments → Edit (pencil) → Version: New version → Deploy**, selecting the existing web-app deployment, *not* New deployment. This normally preserves the current `/exec` URL already hardcoded in the screen pages.
-4. Verify the existing [script URL](https://script.google.com/macros/s/AKfycbwTw7_A4V68NbmGn2aFmo-r3ddEWvO9G9VcIf0pc4W_EaMhiVgCi4JV3jNIqtQTa9pqsA/exec) responds with `version: "display-config-2026-10-26-entur-v2"`. Confirm previous calendar and timing settings remain as before.
-5. Merge [Entur Tavla draft PR #4](https://github.com/sepehrhaghighi/infoskjermen-media/pull/4) into `main`. This publishes GitHub Pages; the PR remains intentionally unmerged until the Apps Script is deployed.
-6. Open the published `status.html`, enter your **public HTTPS Entur Tavla board URL**, select its duration, tick **Show Entur Tavla**, enter your existing update key and click **Apply**. Confirm "Applied successfully" and that the checkbox stays checked on refresh.
-7. Test `films-landscape.html` and `arrangements-landscape.html` on the display to confirm the board renders. A successfully loaded iframe does **not** guarantee that Entur allows embedding; verify visually. If Entur blocks embedded display, a different embedding/rendering approach is needed.
+Entur documents opening Tavla boards directly in browsers. It is not yet verified whether **vis-tavla.entur.no** allows its board to be embedded in an iframe inside your GitHub Pages displays. Test on a physical screen after deployment. A loaded iframe may still display an embedding error or blank page.
 
-### Additional notes
-
-- The Entur URL was not provided yet; no fixed URL is hardcoded and the board stays disabled.
-- The feature is intentionally limited to the two landscape slideshows, consistent with the existing calendar-slide design.
-- Do not execute `resetConfigFile_()` during deployment — it resets your current live settings.
-- The source code was syntax-checked and its config read/write operations tested in a mock Apps Script environment; live Entur embedding and real deployment are not verified.
+Do not run `resetConfigFile_()` during deployment, as it resets your stored timings.
