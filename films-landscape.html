@@ -389,8 +389,9 @@
       const timer = setTimeout(() => finish(false), 12000);
       ntourFrame.addEventListener("load", loaded);
       ntourFrame.addEventListener("error", failed);
-      const separator = url.includes("?") ? "&" : "?";
-      ntourFrame.src = url + separator + "_=" + Date.now();
+      const nextUrl = new URL(url);
+      nextUrl.searchParams.set("_", String(Date.now()));
+      ntourFrame.src = nextUrl.href;
     });
   }
 
