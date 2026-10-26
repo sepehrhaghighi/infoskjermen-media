@@ -103,6 +103,7 @@
     <iframe id="enturFrame" title="Entur avgangstavle" loading="eager" referrerpolicy="no-referrer-when-downgrade"></iframe>
   </div>
 
+<script src="./kiosk-auto-reload.js"></script>
 <script>
 (async () => {
   const CONFIG_SERVICE_URL = "https://script.google.com/macros/s/AKfycbwTw7_A4V68NbmGn2aFmo-r3ddEWvO9G9VcIf0pc4W_EaMhiVgCi4JV3jNIqtQTa9pqsA/exec";
@@ -651,13 +652,16 @@
     }, refreshSeconds * 1000);
   }
 
+  const resumeIndex = window.KioskAutoReload.takeIndex();
+  window.KioskAutoReload.start(() => idx);
   await load();
+  if (resumeIndex !== null && items.length) idx = resumeIndex % items.length;
 
   posterScene.classList.remove("active");
   calendarScene.classList.remove("active");
   enturScene.classList.remove("active");
 
-  const startsWithCalendar = items[0]?.kind === "calendar";
+  const startsWithCalendar = resumeIndex === null && items[0]?.kind === "calendar";
 
   if (startsWithCalendar) {
     const ready = await refreshCalendarInBackground(true);

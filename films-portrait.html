@@ -51,6 +51,7 @@
   </div>
 
 <script src="./entur-slide.js"></script>
+<script src="./kiosk-auto-reload.js"></script>
 <script>
 (async () => {
   const CONFIG_SERVICE_URL = "https://script.google.com/macros/s/AKfycbwTw7_A4V68NbmGn2aFmo-r3ddEWvO9G9VcIf0pc4W_EaMhiVgCi4JV3jNIqtQTa9pqsA/exec";
@@ -323,7 +324,11 @@
     }, refreshSeconds * 1000);
   }
 
+  const resumeIndex = window.KioskAutoReload.takeIndex();
+  window.KioskAutoReload.start(() => idx);
   await load();
+  const slideCount = urls.length + (calendarSeconds > 0 ? 1 : 0) + (enturSeconds > 0 ? 1 : 0);
+  if (resumeIndex !== null && slideCount > 0) idx = resumeIndex % slideCount;
   tick();
   scheduleReload();
 })();
