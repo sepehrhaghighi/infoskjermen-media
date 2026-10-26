@@ -13,7 +13,8 @@
     }
 
     #posterScene,
-    #calendarScene {
+    #calendarScene,
+    #ntourScene {
       position: absolute;
       inset: 0;
       opacity: 0;
@@ -24,10 +25,12 @@
     }
 
     #posterScene { z-index: 1; }
-    #calendarScene { z-index: 2; }
+    #calendarScene,
+    #ntourScene { z-index: 2; }
 
     #posterScene.active,
-    #calendarScene.active {
+    #calendarScene.active,
+    #ntourScene.active {
       opacity: 1;
       pointer-events: auto;
     }
@@ -61,7 +64,8 @@
       object-fit: contain;
     }
 
-    #calendarFrame {
+    #calendarFrame,
+    #ntourFrame {
       position: absolute;
       inset: 0;
       width: 100%;
@@ -202,6 +206,10 @@
     ></iframe>
   </div>
 
+  <div id="ntourScene">
+    <iframe id="ntourFrame" title="N-tour tabell" loading="eager" referrerpolicy="no-referrer-when-downgrade"></iframe>
+  </div>
+
 <script>
 (async () => {
   const CONFIG_SERVICE_URL = "https://script.google.com/macros/s/AKfycbwTw7_A4V68NbmGn2aFmo-r3ddEWvO9G9VcIf0pc4W_EaMhiVgCi4JV3jNIqtQTa9pqsA/exec";
@@ -216,6 +224,9 @@
 
   let posterSeconds = 7;
   let calendarSlideSeconds = 20;
+  let ntourSlideEnabled = false;
+  let ntourSlideSeconds = 20;
+  let ntourSlideUrl = "";
   let fadeMs = 500;
   let refreshSeconds = 60;
 
@@ -233,6 +244,8 @@
   const posterScene = document.getElementById("posterScene");
   const calendarScene = document.getElementById("calendarScene");
   const calendarFrame = document.getElementById("calendarFrame");
+  const ntourScene = document.getElementById("ntourScene");
+  const ntourFrame = document.getElementById("ntourFrame");
 
   const A = document.getElementById("a");
   const B = document.getElementById("b");
@@ -268,6 +281,19 @@
       if (Number.isFinite(n)) return n;
     }
     return null;
+  }
+
+  function pickBoolean(...values) {
+    for (const value of values) {
+      if (value == null || value === "") continue;
+      if (value === true || value === "true" || value === 1 || value === "1") return true;
+      if (value === false || value === "false" || value === 0 || value === "0") return false;
+    }
+    return false;
+  }
+
+  function validNtourUrl(value) {
+    try { return new URL(value).protocol === "https:"; } catch { return false; }
   }
 
   function readCachedConfig() {
@@ -507,6 +533,40 @@
     qrWrap.style.transitionDuration = dur;
     posterScene.style.transitionDuration = dur;
     calendarScene.style.transitionDuration = dur;
+    ntourScene.style.transitionDuration = dur;
+  }
+
+  function isExternalSlideActive() {
+    return calendarScene.classList.contains("active") || ntourScene.classList.contains("active");
+  }
+
+  async function fadeToNTour() {
+    ntourScene.classList.add("active");
+    calendarScene.classList.remove("active");
+    posterScene.classList.remove("active");
+    if (fadeMs > 0) await sleep(fadeMs);
+  }
+
+  function ensureNTourReady(url) {
+    if (!validNtourUrl(url)) return Promise.resolve(false);
+    return new Promise((resolve) => {
+      let done = false;
+      const finish = (ok) => {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        ntourFrame.removeEventListener("load", loaded);
+        ntourFrame.removeEventListener("error", failed);
+        resolve(ok);
+      };
+      const loaded = () => finish(true);
+      const failed = () => finish(false);
+      const timer = setTimeout(() => finish(false), 12000);
+      ntourFrame.addEventListener("load", loaded);
+      ntourFrame.addEventListener("error", failed);
+      const separator = url.includes("?") ? "&" : "?";
+      ntourFrame.src = url + separator + "_=" + Date.now();
+    });
   }
 
   function isCalendarActive() {
@@ -516,14 +576,16 @@
   async function fadeToCalendar() {
     if (isCalendarActive()) return;
     calendarScene.classList.add("active");
+    ntourScene.classList.remove("active");
     posterScene.classList.remove("active");
     if (fadeMs > 0) await sleep(fadeMs);
   }
 
   async function fadeToPoster() {
-    if (!isCalendarActive()) return;
+    if (!isExternalSlideActive()) return;
     posterScene.classList.add("active");
     calendarScene.classList.remove("active");
+    ntourScene.classList.remove("active");
     if (fadeMs > 0) await sleep(fadeMs);
   }
 
@@ -668,6 +730,9 @@
       "cal",
       pickNumber(cfg.calendarSlideSeconds, cachedCfg.calendarSlideSeconds, 0)
     );
+    ntourSlideEnabled = pickBoolean(cfg.ntourSlideEnabled, cachedCfg.ntourSlideEnabled, false);
+    ntourSlideSeconds = Math.max(1, pickNumber(cfg.ntourSlideSeconds, cachedCfg.ntourSlideSeconds, 20));
+    ntourSlideUrl = String(cfg.ntourSlideUrl ?? cachedCfg.ntourSlideUrl ?? "").trim();
 
     fadeMs = positiveParam(
       "fade",
@@ -702,6 +767,10 @@
     const extraItems = await loadManualExtras(EXTRA_MANIFEST_URL, posterSeconds);
     let nextItems = mergeUniqueItems(posters, extraItems);
 
+    if (ntourSlideEnabled && validNtourUrl(ntourSlideUrl)) {
+      nextItems.unshift({ kind: "ntour", url: ntourSlideUrl, seconds: ntourSlideSeconds });
+    }
+
     if (calendarSlideSeconds > 0) {
       nextItems.unshift({
         kind: "calendar",
@@ -727,6 +796,17 @@
     const item = items[idx % items.length];
     idx += 1;
 
+    if (item.kind === "ntour") {
+      const ready = await ensureNTourReady(item.url);
+      if (!ready) {
+        tickTimer = setTimeout(tick, 1000);
+        return;
+      }
+      await fadeToNTour();
+      tickTimer = setTimeout(tick, (item.seconds || ntourSlideSeconds) * 1000);
+      return;
+    }
+
     if (item.kind === "calendar") {
       const ready = await ensureCalendarReady();
 
@@ -746,13 +826,9 @@
           idx += 1;
         }
 
-        await fadeToPoster();
-
-        if (calendarSlideSeconds > 0) {
-          void refreshCalendarInBackground(true);
-        }
-
         if (nextItem?.kind === "image") {
+          await fadeToPoster();
+          if (calendarSlideSeconds > 0) void refreshCalendarInBackground(true);
           tickTimer = setTimeout(tick, (nextItem.seconds || posterSeconds) * 1000);
         } else {
           tick();
@@ -764,7 +840,7 @@
 
     await preloadPoster(item);
 
-    if (isCalendarActive()) {
+    if (isExternalSlideActive()) {
       swapToPoster(item);
       await fadeToPoster();
 
@@ -794,6 +870,7 @@
 
   posterScene.classList.remove("active");
   calendarScene.classList.remove("active");
+  ntourScene.classList.remove("active");
 
   const startsWithCalendar = items[0]?.kind === "calendar";
 
