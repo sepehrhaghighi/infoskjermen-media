@@ -451,7 +451,7 @@
     const enturMap = normalizeEnturMap(enturSecondsDraft);
     const enturFor = page => enturMap[page] || 0;
 
-    els.tbody.innerHTML = `<tr><td colspan="4" class="muted">Loading…</td></tr>`;
+    els.tbody.innerHTML = `<tr><td colspan="5" class="muted">Loading…</td></tr>`;
 
     try {
       const [filmsData, arrData, extraData, arrExtraData] = await Promise.all([
