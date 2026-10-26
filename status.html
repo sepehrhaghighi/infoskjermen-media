@@ -344,7 +344,7 @@
       SCREEN_PAGES.every(page => enturLeft[page] === enturRight[page] && calendarLeft[page] === calendarRight[page]);
   }
 
-  function loadConfigJSONP(extraParams = {}, timeoutMs = 7000) {
+  function loadConfigJSONP(extraParams = {}, timeoutMs = 16000) {
     return new Promise((resolve) => {
       const cbName = "__cfgcb_" + Math.random().toString(16).slice(2);
       let called = false;
@@ -508,7 +508,15 @@
   }
 
   async function reloadConfig() {
-    const result = await loadConfigJSONP({});
+    let result = await loadConfigJSONP({}, 16000);
+
+    // Apps Script can take longer to start just after a new deployment.
+    // Retry one failed read before falling back to defaults.
+    if (!result.ok && ["timeout", "network_error", "empty_response"].includes(result.error)) {
+      setStatus("Config service did not respond. Retrying…", "warn");
+      await new Promise(resolve => setTimeout(resolve, 800));
+      result = await loadConfigJSONP({}, 16000);
+    }
 
     if (!result.ok) {
       return {
@@ -705,7 +713,7 @@
       els.fadeMs.value = DEFAULTS.fadeMs;
       els.refreshSeconds.value = DEFAULTS.manifestRefreshSeconds;
 
-      setStatus("Read failed. Using defaults.", "warn");
+      setStatus("Read failed. Showing defaults only — do not Apply. Check diagnostics and refresh.", "bad");
       setDiag({
         stage: "init_read",
         error: loaded.error,
@@ -721,6 +729,8 @@
     }
 
     disableUi(false);
+    // Never let placeholder defaults overwrite saved settings when the read failed.
+    if (!loaded.ok) els.applyBtn.disabled = true;
     await renderCounts();
   })();
 })();
