@@ -1,4 +1,4 @@
-// Entur Tavla: optional full-screen slide for portrait and combined slideshow pages.
+// Shared optional full-screen iframe slide for Calendar and Entur Tavla.
 (() => {
   const BOARD_URL = "https://vis-tavla.entur.no/vB3ZXkgI42ecuHXY9X7I";
 
@@ -6,16 +6,17 @@
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  function create(getFadeMs) {
+  let nextOverlayId = 0;
+  function create(getFadeMs, pageUrl = BOARD_URL, title = "Entur Tavla") {
     const overlay = document.createElement("div");
-    overlay.id = "enturSlideOverlay";
+    overlay.id = "infoSlideOverlay" + (++nextOverlayId);
     Object.assign(overlay.style, {
       position: "fixed", inset: "0", zIndex: "1500", opacity: "0",
       background: "#000", pointerEvents: "none", transition: "opacity 500ms ease-in-out"
     });
 
     const iframe = document.createElement("iframe");
-    iframe.title = "Entur Tavla";
+    iframe.title = title;
     iframe.setAttribute("referrerpolicy", "no-referrer-when-downgrade");
     Object.assign(iframe.style, {
       display: "block", width: "100%", height: "100%", border: "0",
@@ -48,7 +49,7 @@
         const timer = setTimeout(() => finish(false), 12000);
         iframe.addEventListener("load", onLoad);
         iframe.addEventListener("error", onError);
-        iframe.src = BOARD_URL;
+        iframe.src = pageUrl;
       });
       return pendingLoad;
     }
@@ -75,5 +76,5 @@
     return { show, hide, isActive: () => active };
   }
 
-  window.EnturSlide = { create };
+  window.EnturSlide = { create }; // Backward compatible name for existing pages.
 })();
