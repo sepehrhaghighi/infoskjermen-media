@@ -61,6 +61,7 @@
   const CONFIG_CACHE_KEY = "infoskjermenSharedConfigFromService";
 
   let enturSeconds = 0;
+  let calendarSeconds = 0;
   let posterSeconds = 7;
   let fadeMs = 500;
   let refreshSeconds = 60;
@@ -75,6 +76,7 @@
   const A = document.getElementById("a");
   const B = document.getElementById("b");
   const enturSlide = window.EnturSlide.create(() => fadeMs);
+  const calendarSlide = window.EnturSlide.create(() => fadeMs, "./calendar-slide.html", "Kalenderslide");
 
   function readNumericParam(name) {
     const v = new URLSearchParams(location.search).get(name);
@@ -220,6 +222,11 @@
       pickNumber(cfg.posterSeconds, cachedCfg.posterSeconds, 12)
     );
 
+    calendarSeconds = Math.max(0, pickNumber(
+      cfg.calendarSlideSecondsByPage?.["films-portrait.html"],
+      cachedCfg.calendarSlideSecondsByPage?.["films-portrait.html"], 0
+    ));
+
     enturSeconds = Math.max(0, pickNumber(
       cfg.enturSlideSecondsByPage?.["films-portrait.html"],
       cachedCfg.enturSlideSecondsByPage?.["films-portrait.html"], 0
@@ -248,7 +255,7 @@
       .map(x => x?.[FIELD])
       .filter(Boolean);
 
-    emptyEl.style.display = (urls.length || enturSeconds > 0) ? "none" : "flex";
+    emptyEl.style.display = (urls.length || enturSeconds > 0 || calendarSeconds > 0) ? "none" : "flex";
   }
 
   async function preload(url) {
@@ -272,8 +279,10 @@
   }
 
   async function tick() {
+    const withCalendar = calendarSeconds > 0;
     const withEntur = enturSeconds > 0;
-    const count = urls.length + (withEntur ? 1 : 0);
+    const firstPosterSlot = (withCalendar ? 1 : 0) + (withEntur ? 1 : 0);
+    const count = urls.length + firstPosterSlot;
     if (!count) {
       setTimeout(tick, 2000);
       return;
@@ -281,14 +290,22 @@
 
     const slot = idx % count;
     idx += 1;
-    if (withEntur && slot === 0) {
+    if (withCalendar && slot === 0) {
+      if (enturSlide.isActive()) await enturSlide.hide();
+      const ready = await calendarSlide.show();
+      setTimeout(tick, ready ? calendarSeconds * 1000 : 1000);
+      return;
+    }
+    if (withEntur && slot === (withCalendar ? 1 : 0)) {
+      if (calendarSlide.isActive()) await calendarSlide.hide();
       const ready = await enturSlide.show();
       setTimeout(tick, ready ? enturSeconds * 1000 : 1000);
       return;
     }
 
-    const url = urls[slot - (withEntur ? 1 : 0)];
+    const url = urls[slot - firstPosterSlot];
     await preload(url);
+    if (calendarSlide.isActive()) await calendarSlide.hide();
     if (enturSlide.isActive()) await enturSlide.hide();
     swapTo(url);
     setTimeout(tick, posterSeconds * 1000);
