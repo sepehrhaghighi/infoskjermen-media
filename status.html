@@ -58,7 +58,7 @@
     .row{ display:flex; gap:12px; flex-wrap: wrap; align-items:center; }
     label{ display:flex; gap:8px; align-items:center; }
 
-    input[type="number"], input[type="password"]{
+    input[type="number"], input[type="password"], input[type="url"]{
       width: 150px;
       padding: 6px 8px;
       border-radius: 10px;
@@ -67,6 +67,7 @@
       color:#fff;
     }
     input[type="password"]{ width: 220px; }
+    input[type="url"]{ width: min(560px, 85vw); }
 
     button{
       padding: 8px 10px;
@@ -164,12 +165,22 @@
           <input id="calendarSlideSeconds" type="number" min="0" placeholder="20">
         </label>
 
+        <label><input id="ntourSlideEnabled" type="checkbox"> Show N-tour table</label>
+        <label>N-tour slide (sec)
+          <input id="ntourSlideSeconds" type="number" min="1" placeholder="20">
+        </label>
         <label>Fade (ms)
           <input id="fadeMs" type="number" min="0" placeholder="500">
         </label>
 
         <label>Refresh (sec)
           <input id="refreshSeconds" type="number" min="30" placeholder="60">
+        </label>
+      </div>
+
+      <div class="row" style="margin-top:10px;">
+        <label>N-tour table URL
+          <input id="ntourSlideUrl" type="url" placeholder="https://… (public, embeddable URL)" spellcheck="false">
         </label>
       </div>
 
@@ -186,7 +197,7 @@
       <div class="muted small" style="margin-top:10px;">
         Apply updates the shared config in Script Properties. The same calendar slide time is used by both
         <span class="mono">films-landscape.html</span> and
-        <span class="mono">arrangements-landscape.html</span>.
+        <span class="mono">arrangements-landscape.html</span>. The N-tour checkbox controls a separate table slide on those two screens. The URL must allow embedding.
       </div>
     </div>
 
@@ -233,6 +244,9 @@
   const DEFAULTS = {
     posterSeconds: 7,
     calendarSlideSeconds: 20,
+    ntourSlideEnabled: false,
+    ntourSlideSeconds: 20,
+    ntourSlideUrl: "",
     fadeMs: 500,
     manifestRefreshSeconds: 60
   };
@@ -240,6 +254,9 @@
   const els = {
     posterSeconds: document.getElementById("posterSeconds"),
     calendarSlideSeconds: document.getElementById("calendarSlideSeconds"),
+    ntourSlideEnabled: document.getElementById("ntourSlideEnabled"),
+    ntourSlideSeconds: document.getElementById("ntourSlideSeconds"),
+    ntourSlideUrl: document.getElementById("ntourSlideUrl"),
     fadeMs: document.getElementById("fadeMs"),
     refreshSeconds: document.getElementById("refreshSeconds"),
     updateKey: document.getElementById("updateKey"),
@@ -275,6 +292,9 @@
   function disableUi(disabled) {
     els.posterSeconds.disabled = disabled;
     els.calendarSlideSeconds.disabled = disabled;
+    els.ntourSlideEnabled.disabled = disabled;
+    els.ntourSlideSeconds.disabled = disabled;
+    els.ntourSlideUrl.disabled = disabled;
     els.fadeMs.disabled = disabled;
     els.refreshSeconds.disabled = disabled;
     els.applyBtn.disabled = disabled;
@@ -323,10 +343,18 @@
     );
   }
 
+  function isNtourUrl(value) {
+    try { const u = new URL(String(value || "").trim()); return u.protocol === "https:" || u.protocol === "http:"; }
+    catch { return false; }
+  }
+
   function configsMatch(a, b) {
     return (
       Number(a.posterSeconds) === Number(b.posterSeconds) &&
       Number(a.calendarSlideSeconds) === Number(b.calendarSlideSeconds) &&
+      Boolean(a.ntourSlideEnabled) === Boolean(b.ntourSlideEnabled) &&
+      Number(a.ntourSlideSeconds) === Number(b.ntourSlideSeconds) &&
+      String(a.ntourSlideUrl || "").trim() === String(b.ntourSlideUrl || "").trim() &&
       Number(a.fadeMs) === Number(b.fadeMs) &&
       Number(a.manifestRefreshSeconds) === Number(b.manifestRefreshSeconds)
     );
@@ -405,6 +433,9 @@
 
     if (cfg.posterSeconds != null) els.posterSeconds.value = cfg.posterSeconds;
     if (cfg.calendarSlideSeconds != null) els.calendarSlideSeconds.value = cfg.calendarSlideSeconds;
+    els.ntourSlideEnabled.checked = cfg.ntourSlideEnabled === true || cfg.ntourSlideEnabled === "true";
+    els.ntourSlideSeconds.value = cfg.ntourSlideSeconds ?? DEFAULTS.ntourSlideSeconds;
+    els.ntourSlideUrl.value = cfg.ntourSlideUrl ?? DEFAULTS.ntourSlideUrl;
     if (cfg.fadeMs != null) els.fadeMs.value = cfg.fadeMs;
     if (refresh != null) els.refreshSeconds.value = refresh;
   }
@@ -413,6 +444,9 @@
     return {
       posterSeconds: Math.max(1, safeNumber(els.posterSeconds.value) ?? DEFAULTS.posterSeconds),
       calendarSlideSeconds: Math.max(0, safeNumber(els.calendarSlideSeconds.value) ?? DEFAULTS.calendarSlideSeconds),
+      ntourSlideEnabled: els.ntourSlideEnabled.checked,
+      ntourSlideSeconds: Math.max(1, safeNumber(els.ntourSlideSeconds.value) ?? DEFAULTS.ntourSlideSeconds),
+      ntourSlideUrl: els.ntourSlideUrl.value.trim(),
       fadeMs: Math.max(0, safeNumber(els.fadeMs.value) ?? DEFAULTS.fadeMs),
       manifestRefreshSeconds: Math.max(30, safeNumber(els.refreshSeconds.value) ?? DEFAULTS.manifestRefreshSeconds)
     };
@@ -429,6 +463,8 @@
   async function renderCounts() {
     const posterSeconds = Math.max(1, safeNumber(els.posterSeconds.value) ?? DEFAULTS.posterSeconds);
     const calendarSlideSeconds = Math.max(0, safeNumber(els.calendarSlideSeconds.value) ?? DEFAULTS.calendarSlideSeconds);
+    const ntourActive = els.ntourSlideEnabled.checked && isNtourUrl(els.ntourSlideUrl.value);
+    const ntourSlideSeconds = ntourActive ? Math.max(1, safeNumber(els.ntourSlideSeconds.value) ?? 20) : 0;
 
     els.tbody.innerHTML = `<tr><td colspan="4" class="muted">Loading…</td></tr>`;
 
@@ -451,10 +487,10 @@
       const arrLandscape       = countField(arrs, "landscape");
 
       const filmsLandscapeImageCount = filmsLandscapeBase + extraLandscape;
-      const filmsLandscapeTotalCount = filmsLandscapeImageCount + (calendarSlideSeconds > 0 ? 1 : 0);
+      const filmsLandscapeTotalCount = filmsLandscapeImageCount + (calendarSlideSeconds > 0 ? 1 : 0) + (ntourActive ? 1 : 0);
 
       const arrangementsLandscapeImageCount = arrLandscape + extraArrLandscape;
-      const arrangementsLandscapeTotalCount = arrangementsLandscapeImageCount + (calendarSlideSeconds > 0 ? 1 : 0);
+      const arrangementsLandscapeTotalCount = arrangementsLandscapeImageCount + (calendarSlideSeconds > 0 ? 1 : 0) + (ntourActive ? 1 : 0);
 
       const portraitAll  = filmsPortrait + arrPortrait;
       const landscapeAll = filmsLandscapeBase + arrLandscape + extraLandscape + extraArrLandscape;
@@ -468,9 +504,9 @@
         },
         {
           page:"films-landscape.html",
-          desc:`Films landscape (subset + ${extraLandscape} manual extra${calendarSlideSeconds > 0 ? " + calendar slide" : ""})`,
+          desc:`Films landscape (subset + ${extraLandscape} manual extra${calendarSlideSeconds > 0 ? " + calendar slide" : ""}${ntourActive ? " + N-tour table" : ""})`,
           count: filmsLandscapeTotalCount,
-          seconds: (filmsLandscapeImageCount * posterSeconds) + calendarSlideSeconds
+          seconds: (filmsLandscapeImageCount * posterSeconds) + calendarSlideSeconds + ntourSlideSeconds
         },
         {
           page:"arrangements-portrait.html",
@@ -480,9 +516,9 @@
         },
         {
           page:"arrangements-landscape.html",
-          desc:`Arrangements landscape (subset + ${extraArrLandscape} manual extra${calendarSlideSeconds > 0 ? " + calendar slide" : ""})`,
+          desc:`Arrangements landscape (subset + ${extraArrLandscape} manual extra${calendarSlideSeconds > 0 ? " + calendar slide" : ""}${ntourActive ? " + N-tour table" : ""})`,
           count: arrangementsLandscapeTotalCount,
-          seconds: (arrangementsLandscapeImageCount * posterSeconds) + calendarSlideSeconds
+          seconds: (arrangementsLandscapeImageCount * posterSeconds) + calendarSlideSeconds + ntourSlideSeconds
         },
         {
           page:"portrait-all.html",
@@ -555,6 +591,10 @@
     }
 
     const cfg = readUiConfig();
+    if (cfg.ntourSlideEnabled && !isNtourUrl(cfg.ntourSlideUrl)) {
+      setStatus("N-tour requires a public http(s) table URL.", "bad");
+      return;
+    }
 
     setStatus("Applying config…", "warn");
     setDiag({
@@ -568,6 +608,9 @@
       key,
       posterSeconds: String(cfg.posterSeconds),
       calendarSlideSeconds: String(cfg.calendarSlideSeconds),
+      ntourSlideEnabled: String(cfg.ntourSlideEnabled),
+      ntourSlideSeconds: String(cfg.ntourSlideSeconds),
+      ntourSlideUrl: cfg.ntourSlideUrl,
       fadeMs: String(cfg.fadeMs),
       manifestRefreshSeconds: String(cfg.manifestRefreshSeconds)
     });
@@ -681,6 +724,9 @@
 
   els.posterSeconds.addEventListener("input", renderCounts);
   els.calendarSlideSeconds.addEventListener("input", renderCounts);
+  els.ntourSlideEnabled.addEventListener("change", renderCounts);
+  els.ntourSlideSeconds.addEventListener("input", renderCounts);
+  els.ntourSlideUrl.addEventListener("input", renderCounts);
 
   (async () => {
     disableUi(true);
@@ -699,6 +745,9 @@
     if (!loaded.ok) {
       els.posterSeconds.value = DEFAULTS.posterSeconds;
       els.calendarSlideSeconds.value = DEFAULTS.calendarSlideSeconds;
+      els.ntourSlideEnabled.checked = DEFAULTS.ntourSlideEnabled;
+      els.ntourSlideSeconds.value = DEFAULTS.ntourSlideSeconds;
+      els.ntourSlideUrl.value = DEFAULTS.ntourSlideUrl;
       els.fadeMs.value = DEFAULTS.fadeMs;
       els.refreshSeconds.value = DEFAULTS.manifestRefreshSeconds;
 
