@@ -1,9 +1,10 @@
-const VERSION_TAG = "display-config-2026-10-26-entur-per-page-v3";
+const VERSION_TAG = "display-config-2026-10-26-calendar-entur-per-page-v4";
 
-const ENTUR_PAGES = ["films-portrait.html","films-landscape.html","arrangements-portrait.html","arrangements-landscape.html","portrait-all.html","landscape-all.html"];
+const SCREEN_PAGES = ["films-portrait.html","films-landscape.html","arrangements-portrait.html","arrangements-landscape.html","portrait-all.html","landscape-all.html"];
 const DEFAULTS = {
   posterSeconds: 7,
   calendarSlideSeconds: 20,   // 0 = off
+  calendarSlideSecondsByPage: {"films-portrait.html":0,"films-landscape.html":20,"arrangements-portrait.html":0,"arrangements-landscape.html":20,"portrait-all.html":0,"landscape-all.html":0},
   enturSlideSecondsByPage: {"films-portrait.html":0,"films-landscape.html":0,"arrangements-portrait.html":0,"arrangements-landscape.html":0,"portrait-all.html":0,"landscape-all.html":0},
   fadeMs: 500,
   manifestRefreshSeconds: 60,
@@ -30,11 +31,12 @@ function parseBoolean_(value) {
     String(value).toLowerCase() === "true" || String(value) === "1";
 }
 
-function normalizeEnturPages_(raw) {
+function normalizeDurationPages_(raw, fallbacks) {
   const pages = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {};
+  const defaults = fallbacks || {};
   const result = {};
-  ENTUR_PAGES.forEach(function(page) {
-    result[page] = clampInt(pages[page], 0, 3600, 0);
+  SCREEN_PAGES.forEach(function(page) {
+    result[page] = clampInt(pages[page], 0, 3600, Number(defaults[page]) || 0);
   });
   return result;
 }
@@ -57,7 +59,14 @@ function normalizeConfig_(cfg) {
       DEFAULTS.calendarSlideSeconds
     ),
 
-    enturSlideSecondsByPage: normalizeEnturPages_(cfg.enturSlideSecondsByPage),
+    // When upgrading from the old global calendar setting, retain its value
+    // for the two screens which already showed the calendar.
+    calendarSlideSecondsByPage: normalizeDurationPages_(cfg.calendarSlideSecondsByPage, {
+      "films-landscape.html": clampInt(cfg.calendarSlideSeconds, 0, 3600, DEFAULTS.calendarSlideSeconds),
+      "arrangements-landscape.html": clampInt(cfg.calendarSlideSeconds, 0, 3600, DEFAULTS.calendarSlideSeconds)
+    }),
+
+    enturSlideSecondsByPage: normalizeDurationPages_(cfg.enturSlideSecondsByPage),
 
     fadeMs: clampInt(
       cfg.fadeMs,
@@ -149,6 +158,15 @@ function incomingFromParams_(params) {
 
   if (Object.prototype.hasOwnProperty.call(params, "calendarSlideSeconds")) {
     incoming.calendarSlideSeconds = Number(params.calendarSlideSeconds);
+  }
+
+  if (Object.prototype.hasOwnProperty.call(params, "calendarSlideSecondsByPage")) {
+    incoming.calendarSlideSecondsByPage = JSON.parse(String(params.calendarSlideSecondsByPage));
+    if (!incoming.calendarSlideSecondsByPage ||
+        Array.isArray(incoming.calendarSlideSecondsByPage) ||
+        typeof incoming.calendarSlideSecondsByPage !== "object") {
+      throw new Error("calendarSlideSecondsByPage must be a JSON object.");
+    }
   }
 
   if (Object.prototype.hasOwnProperty.call(params, "enturSlideSecondsByPage")) {
