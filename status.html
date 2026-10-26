@@ -68,6 +68,7 @@
     }
     input[type="password"]{ width: 220px; }
     input[type="url"]{ width: min(560px, 85vw); }
+    input.entur-seconds{ width: 84px; text-align: right; }
 
     button{
       padding: 8px 10px;
@@ -118,7 +119,7 @@
       border-radius: 12px;
     }
     .tableWrap table{
-      min-width: 860px;
+      min-width: 990px;
     }
     @media (max-width: 700px){
       th, td{ padding: 8px 6px; }
@@ -165,22 +166,12 @@
           <input id="calendarSlideSeconds" type="number" min="0" placeholder="20">
         </label>
 
-        <label><input id="enturSlideEnabled" type="checkbox"> Show Entur Tavla</label>
-        <label>Entur slide (sec)
-          <input id="enturSlideSeconds" type="number" min="1" placeholder="20">
-        </label>
         <label>Fade (ms)
           <input id="fadeMs" type="number" min="0" placeholder="500">
         </label>
 
         <label>Refresh (sec)
           <input id="refreshSeconds" type="number" min="30" placeholder="60">
-        </label>
-      </div>
-
-      <div class="row" style="margin-top:10px;">
-        <label>Entur departure board URL
-          <input id="enturSlideUrl" type="url" placeholder="https://… (public, embeddable URL)" spellcheck="false">
         </label>
       </div>
 
@@ -197,14 +188,14 @@
       <div class="muted small" style="margin-top:10px;">
         Apply updates the shared config in Script Properties. The same calendar slide time is used by both
         <span class="mono">films-landscape.html</span> and
-        <span class="mono">arrangements-landscape.html</span>. The Entur checkbox controls a separate table slide on those two screens. The URL must allow embedding.
+        <span class="mono">arrangements-landscape.html</span>. Entur Tavla is controlled separately for each of the six pages below (0 = off).
       </div>
     </div>
 
     <div class="card">
       <div class="muted small" style="margin-bottom:10px;">
         Counts are based on <span class="mono">assets/films.json</span>, <span class="mono">assets/arrangements.json</span>, <span class="mono">assets/landscape_extra/manifest.json</span>, and <span class="mono">assets/landscape_extra_arrangements/manifest.json</span>.
-        Suggested duration = count × seconds-per-poster, plus calendar slide time where enabled.
+        Suggested duration = poster count × seconds-per-poster, plus calendar slide time where enabled, plus each page’s Entur Tavla time.
       </div>
 
       <div class="tableWrap">
@@ -213,12 +204,13 @@
             <tr>
               <th>Page</th>
               <th>What it shows</th>
-              <th class="right">Count</th>
+              <th class="right">Entur Tavla (sec, 0=off)</th>
+               <th class="right">Count</th>
               <th class="right">Suggested duration</th>
             </tr>
           </thead>
           <tbody id="tbody">
-            <tr><td colspan="4" class="muted">Loading…</td></tr>
+            <tr><td colspan="5" class="muted">Loading…</td></tr>
           </tbody>
         </table>
       </div>
@@ -244,19 +236,18 @@
   const DEFAULTS = {
     posterSeconds: 7,
     calendarSlideSeconds: 20,
-    enturSlideEnabled: false,
-    enturSlideSeconds: 20,
-    enturSlideUrl: "",
+    enturSlideSecondsByPage: {"films-portrait.html":0,"films-landscape.html":0,"arrangements-portrait.html":0,"arrangements-landscape.html":0,"portrait-all.html":0,"landscape-all.html":0},
     fadeMs: 500,
     manifestRefreshSeconds: 60
   };
 
+  const ENTUR_PAGES = ["films-portrait.html","films-landscape.html","arrangements-portrait.html","arrangements-landscape.html","portrait-all.html","landscape-all.html"];
+  let enturSecondsDraft = { ...DEFAULTS.enturSlideSecondsByPage };
+
   const els = {
     posterSeconds: document.getElementById("posterSeconds"),
     calendarSlideSeconds: document.getElementById("calendarSlideSeconds"),
-    enturSlideEnabled: document.getElementById("enturSlideEnabled"),
-    enturSlideSeconds: document.getElementById("enturSlideSeconds"),
-    enturSlideUrl: document.getElementById("enturSlideUrl"),
+
     fadeMs: document.getElementById("fadeMs"),
     refreshSeconds: document.getElementById("refreshSeconds"),
     updateKey: document.getElementById("updateKey"),
@@ -292,9 +283,7 @@
   function disableUi(disabled) {
     els.posterSeconds.disabled = disabled;
     els.calendarSlideSeconds.disabled = disabled;
-    els.enturSlideEnabled.disabled = disabled;
-    els.enturSlideSeconds.disabled = disabled;
-    els.enturSlideUrl.disabled = disabled;
+    els.tbody.querySelectorAll(".entur-seconds").forEach(input => { input.disabled = disabled; });
     els.fadeMs.disabled = disabled;
     els.refreshSeconds.disabled = disabled;
     els.applyBtn.disabled = disabled;
