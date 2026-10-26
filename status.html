@@ -344,7 +344,7 @@
   }
 
   function isNtourUrl(value) {
-    try { const u = new URL(String(value || "").trim()); return u.protocol === "https:" || u.protocol === "http:"; }
+    try { const u = new URL(String(value || "").trim()); return u.protocol === "https:"; }
     catch { return false; }
   }
 
@@ -352,7 +352,7 @@
     return (
       Number(a.posterSeconds) === Number(b.posterSeconds) &&
       Number(a.calendarSlideSeconds) === Number(b.calendarSlideSeconds) &&
-      Boolean(a.ntourSlideEnabled) === Boolean(b.ntourSlideEnabled) &&
+      (a.ntourSlideEnabled === true || a.ntourSlideEnabled === "true") === (b.ntourSlideEnabled === true || b.ntourSlideEnabled === "true") &&
       Number(a.ntourSlideSeconds) === Number(b.ntourSlideSeconds) &&
       String(a.ntourSlideUrl || "").trim() === String(b.ntourSlideUrl || "").trim() &&
       Number(a.fadeMs) === Number(b.fadeMs) &&
@@ -592,7 +592,7 @@
 
     const cfg = readUiConfig();
     if (cfg.ntourSlideEnabled && !isNtourUrl(cfg.ntourSlideUrl)) {
-      setStatus("N-tour requires a public http(s) table URL.", "bad");
+      setStatus("N-tour requires a public HTTPS table URL.", "bad");
       return;
     }
 
