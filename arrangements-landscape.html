@@ -14,7 +14,7 @@
 
     #posterScene,
     #calendarScene,
-    #ntourScene {
+    #enturScene {
       position: absolute;
       inset: 0;
       opacity: 0;
@@ -26,11 +26,11 @@
 
     #posterScene { z-index: 1; }
     #calendarScene,
-    #ntourScene { z-index: 2; }
+    #enturScene { z-index: 2; }
 
     #posterScene.active,
     #calendarScene.active,
-    #ntourScene.active {
+    #enturScene.active {
       opacity: 1;
       pointer-events: auto;
     }
@@ -65,7 +65,7 @@
     }
 
     #calendarFrame,
-    #ntourFrame {
+    #enturFrame {
       position: absolute;
       inset: 0;
       width: 100%;
@@ -206,8 +206,8 @@
     ></iframe>
   </div>
 
-  <div id="ntourScene">
-    <iframe id="ntourFrame" title="N-tour tabell" loading="eager" referrerpolicy="no-referrer-when-downgrade"></iframe>
+  <div id="enturScene">
+    <iframe id="enturFrame" title="Entur avgangstavle" loading="eager" referrerpolicy="no-referrer-when-downgrade"></iframe>
   </div>
 
 <script>
@@ -224,9 +224,9 @@
 
   let posterSeconds = 7;
   let calendarSlideSeconds = 20;
-  let ntourSlideEnabled = false;
-  let ntourSlideSeconds = 20;
-  let ntourSlideUrl = "";
+  let enturSlideEnabled = false;
+  let enturSlideSeconds = 20;
+  let enturSlideUrl = "";
   let fadeMs = 500;
   let refreshSeconds = 60;
 
@@ -244,8 +244,8 @@
   const posterScene = document.getElementById("posterScene");
   const calendarScene = document.getElementById("calendarScene");
   const calendarFrame = document.getElementById("calendarFrame");
-  const ntourScene = document.getElementById("ntourScene");
-  const ntourFrame = document.getElementById("ntourFrame");
+  const enturScene = document.getElementById("enturScene");
+  const enturFrame = document.getElementById("enturFrame");
 
   const A = document.getElementById("a");
   const B = document.getElementById("b");
@@ -292,7 +292,7 @@
     return false;
   }
 
-  function validNtourUrl(value) {
+  function validEnturUrl(value) {
     try { return new URL(value).protocol === "https:"; } catch { return false; }
   }
 
@@ -533,40 +533,40 @@
     qrWrap.style.transitionDuration = dur;
     posterScene.style.transitionDuration = dur;
     calendarScene.style.transitionDuration = dur;
-    ntourScene.style.transitionDuration = dur;
+    enturScene.style.transitionDuration = dur;
   }
 
   function isExternalSlideActive() {
-    return calendarScene.classList.contains("active") || ntourScene.classList.contains("active");
+    return calendarScene.classList.contains("active") || enturScene.classList.contains("active");
   }
 
-  async function fadeToNTour() {
-    ntourScene.classList.add("active");
+  async function fadeToEntur() {
+    enturScene.classList.add("active");
     calendarScene.classList.remove("active");
     posterScene.classList.remove("active");
     if (fadeMs > 0) await sleep(fadeMs);
   }
 
-  function ensureNTourReady(url) {
-    if (!validNtourUrl(url)) return Promise.resolve(false);
+  function ensureEnturReady(url) {
+    if (!validEnturUrl(url)) return Promise.resolve(false);
     return new Promise((resolve) => {
       let done = false;
       const finish = (ok) => {
         if (done) return;
         done = true;
         clearTimeout(timer);
-        ntourFrame.removeEventListener("load", loaded);
-        ntourFrame.removeEventListener("error", failed);
+        enturFrame.removeEventListener("load", loaded);
+        enturFrame.removeEventListener("error", failed);
         resolve(ok);
       };
       const loaded = () => finish(true);
       const failed = () => finish(false);
       const timer = setTimeout(() => finish(false), 12000);
-      ntourFrame.addEventListener("load", loaded);
-      ntourFrame.addEventListener("error", failed);
+      enturFrame.addEventListener("load", loaded);
+      enturFrame.addEventListener("error", failed);
       const nextUrl = new URL(url);
       nextUrl.searchParams.set("_", String(Date.now()));
-      ntourFrame.src = nextUrl.href;
+      enturFrame.src = nextUrl.href;
     });
   }
 
@@ -577,7 +577,7 @@
   async function fadeToCalendar() {
     if (isCalendarActive()) return;
     calendarScene.classList.add("active");
-    ntourScene.classList.remove("active");
+    enturScene.classList.remove("active");
     posterScene.classList.remove("active");
     if (fadeMs > 0) await sleep(fadeMs);
   }
@@ -586,7 +586,7 @@
     if (!isExternalSlideActive()) return;
     posterScene.classList.add("active");
     calendarScene.classList.remove("active");
-    ntourScene.classList.remove("active");
+    enturScene.classList.remove("active");
     if (fadeMs > 0) await sleep(fadeMs);
   }
 
@@ -731,9 +731,9 @@
       "cal",
       pickNumber(cfg.calendarSlideSeconds, cachedCfg.calendarSlideSeconds, 0)
     );
-    ntourSlideEnabled = pickBoolean(cfg.ntourSlideEnabled, cachedCfg.ntourSlideEnabled, false);
-    ntourSlideSeconds = Math.max(1, pickNumber(cfg.ntourSlideSeconds, cachedCfg.ntourSlideSeconds, 20));
-    ntourSlideUrl = String(cfg.ntourSlideUrl ?? cachedCfg.ntourSlideUrl ?? "").trim();
+    enturSlideEnabled = pickBoolean(cfg.enturSlideEnabled, cachedCfg.enturSlideEnabled, false);
+    enturSlideSeconds = Math.max(1, pickNumber(cfg.enturSlideSeconds, cachedCfg.enturSlideSeconds, 20));
+    enturSlideUrl = String(cfg.enturSlideUrl ?? cachedCfg.enturSlideUrl ?? "").trim();
 
     fadeMs = positiveParam(
       "fade",
@@ -768,8 +768,8 @@
     const extraItems = await loadManualExtras(EXTRA_MANIFEST_URL, posterSeconds);
     let nextItems = mergeUniqueItems(posters, extraItems);
 
-    if (ntourSlideEnabled && validNtourUrl(ntourSlideUrl)) {
-      nextItems.unshift({ kind: "ntour", url: ntourSlideUrl, seconds: ntourSlideSeconds });
+    if (enturSlideEnabled && validEnturUrl(enturSlideUrl)) {
+      nextItems.unshift({ kind: "entur", url: enturSlideUrl, seconds: enturSlideSeconds });
     }
 
     if (calendarSlideSeconds > 0) {
@@ -797,14 +797,14 @@
     const item = items[idx % items.length];
     idx += 1;
 
-    if (item.kind === "ntour") {
-      const ready = await ensureNTourReady(item.url);
+    if (item.kind === "entur") {
+      const ready = await ensureEnturReady(item.url);
       if (!ready) {
         tickTimer = setTimeout(tick, 1000);
         return;
       }
-      await fadeToNTour();
-      tickTimer = setTimeout(tick, (item.seconds || ntourSlideSeconds) * 1000);
+      await fadeToEntur();
+      tickTimer = setTimeout(tick, (item.seconds || enturSlideSeconds) * 1000);
       return;
     }
 
@@ -871,7 +871,7 @@
 
   posterScene.classList.remove("active");
   calendarScene.classList.remove("active");
-  ntourScene.classList.remove("active");
+  enturScene.classList.remove("active");
 
   const startsWithCalendar = items[0]?.kind === "calendar";
 
