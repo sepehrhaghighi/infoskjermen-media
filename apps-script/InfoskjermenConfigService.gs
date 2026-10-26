@@ -14,9 +14,9 @@
 var INFOSKJERMEN_DEFAULTS_ = {
   posterSeconds: 7,
   calendarSlideSeconds: 20,
-  ntourSlideEnabled: false,
-  ntourSlideSeconds: 20,
-  ntourSlideUrl: "",
+  enturSlideEnabled: false,
+  enturSlideSeconds: 20,
+  enturSlideUrl: "",
   fadeMs: 500,
   manifestRefreshSeconds: 60
 };
@@ -60,9 +60,9 @@ function readInfoskjermenConfig_() {
   return {
     posterSeconds: limitNumber_(cfg.posterSeconds, 1, 3600, 7),
     calendarSlideSeconds: limitNumber_(cfg.calendarSlideSeconds, 0, 3600, 20),
-    ntourSlideEnabled: asBoolean_(cfg.ntourSlideEnabled),
-    ntourSlideSeconds: limitNumber_(cfg.ntourSlideSeconds, 1, 3600, 20),
-    ntourSlideUrl: typeof cfg.ntourSlideUrl === "string" ? cfg.ntourSlideUrl : "",
+    enturSlideEnabled: asBoolean_(cfg.enturSlideEnabled),
+    enturSlideSeconds: limitNumber_(cfg.enturSlideSeconds, 1, 3600, 20),
+    enturSlideUrl: typeof cfg.enturSlideUrl === "string" ? cfg.enturSlideUrl : "",
     fadeMs: limitNumber_(cfg.fadeMs, 0, 10000, 500),
     manifestRefreshSeconds: limitNumber_(cfg.manifestRefreshSeconds, 30, 86400, 60)
   };
@@ -82,17 +82,17 @@ function updateInfoskjermenConfig_(args) {
     var cfg = readInfoskjermenConfig_();
     if (args.posterSeconds != null) cfg.posterSeconds = limitNumber_(args.posterSeconds, 1, 3600, cfg.posterSeconds);
     if (args.calendarSlideSeconds != null) cfg.calendarSlideSeconds = limitNumber_(args.calendarSlideSeconds, 0, 3600, cfg.calendarSlideSeconds);
-    if (args.ntourSlideEnabled != null) cfg.ntourSlideEnabled = asBoolean_(args.ntourSlideEnabled);
-    if (args.ntourSlideSeconds != null) cfg.ntourSlideSeconds = limitNumber_(args.ntourSlideSeconds, 1, 3600, cfg.ntourSlideSeconds);
-    if (args.ntourSlideUrl != null) cfg.ntourSlideUrl = String(args.ntourSlideUrl).trim();
+    if (args.enturSlideEnabled != null) cfg.enturSlideEnabled = asBoolean_(args.enturSlideEnabled);
+    if (args.enturSlideSeconds != null) cfg.enturSlideSeconds = limitNumber_(args.enturSlideSeconds, 1, 3600, cfg.enturSlideSeconds);
+    if (args.enturSlideUrl != null) cfg.enturSlideUrl = String(args.enturSlideUrl).trim();
     if (args.fadeMs != null) cfg.fadeMs = limitNumber_(args.fadeMs, 0, 10000, cfg.fadeMs);
     var refresh = args.manifestRefreshSeconds != null ? args.manifestRefreshSeconds : args.refreshSeconds;
     if (refresh != null) cfg.manifestRefreshSeconds = limitNumber_(refresh, 30, 86400, cfg.manifestRefreshSeconds);
-    if (cfg.ntourSlideUrl && !/^https:\/\/[^ ]+$/i.test(cfg.ntourSlideUrl)) {
-      return { ok: false, error: "invalid_ntour_url", message: "N-tour URL must start with https://" };
+    if (cfg.enturSlideUrl && !/^https:\/\/[^ ]+$/i.test(cfg.enturSlideUrl)) {
+      return { ok: false, error: "invalid_entur_url", message: "Entur URL must start with https://" };
     }
-    if (cfg.ntourSlideEnabled && !cfg.ntourSlideUrl) {
-      return { ok: false, error: "missing_ntour_url" };
+    if (cfg.enturSlideEnabled && !cfg.enturSlideUrl) {
+      return { ok: false, error: "missing_entur_url" };
     }
     props.setProperty("INFOSKJERMEN_CONFIG", JSON.stringify(cfg));
     return { ok: true, config: cfg };
