@@ -1,27 +1,31 @@
-# Entur departure board slide — deployment notes
+# Entur Tavla — deployment steps
 
-This branch adds a separate **Show Entur Tavla** checkbox, duration, and URL to `status.html`. When enabled, the same Entur slide appears in both `films-landscape.html` and `arrangements-landscape.html`, alongside the existing calendar slide and posters.
+This change adds a separate **Show Entur Tavla** checkbox, duration, and HTTPS display URL to `status.html`. Entur is optionally shown in `films-landscape.html` and `arrangements-landscape.html`. The original calendar slide remains independently enabled by its duration (0 = off).
 
-## Important: not yet live
+## Important — authentic original Apps Script now provided
 
-- The Entur URL has not been supplied. Enter the final **public HTTPS embeddable table URL** on the status page (a Google Sheet edit link may refuse to be embedded; use a published/embeddable view).
-- The new slide is **off by default** and not added to the playlist until the checkbox is checked and a valid URL exists.
-- The Apps Script project is located in Drive: [InfoskjermenConfigService](https://script.google.com/d/1PeHcLj7ZHa3lecrp9DIbMyZYNcOri-27ldUstPAYJCZ6z3LCUyFdghja/edit).
-- The linked Drive integration can identify that project but **cannot read its source**. The file `InfoskjermenConfigService.gs` in this folder is a *compatibility replacement based on the documented API*, not a verified edit of the current live source. **Make a copy of the current Apps Script first** and compare before replacing. If the original has additional functions, preserve them.
+The user supplied the original **InfoskjermenConfigService** code (`display-config-2026-04-21-v1`). `apps-script/InfoskjermenConfigService.gs` is now based on that **exact original architecture**, rather than the earlier proposed replacement. It retains:
 
-## Suggested deployment order
+- Script Property `UPDATE_KEY` (existing password)
+- Script Property `DISPLAY_CONFIG` (existing saved settings)
+- `doGet`, `doPost`, JSONP response format and update authentication
+- existing timing ranges, reset/test helpers and form parsing
 
-1. Open the existing Apps Script project and back up the current `Code.gs`.
-2. Compare the old code with `apps-script/InfoskjermenConfigService.gs`. It handles GET JSONP read and `action=update` for the six numeric/boolean/string settings in status.
-3. In Apps Script **Project Settings → Script properties**, keep your existing key, or set a property named `UPDATE_KEY` with your existing update password. Do not put this password in GitHub. Optional compatible names in the replacement: `CONFIG_UPDATE_KEY` and `ADMIN_KEY`.
-4. Check the current values of poster timing, calendar timing, fade, and refresh against the defaults in the new script (7, 20, 500, 60). To preserve nondefault values, enter them in the status page after deployment, or copy them into `INFOSKJERMEN_CONFIG` JSON.
-5. In the **existing Apps Script deployment**, choose **Deploy → Manage deployments → Edit → New version → Deploy**. Editing the same deployment normally keeps its `/exec` URL; do not choose **New deployment** unless necessary.
-6. After the config endpoint is upgraded, merge the GitHub feature branch into `main` (GitHub Pages should publish it).
-7. On `status.html`, enter the table URL, set seconds, check **Show Entur Tavla**, and click **Apply** using the update password. Confirm **Applied successfully** and reload to ensure it is saved.
-8. Test both landscape screens on the target display. Ensure the external table **allows iframe embedding** and is readable without signing in. HTTPS is required. If it blocks embedding, we will need a published view or a locally rendered table instead.
+It adds only `enturSlideEnabled`, `enturSlideSeconds`, `enturSlideUrl` and validation for an enabled board URL. By retaining `DISPLAY_CONFIG` and merging the existing data, it preserves current saved settings. The Entur checkbox defaults to **off**.
 
-### Compatibility warning
+## Deploy in this order
 
-Publishing updated GitHub pages **before** deploying the Apps Script can make the new control fail its read-back verification, even when the legacy settings still work. That is why this branch is held in a pull request until you deploy.
+1. Open the existing [Google Apps Script project](https://script.google.com/d/1PeHcLj7ZHa3lecrp9DIbMyZYNcOri-27ldUstPAYJCZ6z3LCUyFdghja/edit).
+2. Back up the current `Code.gs`, then replace its contents with [the revised code](./InfoskjermenConfigService.gs). **Save**. Never post your update password in GitHub or chat.
+3. Use **Deploy → Manage deployments → Edit (pencil) → Version: New version → Deploy**, selecting the existing web-app deployment, *not* New deployment. This normally preserves the current `/exec` URL already hardcoded in the screen pages.
+4. Verify the existing [script URL](https://script.google.com/macros/s/AKfycbwTw7_A4V68NbmGn2aFmo-r3ddEWvO9G9VcIf0pc4W_EaMhiVgCi4JV3jNIqtQTa9pqsA/exec) responds with `version: "display-config-2026-10-26-entur-v2"`. Confirm previous calendar and timing settings remain as before.
+5. Merge [Entur Tavla draft PR #4](https://github.com/sepehrhaghighi/infoskjermen-media/pull/4) into `main`. This publishes GitHub Pages; the PR remains intentionally unmerged until the Apps Script is deployed.
+6. Open the published `status.html`, enter your **public HTTPS Entur Tavla board URL**, select its duration, tick **Show Entur Tavla**, enter your existing update key and click **Apply**. Confirm "Applied successfully" and that the checkbox stays checked on refresh.
+7. Test `films-landscape.html` and `arrangements-landscape.html` on the display to confirm the board renders. A successfully loaded iframe does **not** guarantee that Entur allows embedding; verify visually. If Entur blocks embedded display, a different embedding/rendering approach is needed.
 
-The Entur departure board is intentionally not added to portrait screens or `landscape-all.html`; the current calendar-slide mechanism only targets the two named landscape slideshow pages.
+### Additional notes
+
+- The Entur URL was not provided yet; no fixed URL is hardcoded and the board stays disabled.
+- The feature is intentionally limited to the two landscape slideshows, consistent with the existing calendar-slide design.
+- Do not execute `resetConfigFile_()` during deployment — it resets your current live settings.
+- The source code was syntax-checked and its config read/write operations tested in a mock Apps Script environment; live Entur embedding and real deployment are not verified.
