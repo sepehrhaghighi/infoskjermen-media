@@ -172,6 +172,7 @@
   const CONFIG_CACHE_KEY = "infoskjermenSharedConfigFromService";
 
   let enturSeconds = 0;
+  let calendarSeconds = 0;
   let posterSeconds = 7;
   let fadeMs = 500;
   let refreshSeconds = 60;
@@ -188,6 +189,7 @@
   const dateB = document.getElementById("dateB");
   const qrWrap = document.getElementById("qrWrap");
   const enturSlide = window.EnturSlide.create(() => fadeMs);
+  const calendarSlide = window.EnturSlide.create(() => fadeMs, "./calendar-slide.html", "Kalenderslide");
 
   function readNumericParam(name) {
     const v = new URLSearchParams(location.search).get(name);
@@ -426,6 +428,11 @@
       pickNumber(cfg.posterSeconds, cachedCfg.posterSeconds, 12)
     );
 
+    calendarSeconds = Math.max(0, pickNumber(
+      cfg.calendarSlideSecondsByPage?.["landscape-all.html"],
+      cachedCfg.calendarSlideSecondsByPage?.["landscape-all.html"], 0
+    ));
+
     enturSeconds = Math.max(0, pickNumber(
       cfg.enturSlideSecondsByPage?.["landscape-all.html"],
       cachedCfg.enturSlideSecondsByPage?.["landscape-all.html"], 0
@@ -500,7 +507,7 @@
     items = nextItems;
     if (changed) idx = 0;
 
-    emptyEl.style.display = (items.length || enturSeconds > 0) ? "none" : "flex";
+    emptyEl.style.display = (items.length || enturSeconds > 0 || calendarSeconds > 0) ? "none" : "flex";
   }
 
   async function preload(item) {
@@ -550,8 +557,10 @@
   }
 
   async function tick() {
+    const withCalendar = calendarSeconds > 0;
     const withEntur = enturSeconds > 0;
-    const count = items.length + (withEntur ? 1 : 0);
+    const firstPosterSlot = (withCalendar ? 1 : 0) + (withEntur ? 1 : 0);
+    const count = items.length + firstPosterSlot;
     if (!count) {
       setTimeout(tick, 2000);
       return;
@@ -559,14 +568,22 @@
 
     const slot = idx % count;
     idx += 1;
-    if (withEntur && slot === 0) {
+    if (withCalendar && slot === 0) {
+      if (enturSlide.isActive()) await enturSlide.hide();
+      const ready = await calendarSlide.show();
+      setTimeout(tick, ready ? calendarSeconds * 1000 : 1000);
+      return;
+    }
+    if (withEntur && slot === (withCalendar ? 1 : 0)) {
+      if (calendarSlide.isActive()) await calendarSlide.hide();
       const ready = await enturSlide.show();
       setTimeout(tick, ready ? enturSeconds * 1000 : 1000);
       return;
     }
 
-    const item = items[slot - (withEntur ? 1 : 0)];
+    const item = items[slot - firstPosterSlot];
     await preload(item);
+    if (calendarSlide.isActive()) await calendarSlide.hide();
     if (enturSlide.isActive()) await enturSlide.hide();
     swapTo(item);
     setTimeout(tick, posterSeconds * 1000);
