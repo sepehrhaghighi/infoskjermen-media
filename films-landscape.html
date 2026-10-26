@@ -13,7 +13,8 @@
     }
 
     #posterScene,
-    #calendarScene {
+    #calendarScene,
+    #enturScene {
       position: absolute;
       inset: 0;
       opacity: 0;
@@ -23,13 +24,15 @@
     }
 
     #posterScene { z-index: 1; }
-    #calendarScene {
+    #calendarScene,
+    #enturScene {
       z-index: 2;
       background: #000;
     }
 
     #posterScene.active,
-    #calendarScene.active {
+    #calendarScene.active,
+    #enturScene.active {
       opacity: 1;
       pointer-events: auto;
     }
@@ -67,7 +70,8 @@
       z-index: 100;
     }
 
-    #calendarFrame {
+    #calendarFrame,
+    #enturFrame {
       width: 100%;
       height: 100%;
       border: 0;
@@ -95,6 +99,10 @@
     ></iframe>
   </div>
 
+  <div id="enturScene">
+    <iframe id="enturFrame" title="Entur avgangstavle" loading="eager" referrerpolicy="no-referrer-when-downgrade"></iframe>
+  </div>
+
 <script>
 (async () => {
   const CONFIG_SERVICE_URL = "https://script.google.com/macros/s/AKfycbwTw7_A4V68NbmGn2aFmo-r3ddEWvO9G9VcIf0pc4W_EaMhiVgCi4JV3jNIqtQTa9pqsA/exec";
@@ -109,6 +117,9 @@
 
   let posterSeconds = 7;
   let calendarSlideSeconds = 20;
+  let enturSlideEnabled = false;
+  let enturSlideSeconds = 20;
+  let enturSlideUrl = "";
   let fadeMs = 500;
   let refreshSeconds = 60;
   
@@ -127,6 +138,8 @@
   const posterScene = document.getElementById("posterScene");
   const calendarScene = document.getElementById("calendarScene");
   const calendarFrame = document.getElementById("calendarFrame");
+  const enturScene = document.getElementById("enturScene");
+  const enturFrame = document.getElementById("enturFrame");
 
   function sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
@@ -156,6 +169,19 @@
       if (Number.isFinite(n)) return n;
     }
     return null;
+  }
+
+  function pickBoolean(...values) {
+    for (const value of values) {
+      if (value == null || value === "") continue;
+      if (value === true || value === "true" || value === 1 || value === "1") return true;
+      if (value === false || value === "false" || value === 0 || value === "0") return false;
+    }
+    return false;
+  }
+
+  function validEnturUrl(value) {
+    try { return new URL(value).protocol === "https:"; } catch { return false; }
   }
 
   function readCachedConfig() {
@@ -332,6 +358,41 @@
     B.style.transitionDuration = dur;
     posterScene.style.transitionDuration = dur;
     calendarScene.style.transitionDuration = dur;
+    enturScene.style.transitionDuration = dur;
+  }
+
+  function isExternalSlideActive() {
+    return calendarScene.classList.contains("active") || enturScene.classList.contains("active");
+  }
+
+  async function fadeToEntur() {
+    enturScene.classList.add("active");
+    calendarScene.classList.remove("active");
+    posterScene.classList.remove("active");
+    if (fadeMs > 0) await sleep(fadeMs);
+  }
+
+  function ensureEnturReady(url) {
+    if (!validEnturUrl(url)) return Promise.resolve(false);
+    return new Promise((resolve) => {
+      let done = false;
+      const finish = (ok) => {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        enturFrame.removeEventListener("load", loaded);
+        enturFrame.removeEventListener("error", failed);
+        resolve(ok);
+      };
+      const loaded = () => finish(true);
+      const failed = () => finish(false);
+      const timer = setTimeout(() => finish(false), 12000);
+      enturFrame.addEventListener("load", loaded);
+      enturFrame.addEventListener("error", failed);
+      const nextUrl = new URL(url);
+      nextUrl.searchParams.set("_", String(Date.now()));
+      enturFrame.src = nextUrl.href;
+    });
   }
 
   function isCalendarActive() {
@@ -341,14 +402,16 @@
   async function fadeToCalendar() {
     if (isCalendarActive()) return;
     calendarScene.classList.add("active");
+    enturScene.classList.remove("active");
     posterScene.classList.remove("active");
     if (fadeMs > 0) await sleep(fadeMs);
   }
 
   async function fadeToPoster() {
-    if (!isCalendarActive()) return;
+    if (!isExternalSlideActive()) return;
     posterScene.classList.add("active");
     calendarScene.classList.remove("active");
+    enturScene.classList.remove("active");
     if (fadeMs > 0) await sleep(fadeMs);
   }
 
@@ -456,6 +519,9 @@
       "cal",
       pickNumber(cfg.calendarSlideSeconds, cachedCfg.calendarSlideSeconds, 0)
     );
+    enturSlideEnabled = pickBoolean(cfg.enturSlideEnabled, cachedCfg.enturSlideEnabled, false);
+    enturSlideSeconds = Math.max(1, pickNumber(cfg.enturSlideSeconds, cachedCfg.enturSlideSeconds, 20));
+    enturSlideUrl = String(cfg.enturSlideUrl ?? cachedCfg.enturSlideUrl ?? "").trim();
 
     fadeMs = positiveParam(
       "fade",
@@ -490,6 +556,10 @@
     const extraItems = await loadManualExtras(EXTRA_MANIFEST_URL, posterSeconds);
     let nextItems = mergeUniqueItems(posters, extraItems);
 
+    if (enturSlideEnabled && validEnturUrl(enturSlideUrl)) {
+      nextItems.unshift({ kind: "entur", url: enturSlideUrl, seconds: enturSlideSeconds });
+    }
+
     if (calendarSlideSeconds > 0) {
       nextItems.unshift({ kind: "calendar", seconds: calendarSlideSeconds });
     }
@@ -510,6 +580,17 @@
     const item = items[idx % items.length];
     idx += 1;
 
+    if (item.kind === "entur") {
+      const ready = await ensureEnturReady(item.url);
+      if (!ready) {
+        setTimeout(tick, 1000);
+        return;
+      }
+      await fadeToEntur();
+      setTimeout(tick, (item.seconds || enturSlideSeconds) * 1000);
+      return;
+    }
+
     if (item.kind === "calendar") {
       const ready = await ensureCalendarReady();
 
@@ -529,13 +610,9 @@
           idx += 1;
         }
 
-        await fadeToPoster();
-
-        if (calendarSlideSeconds > 0) {
-          void refreshCalendarInBackground(true);
-        }
-
         if (nextItem?.kind === "poster") {
+          await fadeToPoster();
+          if (calendarSlideSeconds > 0) void refreshCalendarInBackground(true);
           setTimeout(tick, (nextItem.seconds || posterSeconds) * 1000);
         } else {
           tick();
@@ -547,7 +624,7 @@
 
     await preloadPoster(item);
 
-    if (isCalendarActive()) {
+    if (isExternalSlideActive()) {
       swapToPoster(item);
       await fadeToPoster();
 
@@ -577,6 +654,7 @@
 
   posterScene.classList.remove("active");
   calendarScene.classList.remove("active");
+  enturScene.classList.remove("active");
 
   const startsWithCalendar = items[0]?.kind === "calendar";
 

@@ -58,7 +58,7 @@
     .row{ display:flex; gap:12px; flex-wrap: wrap; align-items:center; }
     label{ display:flex; gap:8px; align-items:center; }
 
-    input[type="number"], input[type="password"]{
+    input[type="number"], input[type="password"], input[type="url"]{
       width: 150px;
       padding: 6px 8px;
       border-radius: 10px;
@@ -67,6 +67,7 @@
       color:#fff;
     }
     input[type="password"]{ width: 220px; }
+    input[type="url"]{ width: min(560px, 85vw); }
 
     button{
       padding: 8px 10px;
@@ -164,12 +165,22 @@
           <input id="calendarSlideSeconds" type="number" min="0" placeholder="20">
         </label>
 
+        <label><input id="enturSlideEnabled" type="checkbox"> Show Entur Tavla</label>
+        <label>Entur slide (sec)
+          <input id="enturSlideSeconds" type="number" min="1" placeholder="20">
+        </label>
         <label>Fade (ms)
           <input id="fadeMs" type="number" min="0" placeholder="500">
         </label>
 
         <label>Refresh (sec)
           <input id="refreshSeconds" type="number" min="30" placeholder="60">
+        </label>
+      </div>
+
+      <div class="row" style="margin-top:10px;">
+        <label>Entur departure board URL
+          <input id="enturSlideUrl" type="url" placeholder="https://… (public, embeddable URL)" spellcheck="false">
         </label>
       </div>
 
@@ -186,7 +197,7 @@
       <div class="muted small" style="margin-top:10px;">
         Apply updates the shared config in Script Properties. The same calendar slide time is used by both
         <span class="mono">films-landscape.html</span> and
-        <span class="mono">arrangements-landscape.html</span>.
+        <span class="mono">arrangements-landscape.html</span>. The Entur checkbox controls a separate table slide on those two screens. The URL must allow embedding.
       </div>
     </div>
 
@@ -233,6 +244,9 @@
   const DEFAULTS = {
     posterSeconds: 7,
     calendarSlideSeconds: 20,
+    enturSlideEnabled: false,
+    enturSlideSeconds: 20,
+    enturSlideUrl: "",
     fadeMs: 500,
     manifestRefreshSeconds: 60
   };
@@ -240,6 +254,9 @@
   const els = {
     posterSeconds: document.getElementById("posterSeconds"),
     calendarSlideSeconds: document.getElementById("calendarSlideSeconds"),
+    enturSlideEnabled: document.getElementById("enturSlideEnabled"),
+    enturSlideSeconds: document.getElementById("enturSlideSeconds"),
+    enturSlideUrl: document.getElementById("enturSlideUrl"),
     fadeMs: document.getElementById("fadeMs"),
     refreshSeconds: document.getElementById("refreshSeconds"),
     updateKey: document.getElementById("updateKey"),
@@ -275,6 +292,9 @@
   function disableUi(disabled) {
     els.posterSeconds.disabled = disabled;
     els.calendarSlideSeconds.disabled = disabled;
+    els.enturSlideEnabled.disabled = disabled;
+    els.enturSlideSeconds.disabled = disabled;
+    els.enturSlideUrl.disabled = disabled;
     els.fadeMs.disabled = disabled;
     els.refreshSeconds.disabled = disabled;
     els.applyBtn.disabled = disabled;
@@ -323,10 +343,18 @@
     );
   }
 
+  function isEnturUrl(value) {
+    try { const u = new URL(String(value || "").trim()); return u.protocol === "https:"; }
+    catch { return false; }
+  }
+
   function configsMatch(a, b) {
     return (
       Number(a.posterSeconds) === Number(b.posterSeconds) &&
       Number(a.calendarSlideSeconds) === Number(b.calendarSlideSeconds) &&
+      (a.enturSlideEnabled === true || a.enturSlideEnabled === "true") === (b.enturSlideEnabled === true || b.enturSlideEnabled === "true") &&
+      Number(a.enturSlideSeconds) === Number(b.enturSlideSeconds) &&
+      String(a.enturSlideUrl || "").trim() === String(b.enturSlideUrl || "").trim() &&
       Number(a.fadeMs) === Number(b.fadeMs) &&
       Number(a.manifestRefreshSeconds) === Number(b.manifestRefreshSeconds)
     );
@@ -405,6 +433,9 @@
 
     if (cfg.posterSeconds != null) els.posterSeconds.value = cfg.posterSeconds;
     if (cfg.calendarSlideSeconds != null) els.calendarSlideSeconds.value = cfg.calendarSlideSeconds;
+    els.enturSlideEnabled.checked = cfg.enturSlideEnabled === true || cfg.enturSlideEnabled === "true";
+    els.enturSlideSeconds.value = cfg.enturSlideSeconds ?? DEFAULTS.enturSlideSeconds;
+    els.enturSlideUrl.value = cfg.enturSlideUrl ?? DEFAULTS.enturSlideUrl;
     if (cfg.fadeMs != null) els.fadeMs.value = cfg.fadeMs;
     if (refresh != null) els.refreshSeconds.value = refresh;
   }
@@ -413,6 +444,9 @@
     return {
       posterSeconds: Math.max(1, safeNumber(els.posterSeconds.value) ?? DEFAULTS.posterSeconds),
       calendarSlideSeconds: Math.max(0, safeNumber(els.calendarSlideSeconds.value) ?? DEFAULTS.calendarSlideSeconds),
+      enturSlideEnabled: els.enturSlideEnabled.checked,
+      enturSlideSeconds: Math.max(1, safeNumber(els.enturSlideSeconds.value) ?? DEFAULTS.enturSlideSeconds),
+      enturSlideUrl: els.enturSlideUrl.value.trim(),
       fadeMs: Math.max(0, safeNumber(els.fadeMs.value) ?? DEFAULTS.fadeMs),
       manifestRefreshSeconds: Math.max(30, safeNumber(els.refreshSeconds.value) ?? DEFAULTS.manifestRefreshSeconds)
     };
@@ -429,6 +463,8 @@
   async function renderCounts() {
     const posterSeconds = Math.max(1, safeNumber(els.posterSeconds.value) ?? DEFAULTS.posterSeconds);
     const calendarSlideSeconds = Math.max(0, safeNumber(els.calendarSlideSeconds.value) ?? DEFAULTS.calendarSlideSeconds);
+    const enturActive = els.enturSlideEnabled.checked && isEnturUrl(els.enturSlideUrl.value);
+    const enturSlideSeconds = enturActive ? Math.max(1, safeNumber(els.enturSlideSeconds.value) ?? 20) : 0;
 
     els.tbody.innerHTML = `<tr><td colspan="4" class="muted">Loading…</td></tr>`;
 
@@ -451,10 +487,10 @@
       const arrLandscape       = countField(arrs, "landscape");
 
       const filmsLandscapeImageCount = filmsLandscapeBase + extraLandscape;
-      const filmsLandscapeTotalCount = filmsLandscapeImageCount + (calendarSlideSeconds > 0 ? 1 : 0);
+      const filmsLandscapeTotalCount = filmsLandscapeImageCount + (calendarSlideSeconds > 0 ? 1 : 0) + (enturActive ? 1 : 0);
 
       const arrangementsLandscapeImageCount = arrLandscape + extraArrLandscape;
-      const arrangementsLandscapeTotalCount = arrangementsLandscapeImageCount + (calendarSlideSeconds > 0 ? 1 : 0);
+      const arrangementsLandscapeTotalCount = arrangementsLandscapeImageCount + (calendarSlideSeconds > 0 ? 1 : 0) + (enturActive ? 1 : 0);
 
       const portraitAll  = filmsPortrait + arrPortrait;
       const landscapeAll = filmsLandscapeBase + arrLandscape + extraLandscape + extraArrLandscape;
@@ -468,9 +504,9 @@
         },
         {
           page:"films-landscape.html",
-          desc:`Films landscape (subset + ${extraLandscape} manual extra${calendarSlideSeconds > 0 ? " + calendar slide" : ""})`,
+          desc:`Films landscape (subset + ${extraLandscape} manual extra${calendarSlideSeconds > 0 ? " + calendar slide" : ""}${enturActive ? " + Entur departure board" : ""})`,
           count: filmsLandscapeTotalCount,
-          seconds: (filmsLandscapeImageCount * posterSeconds) + calendarSlideSeconds
+          seconds: (filmsLandscapeImageCount * posterSeconds) + calendarSlideSeconds + enturSlideSeconds
         },
         {
           page:"arrangements-portrait.html",
@@ -480,9 +516,9 @@
         },
         {
           page:"arrangements-landscape.html",
-          desc:`Arrangements landscape (subset + ${extraArrLandscape} manual extra${calendarSlideSeconds > 0 ? " + calendar slide" : ""})`,
+          desc:`Arrangements landscape (subset + ${extraArrLandscape} manual extra${calendarSlideSeconds > 0 ? " + calendar slide" : ""}${enturActive ? " + Entur departure board" : ""})`,
           count: arrangementsLandscapeTotalCount,
-          seconds: (arrangementsLandscapeImageCount * posterSeconds) + calendarSlideSeconds
+          seconds: (arrangementsLandscapeImageCount * posterSeconds) + calendarSlideSeconds + enturSlideSeconds
         },
         {
           page:"portrait-all.html",
@@ -555,6 +591,10 @@
     }
 
     const cfg = readUiConfig();
+    if (cfg.enturSlideEnabled && !isEnturUrl(cfg.enturSlideUrl)) {
+      setStatus("Entur requires a public HTTPS table URL.", "bad");
+      return;
+    }
 
     setStatus("Applying config…", "warn");
     setDiag({
@@ -568,6 +608,9 @@
       key,
       posterSeconds: String(cfg.posterSeconds),
       calendarSlideSeconds: String(cfg.calendarSlideSeconds),
+      enturSlideEnabled: String(cfg.enturSlideEnabled),
+      enturSlideSeconds: String(cfg.enturSlideSeconds),
+      enturSlideUrl: cfg.enturSlideUrl,
       fadeMs: String(cfg.fadeMs),
       manifestRefreshSeconds: String(cfg.manifestRefreshSeconds)
     });
@@ -681,6 +724,9 @@
 
   els.posterSeconds.addEventListener("input", renderCounts);
   els.calendarSlideSeconds.addEventListener("input", renderCounts);
+  els.enturSlideEnabled.addEventListener("change", renderCounts);
+  els.enturSlideSeconds.addEventListener("input", renderCounts);
+  els.enturSlideUrl.addEventListener("input", renderCounts);
 
   (async () => {
     disableUi(true);
@@ -699,6 +745,9 @@
     if (!loaded.ok) {
       els.posterSeconds.value = DEFAULTS.posterSeconds;
       els.calendarSlideSeconds.value = DEFAULTS.calendarSlideSeconds;
+      els.enturSlideEnabled.checked = DEFAULTS.enturSlideEnabled;
+      els.enturSlideSeconds.value = DEFAULTS.enturSlideSeconds;
+      els.enturSlideUrl.value = DEFAULTS.enturSlideUrl;
       els.fadeMs.value = DEFAULTS.fadeMs;
       els.refreshSeconds.value = DEFAULTS.manifestRefreshSeconds;
 
