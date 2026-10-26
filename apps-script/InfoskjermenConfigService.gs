@@ -240,8 +240,6 @@ function testUpdateFlow_() {
     key: getUpdateKey_(),
     posterSeconds: "8",
     calendarSlideSeconds: "20",
-    enturSlideEnabled: "false",
-    enturSlideSeconds: "20",
     fadeMs: "500",
     manifestRefreshSeconds: "60"
   });
