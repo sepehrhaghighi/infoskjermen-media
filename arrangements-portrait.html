@@ -70,6 +70,9 @@
 
   let urls = [];
   let idx = 0;
+  let pendingPosters = null; // Wait to change the playlist until a full rotation ends.
+  let activeCalendarSeconds = 0;
+  let activeEnturSeconds = 0;
   let frontIsA = true;
   let version = "";
 
@@ -251,10 +254,21 @@
 
     applyConfigToUi();
 
-    version = data.updated ? ("?v=" + encodeURIComponent(data.updated)) : "";
-    urls = (data.arrangements || [])
+    const nextVersion = data.updated ? ("?v=" + encodeURIComponent(data.updated)) : "";
+    const nextUrls = (data.arrangements || [])
       .map(x => x?.[FIELD])
       .filter(Boolean);
+    const changed = nextVersion !== version ||
+      nextUrls.length !== urls.length ||
+      nextUrls.some((url, i) => url !== urls[i]);
+    if (!urls.length && idx === 0) {
+      version = nextVersion;
+      urls = nextUrls;
+    } else if (changed) {
+      pendingPosters = { urls: nextUrls, version: nextVersion };
+    } else {
+      pendingPosters = null;
+    }
 
     emptyEl.style.display = (urls.length || enturSeconds > 0 || calendarSeconds > 0) ? "none" : "flex";
   }
@@ -280,10 +294,23 @@
   }
 
   async function tick() {
-    const withCalendar = calendarSeconds > 0;
-    const withEntur = enturSeconds > 0;
-    const firstPosterSlot = (withCalendar ? 1 : 0) + (withEntur ? 1 : 0);
-    const count = urls.length + firstPosterSlot;
+    const oldCount = urls.length + (activeCalendarSeconds > 0 ? 1 : 0) +
+      (activeEnturSeconds > 0 ? 1 : 0);
+    if (oldCount > 0 && idx > 0 && idx % oldCount === 0) {
+      if (pendingPosters) {
+        urls = pendingPosters.urls;
+        version = pendingPosters.version;
+        pendingPosters = null;
+      }
+      activeCalendarSeconds = calendarSeconds;
+      activeEnturSeconds = enturSeconds;
+      idx = 0;
+      if (window.KioskAutoReload.reloadAtBoundary(idx)) return;
+    }
+
+    const withCalendar = activeCalendarSeconds > 0;
+    const withEntur = activeEnturSeconds > 0;
+    const count = urls.length + (withCalendar ? 1 : 0) + (withEntur ? 1 : 0);
     if (!count) {
       setTimeout(tick, 2000);
       return;
@@ -291,25 +318,28 @@
 
     const slot = idx % count;
     idx += 1;
-    if (withCalendar && slot === 0) {
-      if (enturSlide.isActive()) await enturSlide.hide();
-      const ready = await calendarSlide.show();
-      setTimeout(tick, ready ? calendarSeconds * 1000 : 1000);
-      return;
-    }
-    if (withEntur && slot === (withCalendar ? 1 : 0)) {
+    if (slot < urls.length) {
+      const url = urls[slot];
+      await preload(url);
       if (calendarSlide.isActive()) await calendarSlide.hide();
-      const ready = await enturSlide.show();
-      setTimeout(tick, ready ? enturSeconds * 1000 : 1000);
+      if (enturSlide.isActive()) await enturSlide.hide();
+      swapTo(url);
+      setTimeout(tick, posterSeconds * 1000);
       return;
     }
 
-    const url = urls[slot - firstPosterSlot];
-    await preload(url);
-    if (calendarSlide.isActive()) await calendarSlide.hide();
-    if (enturSlide.isActive()) await enturSlide.hide();
-    swapTo(url);
-    setTimeout(tick, posterSeconds * 1000);
+    if (withCalendar && slot === urls.length) {
+      if (enturSlide.isActive()) await enturSlide.hide();
+      const ready = await calendarSlide.show();
+      setTimeout(tick, ready ? activeCalendarSeconds * 1000 : 1000);
+      return;
+    }
+    if (withEntur && slot === urls.length + (withCalendar ? 1 : 0)) {
+      if (calendarSlide.isActive()) await calendarSlide.hide();
+      const ready = await enturSlide.show();
+      setTimeout(tick, ready ? activeEnturSeconds * 1000 : 1000);
+      return;
+    }
   }
 
   function scheduleReload() {
@@ -327,7 +357,9 @@
   const resumeIndex = window.KioskAutoReload.takeIndex();
   window.KioskAutoReload.start(() => idx);
   await load();
-  const slideCount = urls.length + (calendarSeconds > 0 ? 1 : 0) + (enturSeconds > 0 ? 1 : 0);
+  activeCalendarSeconds = calendarSeconds;
+  activeEnturSeconds = enturSeconds;
+  const slideCount = urls.length + (activeCalendarSeconds > 0 ? 1 : 0) + (activeEnturSeconds > 0 ? 1 : 0);
   if (resumeIndex !== null && slideCount > 0) idx = resumeIndex % slideCount;
   tick();
   scheduleReload();
