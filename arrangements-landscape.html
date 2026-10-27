@@ -235,6 +235,7 @@
 
   let items = [];
   let idx = 0;
+  let pendingItems = null; // Manifest changes wait until the current rotation is complete.
   let frontIsA = true;
 
   let calendarReady = false;
@@ -770,22 +771,25 @@
     const extraItems = await loadManualExtras(EXTRA_MANIFEST_URL, posterSeconds);
     let nextItems = mergeUniqueItems(posters, extraItems);
 
-    if (enturSlideSeconds > 0) {
-      nextItems.unshift({ kind: "entur", url: ENTUR_TAVLA_URL, seconds: enturSlideSeconds });
-    }
-
     if (calendarSlideSeconds > 0) {
-      nextItems.unshift({
+      nextItems.push({
         kind: "calendar",
         url: CALENDAR_SLIDE_URL,
         seconds: calendarSlideSeconds
       });
     }
 
-    const changed = itemsChanged(nextItems);
-    items = nextItems;
+    if (enturSlideSeconds > 0) {
+      nextItems.push({ kind: "entur", url: ENTUR_TAVLA_URL, seconds: enturSlideSeconds });
+    }
 
-    if (changed) idx = 0;
+    const changed = itemsChanged(nextItems);
+    if (changed) {
+      if (!items.length) items = nextItems;
+      else pendingItems = nextItems; // Never restart the poster sequence mid-cycle.
+    } else {
+      pendingItems = null;
+    }
 
     emptyEl.style.display = items.length ? "none" : "flex";
   }
@@ -794,6 +798,15 @@
     if (!items.length) {
       tickTimer = setTimeout(tick, 2000);
       return;
+    }
+
+    if (idx > 0 && idx % items.length === 0) {
+      if (pendingItems) {
+        items = pendingItems;
+        pendingItems = null;
+        idx = 0;
+      }
+      if (window.KioskAutoReload.reloadAtBoundary(idx)) return;
     }
 
     const item = items[idx % items.length];
