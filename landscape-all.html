@@ -181,6 +181,9 @@
 
   let items = []; // { url, v, source, date }
   let idx = 0;
+  let pendingItems = null; // Apply manifest changes only between complete rotations.
+  let activeCalendarSeconds = 0;
+  let activeEnturSeconds = 0;
   let frontIsA = true;
 
   const emptyEl = document.getElementById("empty");
@@ -505,8 +508,12 @@
         it.date !== items[i]?.date
       );
 
-    items = nextItems;
-    if (changed) idx = 0;
+    if (changed) {
+      if (!items.length) items = nextItems;
+      else pendingItems = nextItems;
+    } else {
+      pendingItems = null;
+    }
 
     emptyEl.style.display = (items.length || enturSeconds > 0 || calendarSeconds > 0) ? "none" : "flex";
   }
@@ -558,10 +565,24 @@
   }
 
   async function tick() {
-    const withCalendar = calendarSeconds > 0;
-    const withEntur = enturSeconds > 0;
-    const firstPosterSlot = (withCalendar ? 1 : 0) + (withEntur ? 1 : 0);
-    const count = items.length + firstPosterSlot;
+    // Keep both the manifest and optional-slide durations fixed throughout
+    // an entire poster cycle. Refreshes cannot move Tavla into the middle.
+    const oldCount = items.length + (activeCalendarSeconds > 0 ? 1 : 0) +
+      (activeEnturSeconds > 0 ? 1 : 0);
+    if (oldCount > 0 && idx > 0 && idx % oldCount === 0) {
+      if (pendingItems) {
+        items = pendingItems;
+        pendingItems = null;
+      }
+      activeCalendarSeconds = calendarSeconds;
+      activeEnturSeconds = enturSeconds;
+      idx = 0;
+      if (window.KioskAutoReload.reloadAtBoundary(idx)) return;
+    }
+
+    const withCalendar = activeCalendarSeconds > 0;
+    const withEntur = activeEnturSeconds > 0;
+    const count = items.length + (withCalendar ? 1 : 0) + (withEntur ? 1 : 0);
     if (!count) {
       setTimeout(tick, 2000);
       return;
@@ -569,25 +590,30 @@
 
     const slot = idx % count;
     idx += 1;
-    if (withCalendar && slot === 0) {
-      if (enturSlide.isActive()) await enturSlide.hide();
-      const ready = await calendarSlide.show();
-      setTimeout(tick, ready ? calendarSeconds * 1000 : 1000);
-      return;
-    }
-    if (withEntur && slot === (withCalendar ? 1 : 0)) {
+
+    if (slot < items.length) {
+      const item = items[slot];
+      await preload(item);
       if (calendarSlide.isActive()) await calendarSlide.hide();
-      const ready = await enturSlide.show();
-      setTimeout(tick, ready ? enturSeconds * 1000 : 1000);
+      if (enturSlide.isActive()) await enturSlide.hide();
+      swapTo(item);
+      setTimeout(tick, posterSeconds * 1000);
       return;
     }
 
-    const item = items[slot - firstPosterSlot];
-    await preload(item);
-    if (calendarSlide.isActive()) await calendarSlide.hide();
-    if (enturSlide.isActive()) await enturSlide.hide();
-    swapTo(item);
-    setTimeout(tick, posterSeconds * 1000);
+    if (withCalendar && slot === items.length) {
+      if (enturSlide.isActive()) await enturSlide.hide();
+      const ready = await calendarSlide.show();
+      setTimeout(tick, ready ? activeCalendarSeconds * 1000 : 1000);
+      return;
+    }
+
+    if (withEntur && slot === items.length + (withCalendar ? 1 : 0)) {
+      if (calendarSlide.isActive()) await calendarSlide.hide();
+      const ready = await enturSlide.show();
+      setTimeout(tick, ready ? activeEnturSeconds * 1000 : 1000);
+      return;
+    }
   }
 
   function scheduleReload() {
@@ -607,7 +633,9 @@
   const resumeIndex = window.KioskAutoReload.takeIndex();
   window.KioskAutoReload.start(() => idx);
   await load();
-  const slideCount = items.length + (calendarSeconds > 0 ? 1 : 0) + (enturSeconds > 0 ? 1 : 0);
+  activeCalendarSeconds = calendarSeconds;
+  activeEnturSeconds = enturSeconds;
+  const slideCount = items.length + (activeCalendarSeconds > 0 ? 1 : 0) + (activeEnturSeconds > 0 ? 1 : 0);
   if (resumeIndex !== null && slideCount > 0) idx = resumeIndex % slideCount;
   tick();
   scheduleReload();
