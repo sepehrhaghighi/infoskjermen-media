@@ -1,16 +1,16 @@
 /**
- * Kiosk browser reload: refresh the actual HTML/JS every five minutes.
+ * Kiosk browser reload: refresh the actual HTML/JS every six hours.
  *
  * This is separate from manifestRefreshSeconds, which checks poster/config
  * changes without reloading the browser.
  *
  * Save the next playlist position in sessionStorage before reloading, so
- * long playlists continue instead of restarting every five minutes.
+ * long playlists continue instead of restarting every six hours.
  */
 (() => {
   "use strict";
 
-  const RELOAD_EVERY_MS = 5 * 60 * 1000;
+  const RELOAD_EVERY_MS = 6 * 60 * 60 * 1000;
   const STORAGE_KEY = "infoskjermen:kiosk-resume:" + location.pathname;
 
   function takeIndex() {
@@ -28,7 +28,7 @@
   let reloadDue = false;
 
   // A reload can only happen at the end of a full slide rotation.
-  // Do not tear down the current poster when five minutes elapse.
+  // Do not tear down the current poster when six hours elapse.
   function start() {
     setTimeout(() => { reloadDue = true; }, RELOAD_EVERY_MS);
   }
