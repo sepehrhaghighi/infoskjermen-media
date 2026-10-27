@@ -25,24 +25,29 @@
     }
   }
 
-  function start(getNextIndex) {
-    setTimeout(() => {
-      try {
-        const index = Number(getNextIndex());
-        if (Number.isSafeInteger(index) && index >= 0) {
-          sessionStorage.setItem(STORAGE_KEY, String(index));
-        }
-      } catch (error) {
-        console.warn("Kiosk reload: could not save playlist position:", error);
-      }
+  let reloadDue = false;
 
-      // Replace, rather than push, browser history. The changing query
-      // parameter bypasses a stale HTML page while preserving URL overrides.
-      const nextPage = new URL(location.href);
-      nextPage.searchParams.set("_kioskReload", String(Date.now()));
-      location.replace(nextPage.href);
-    }, RELOAD_EVERY_MS);
+  // A reload can only happen at the end of a full slide rotation.
+  // Do not tear down the current poster when five minutes elapse.
+  function start() {
+    setTimeout(() => { reloadDue = true; }, RELOAD_EVERY_MS);
   }
 
-  window.KioskAutoReload = { takeIndex, start };
+  function reloadAtBoundary(nextIndex) {
+    if (!reloadDue) return false;
+    try {
+      const index = Number(nextIndex);
+      if (Number.isSafeInteger(index) && index >= 0) {
+        sessionStorage.setItem(STORAGE_KEY, String(index));
+      }
+    } catch (error) {
+      console.warn("Kiosk reload: could not save playlist position:", error);
+    }
+    const nextPage = new URL(location.href);
+    nextPage.searchParams.set("_kioskReload", String(Date.now()));
+    location.replace(nextPage.href);
+    return true;
+  }
+
+  window.KioskAutoReload = { takeIndex, start, reloadAtBoundary };
 })();
