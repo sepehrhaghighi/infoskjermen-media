@@ -19,3 +19,4 @@ jobs:
           node-version: '22'
       - name: Verify inline JavaScript and Content Security Policies
         run: node scripts/check-security.mjs
+# Routine maintenance
