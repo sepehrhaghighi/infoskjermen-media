@@ -1,6 +1,8 @@
 <!doctype html>
 <html>
 <head>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' 'sha256-GzG/O2XN3gnyIUxZ6FvcmOy6uzv4qARvh+2UyC3Tanc=' https://script.google.com https://script.googleusercontent.com; style-src 'self' 'unsafe-inline'; img-src 'self' https://sepehrhaghighi.github.io data:; font-src 'self' data:; connect-src 'self' https://api.met.no; frame-src 'self' https://sepehrhaghighi.github.io https://vis-tavla.entur.no https://script.google.com https://script.googleusercontent.com; form-action 'none'; upgrade-insecure-requests">
+  <meta name="referrer" content="no-referrer">
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Landscape – Films + Arrangements</title>
@@ -146,7 +148,7 @@
   </div>
 
   <div id="qrWrap" class="qrWrap">
-    <img id="qrImg" class="qrImg" src="./assets/QR.png" alt="QR code" onerror="this.style.opacity='0';">
+    <img id="qrImg" class="qrImg" src="./assets/QR.png" alt="QR code" data-hide-on-error="opacity">
     <div class="qrText">
       <div class="qrMain">Les mer - Kjøp billett</div>
       <div class="qrSub">www.amotkulturhus.no</div>
@@ -159,6 +161,18 @@
 <script src="./entur-slide.js"></script>
 <script src="./kiosk-auto-reload.js"></script>
 <script>
+  // Move image-error handling out of inline HTML attributes for CSP.
+  document.querySelectorAll("img[data-hide-on-error]").forEach(img => {
+    const hide = () => {
+      const mode = img.getAttribute("data-hide-on-error");
+      if (mode === "parent" && img.parentElement) img.parentElement.style.display = "none";
+      else if (mode === "opacity") img.style.opacity = "0";
+      else img.style.display = "none";
+    };
+    img.addEventListener("error", hide);
+    if (img.complete && img.naturalWidth === 0) hide();
+  });
+
 (async () => {
   const CONFIG_SERVICE_URL = "https://script.google.com/macros/s/AKfycbwTw7_A4V68NbmGn2aFmo-r3ddEWvO9G9VcIf0pc4W_EaMhiVgCi4JV3jNIqtQTa9pqsA/exec";
   const FILMS_URL = "./assets/films.json";

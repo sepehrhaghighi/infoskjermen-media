@@ -1,6 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' 'sha256-WWj0e3CrhYTmgHLjL7eb85DQ6xXgdjxFhqiec8o+2Qw=' https://script.google.com https://script.googleusercontent.com; style-src 'self' 'unsafe-inline'; img-src 'self' https://sepehrhaghighi.github.io data:; font-src 'self' data:; connect-src 'self' https://api.met.no; frame-src 'self' https://sepehrhaghighi.github.io https://vis-tavla.entur.no https://script.google.com https://script.googleusercontent.com; form-action https://script.google.com; upgrade-insecure-requests">
+  <meta name="referrer" content="no-referrer">
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Status & Timing Control</title>
@@ -283,6 +285,12 @@
     els.applyBtn.disabled = disabled;
   }
 
+  function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, ch => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    })[ch]);
+  }
+
   function pill(text, cls = "ok") {
     return `<span class="pill ${cls}">${text}</span>`;
   }
@@ -491,7 +499,7 @@
 
       els.tbody.innerHTML = rows.map(r => `
         <tr>
-          <td>${pill("ok","ok")} <a href="./${r.page}" target="_blank">${r.page}</a></td>
+          <td>${pill("ok","ok")} <a href="./${r.page}" target="_blank" rel="noopener noreferrer">${r.page}</a></td>
           <td class="muted">${r.desc}</td>
           <td class="right"><input class="calendar-seconds" type="number" min="0" max="3600" step="1"
             data-page="${r.page}" value="${r.calendar}" aria-label="Calendar seconds for ${r.page}"></td>
@@ -503,7 +511,7 @@
       `).join("");
 
     } catch (e) {
-      els.tbody.innerHTML = `<tr><td colspan="6">${pill("ERROR","bad")} <span class="mono">${String(e.message || e)}</span></td></tr>`;
+      els.tbody.innerHTML = `<tr><td colspan="6">${pill("ERROR","bad")} <span class="mono">${escapeHtml(String(e.message || e))}</span></td></tr>`;
     }
   }
 
@@ -549,6 +557,57 @@
     };
   }
 
+
+  // Submit the passkey in a POST body, not a query-string URL.
+  function submitConfigPost(cfg, key) {
+    const name = "__config_post_" + Math.random().toString(36).slice(2);
+    const frame = document.createElement("iframe");
+    frame.name = name;
+    frame.title = "Configuration update response";
+    frame.hidden = true;
+    frame.referrerPolicy = "no-referrer";
+    const form = document.createElement("form");
+    form.action = CONFIG_SERVICE_URL;
+    form.method = "POST";
+    form.enctype = "application/x-www-form-urlencoded";
+    form.target = name;
+    form.style.display = "none";
+    const params = {
+      key,
+      posterSeconds: String(cfg.posterSeconds),
+      calendarSlideSecondsByPage: JSON.stringify(cfg.calendarSlideSecondsByPage),
+      enturSlideSecondsByPage: JSON.stringify(cfg.enturSlideSecondsByPage),
+      fadeMs: String(cfg.fadeMs),
+      manifestRefreshSeconds: String(cfg.manifestRefreshSeconds)
+    };
+    for (const [fieldName, value] of Object.entries(params)) {
+      const input = document.createElement("input");
+      input.type = "hidden";
+      input.name = fieldName;
+      input.value = value;
+      form.appendChild(input);
+    }
+    document.body.appendChild(frame);
+    document.body.appendChild(form);
+    try {
+      form.submit();
+    } finally {
+      setTimeout(() => form.remove(), 1200);
+      setTimeout(() => frame.remove(), 30000);
+    }
+  }
+
+  async function verifyConfigPost(cfg) {
+    let lastRead = null;
+    for (let attempt = 0; attempt < 6; attempt++) {
+      await new Promise(resolve => setTimeout(resolve, attempt === 0 ? 1500 : 1100));
+      lastRead = await reloadConfig();
+      if (lastRead.ok && configsMatch(cfg, lastRead.config)) return { ok: true, read: lastRead };
+    }
+    return { ok: false, read: lastRead };
+  }
+
+
   async function applyConfig() {
     const key = (els.updateKey.value || "").trim();
     if (!key) {
@@ -556,98 +615,28 @@
       setDiag({ stage: "precheck", error: "missing_key" });
       return;
     }
-
     const cfg = readUiConfig();
-    setStatus("Applying config…", "warn");
-    setDiag({
-      stage: "write_request",
-      url: CONFIG_SERVICE_URL,
-      sent: cfg
-    });
-
-    const result = await loadConfigJSONP({
-      action: "update",
-      key,
-      posterSeconds: String(cfg.posterSeconds),
-      calendarSlideSecondsByPage: JSON.stringify(cfg.calendarSlideSecondsByPage),
-      enturSlideSecondsByPage: JSON.stringify(cfg.enturSlideSecondsByPage),
-      fadeMs: String(cfg.fadeMs),
-      manifestRefreshSeconds: String(cfg.manifestRefreshSeconds)
-    });
-
+    setStatus("Applying configuration using HTTPS POST…", "warn");
+    setDiag({ stage: "write_request", url: CONFIG_SERVICE_URL, sent: cfg });
+    try {
+      submitConfigPost(cfg, key);
+    } catch (error) {
+      els.updateKey.value = "";
+      setStatus("Configuration request could not be submitted.", "bad");
+      setDiag({ stage: "submit", error: String(error.message || error), sent: cfg });
+      return;
+    }
+    els.updateKey.value = "";
+    const result = await verifyConfigPost(cfg);
     if (!result.ok) {
-      setStatus("Write failed: could not reach the config service.", "bad");
-      setDiag({
-        stage: "write_request",
-        error: result.error,
-        message: result.message,
-        sent: cfg
-      });
+      setStatus("Update could not be verified. Check Apps Script deployment and retry.", "warn");
+      setDiag({ stage: "verify", sent: cfg, readBack: result.read });
       return;
     }
-
-    const payload = result.payload || {};
-
-    if (payload.ok === false) {
-      if (payload.error === "unauthorized") {
-        setStatus("Key incorrect.", "bad");
-      } else {
-        setStatus("Write failed on server.", "bad");
-      }
-      setDiag({
-        stage: "write_response",
-        response: payload,
-        sent: cfg
-      });
-      return;
-    }
-
-    const returnedCfg = normalizeCfg(payload);
-    const returnedConfigOnly = normalizeCfg(payload.config || payload);
-
-    if (!isMeaningfulCfg(returnedConfigOnly)) {
-      setStatus("Write failed: server returned no usable config.", "bad");
-      setDiag({
-        stage: "write_response",
-        response: payload,
-        sent: cfg
-      });
-      return;
-    }
-
-    setUiConfig(returnedConfigOnly);
+    setUiConfig(result.read.config);
     await renderCounts();
-
-    const readBack = await reloadConfig();
-
-    if (!readBack.ok) {
-      setStatus("Write may have happened, but read-back failed.", "warn");
-      setDiag({
-        stage: "read_back",
-        writeResponse: payload,
-        readBack: readBack,
-        sent: cfg
-      });
-      return;
-    }
-
-    if (!configsMatch(cfg, readBack.config)) {
-      setStatus("Write failed: read-back does not match what was sent.", "bad");
-      setDiag({
-        stage: "verify",
-        sent: cfg,
-        received: readBack.config
-      });
-      return;
-    }
-
     setStatus("Applied successfully.", "ok");
-    setDiag({
-      stage: "verify",
-      sent: cfg,
-      received: readBack.config,
-      result: "match"
-    });
+    setDiag({ stage: "verify", sent: cfg, received: result.read.config, result: "match" });
   }
 
   function preload(url) {

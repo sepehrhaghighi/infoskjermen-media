@@ -1,6 +1,8 @@
 <!doctype html>
 <html lang="no">
 <head>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' 'sha256-Zwprm9VvOy8vZ3Jf0jiL5bEbHmd60QlCgHYRleTfHjM=' https://script.google.com https://script.googleusercontent.com; style-src 'self' 'unsafe-inline'; img-src 'self' https://sepehrhaghighi.github.io data:; font-src 'self' data:; connect-src 'self' https://api.met.no; frame-src 'self' https://sepehrhaghighi.github.io https://vis-tavla.entur.no https://script.google.com https://script.googleusercontent.com; form-action 'none'; upgrade-insecure-requests">
+  <meta name="referrer" content="no-referrer">
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Kalenderslide</title>
@@ -427,12 +429,12 @@
     </div>
 
     <div class="screenLogo">
-      <img src="./assets/logo.jpg" alt="Logo" onerror="this.style.display='none';">
+      <img src="./assets/logo.jpg" alt="Logo" data-hide-on-error="self">
     </div>
 
     <div class="screenCta">
       <div class="qrWrap">
-        <img src="./assets/QR.png" alt="QR-kode" onerror="this.style.display='none'; this.parentNode.style.display='none';">
+        <img src="./assets/QR.png" alt="QR-kode" data-hide-on-error="parent">
       </div>
 
       <div class="screenCtaInfo">
@@ -443,6 +445,18 @@
   </div>
 
 <script>
+  // Move image-error handling out of inline HTML attributes for CSP.
+  document.querySelectorAll("img[data-hide-on-error]").forEach(img => {
+    const hide = () => {
+      const mode = img.getAttribute("data-hide-on-error");
+      if (mode === "parent" && img.parentElement) img.parentElement.style.display = "none";
+      else if (mode === "opacity") img.style.opacity = "0";
+      else img.style.display = "none";
+    };
+    img.addEventListener("error", hide);
+    if (img.complete && img.naturalWidth === 0) hide();
+  });
+
 (function () {
   var EVENTS_URL = "https://script.google.com/macros/s/AKfycbwnvrJZd6-WzII-JGFSsTImflx4I27AodQvmKeB6RTzuUA4Mqf_0JDJDhQRcQ3D2zk4kA/exec";
   var REFRESH_MS = 5 * 60 * 1000;

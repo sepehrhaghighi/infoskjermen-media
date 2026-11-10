@@ -1,6 +1,8 @@
 <!doctype html>
 <html lang="no">
 <head>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' 'sha256-mfk8WCS3Oei6y5KqcKGBL+Ke9QgRtf1J7757t00q78M=' https://script.google.com https://script.googleusercontent.com; style-src 'self' 'unsafe-inline'; img-src 'self' https://sepehrhaghighi.github.io data:; font-src 'self' data:; connect-src 'self' https://api.met.no; frame-src 'self' https://sepehrhaghighi.github.io https://vis-tavla.entur.no https://script.google.com https://script.googleusercontent.com; form-action 'none'; upgrade-insecure-requests">
+  <meta name="referrer" content="no-referrer">
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Films – Landscape</title>
@@ -95,12 +97,12 @@
       id="calendarFrame"
       title="Kalenderslide"
       loading="eager"
-      referrerpolicy="no-referrer-when-downgrade"
+      referrerpolicy="no-referrer"
     ></iframe>
   </div>
 
   <div id="enturScene">
-    <iframe id="enturFrame" title="Entur avgangstavle" loading="eager" referrerpolicy="no-referrer-when-downgrade"></iframe>
+    <iframe id="enturFrame" title="Entur avgangstavle" loading="eager" referrerpolicy="no-referrer"></iframe>
   </div>
 
 <script src="./kiosk-auto-reload.js"></script>

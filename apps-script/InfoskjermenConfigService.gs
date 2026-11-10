@@ -253,7 +253,7 @@ function testUpdateFlow_() {
 
 // GET:
 // - default: read config
-// - action=update: update config using query params
+// - action=update: rejected; use doPost for configuration updates
 // Supports JSONP through ?callback=fnName
 function doGet(e) {
   const params = (e && e.parameter) ? e.parameter : {};
@@ -261,8 +261,14 @@ function doGet(e) {
   const action = String(params.action || "").toLowerCase();
 
   try {
+    // Read-only GET: never authenticate or mutate state with query-string keys.
     if (action === "update") {
-      return buildResponse_(applyUpdateFromParams_(params), callback);
+      return buildResponse_({
+        ok: false,
+        error: "method_not_allowed",
+        message: "Use HTTPS POST to update configuration.",
+        version: VERSION_TAG
+      }, callback);
     }
 
     return buildResponse_({
@@ -283,14 +289,14 @@ function doGet(e) {
 }
 
 // POST:
-// keeps compatibility with form posts to ?key=UPDATE_KEY
+// configuration changes require a URL-encoded POST body
 function doPost(e) {
   try {
     const queryParams = (e && e.parameter) ? e.parameter : {};
     const body = (e && e.postData && e.postData.contents) ? e.postData.contents : "";
     const bodyParams = parseFormBody_(body);
 
-    const params = Object.assign({}, bodyParams, queryParams);
+    const params = Object.assign({}, queryParams, bodyParams);
     const result = applyUpdateFromParams_(params);
 
     return ContentService
