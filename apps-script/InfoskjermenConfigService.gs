@@ -296,6 +296,17 @@ function doPost(e) {
     const body = (e && e.postData && e.postData.contents) ? e.postData.contents : "";
     const bodyParams = parseFormBody_(body);
 
+    // Reject legacy POSTs that put the authentication key in the URL.
+    if (!String(bodyParams.key || "").trim()) {
+      return ContentService
+        .createTextOutput(JSON.stringify({
+          ok: false, error: "unauthorized",
+          message: "An update key is required in the POST request body.",
+          version: VERSION_TAG
+        }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
     const params = Object.assign({}, queryParams, bodyParams);
     const result = applyUpdateFromParams_(params);
 

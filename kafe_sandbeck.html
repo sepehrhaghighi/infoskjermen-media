@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="no">
 <head>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' 'sha256-LI1KfiA37r06wCrm/FNVPT621UvPiSsiTPVeDUXiJ/Q=' https://script.google.com https://script.googleusercontent.com; style-src 'self' 'unsafe-inline'; img-src 'self' https://sepehrhaghighi.github.io data:; font-src 'self' data:; connect-src 'self' https://api.met.no; frame-src 'self' https://sepehrhaghighi.github.io https://vis-tavla.entur.no https://script.google.com https://script.googleusercontent.com; form-action 'none'; upgrade-insecure-requests">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' 'sha256-QaFKumDNn6eZsucIaC2h0JQqzbZ5m8LP7st1sAOJby0=' https://script.google.com https://script.googleusercontent.com; style-src 'self' 'unsafe-inline'; img-src 'self' https://sepehrhaghighi.github.io data:; font-src 'self' data:; connect-src 'self' https://api.met.no; frame-src 'self' https://sepehrhaghighi.github.io https://vis-tavla.entur.no https://script.google.com https://script.googleusercontent.com; form-action 'none'; upgrade-insecure-requests">
   <meta name="referrer" content="no-referrer">
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -103,7 +103,7 @@
           const url = new URL(item.url, document.baseURI);
           if (url.origin !== base.origin ||
               !url.pathname.startsWith(base.pathname) ||
-              !/\\.(jpe?g|png|webp|gif|avif)$/i.test(url.pathname) ||
+              !/[.](jpe?g|png|webp|gif|avif)$/i.test(url.pathname) ||
               url.username || url.password) return "";
           if (item.v != null) url.searchParams.set("v", String(item.v));
           return url.href;
