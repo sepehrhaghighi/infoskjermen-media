@@ -625,7 +625,6 @@
     idx += 1;
 
     if (item.kind === "video") {
-      if (isExternalSlideActive()) await fadeToPoster();
       qrWrap.classList.remove("show");
       dateA.classList.remove("show");
       dateB.classList.remove("show");
@@ -633,7 +632,10 @@
       heldVideo = null;
       const finalFrame = await window.SignageVideo.play(item, {
         hold: true,
-        onPlaying: () => previousVideo?.release()
+        onPlaying: () => {
+          previousVideo?.release();
+          if (isExternalSlideActive()) void fadeToPoster();
+        }
       });
       // If this video fails, release the previous held frame too.
       if (!finalFrame) previousVideo?.release();

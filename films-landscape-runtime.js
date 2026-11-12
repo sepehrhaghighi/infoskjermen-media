@@ -23,6 +23,13 @@
   let pendingItems = null; // Manifest changes wait until the current rotation is complete.
   let frontIsA = true;
   let refreshTimer = null;
+  let heldVideo = null;
+
+  function releaseHeldVideo() {
+    if (!heldVideo) return;
+    heldVideo.release();
+    heldVideo = null;
+  }
 
   let calendarReady = false;
   let calendarLoadingPromise = null;
@@ -497,9 +504,19 @@
     idx += 1;
 
     if (item.kind === "video") {
-      if (isExternalSlideActive()) await fadeToPoster();
-      await window.SignageVideo.play(item);
-      setTimeout(tick, 200);
+      const previousVideo = heldVideo;
+      heldVideo = null;
+      const finalFrame = await window.SignageVideo.play(item, {
+        hold: true,
+        onPlaying: () => {
+          previousVideo?.release();
+          // Reveal the video only after it has started playing.
+          if (isExternalSlideActive()) void fadeToPoster();
+        }
+      });
+      if (!finalFrame) previousVideo?.release();
+      heldVideo = finalFrame;
+      setTimeout(tick, 0);
       return;
     }
 
@@ -510,6 +527,7 @@
         return;
       }
       await fadeToEntur();
+      releaseHeldVideo();
       setTimeout(tick, (item.seconds || enturSlideSeconds) * 1000);
       return;
     }
@@ -523,6 +541,7 @@
       }
 
       await fadeToCalendar();
+      releaseHeldVideo();
 
       setTimeout(async () => {
         const nextItem = items[idx % items.length];
@@ -556,6 +575,11 @@
       }
     } else {
       swapToPoster(item);
+    }
+    if (heldVideo) {
+      // Replace the held final frame only after the image has faded in.
+      if (fadeMs > 0) await sleep(fadeMs);
+      releaseHeldVideo();
     }
 
     setTimeout(tick, (item.seconds || posterSeconds) * 1000);

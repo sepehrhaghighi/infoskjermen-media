@@ -39,6 +39,17 @@
   let activeCalendarSeconds = 0;
   let activeEnturSeconds = 0;
   let frontIsA = true;
+  let heldVideo = null;
+
+  function releaseHeldVideo() {
+    if (!heldVideo) return;
+    heldVideo.release();
+    heldVideo = null;
+  }
+
+  function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
 
   const emptyEl = document.getElementById("empty");
   const A = document.getElementById("a");
@@ -456,19 +467,33 @@
     if (slot < items.length) {
       const item = items[slot];
       if (item.kind === "video") {
-        if (calendarSlide.isActive()) await calendarSlide.hide();
-        if (enturSlide.isActive()) await enturSlide.hide();
         qrWrap?.classList.remove("show");
         dateA.classList.remove("show");
         dateB.classList.remove("show");
-        await window.SignageVideo.play(item);
-        setTimeout(tick, 200);
+        const previousVideo = heldVideo;
+        heldVideo = null;
+        const finalFrame = await window.SignageVideo.play(item, {
+          hold: true,
+          onPlaying: () => {
+            previousVideo?.release();
+            // Keep calendar / Entur visible until the video starts.
+            if (calendarSlide.isActive()) void calendarSlide.hide();
+            if (enturSlide.isActive()) void enturSlide.hide();
+          }
+        });
+        if (!finalFrame) previousVideo?.release();
+        heldVideo = finalFrame;
+        setTimeout(tick, 0);
         return;
       }
       await preload(item);
       if (calendarSlide.isActive()) await calendarSlide.hide();
       if (enturSlide.isActive()) await enturSlide.hide();
       swapTo(item);
+      if (heldVideo) {
+        if (fadeMs > 0) await sleep(fadeMs);
+        releaseHeldVideo();
+      }
       setTimeout(tick, posterSeconds * 1000);
       return;
     }
@@ -476,6 +501,7 @@
     if (withCalendar && slot === items.length) {
       if (enturSlide.isActive()) await enturSlide.hide();
       const ready = await calendarSlide.show();
+      if (ready) releaseHeldVideo();
       setTimeout(tick, ready ? activeCalendarSeconds * 1000 : 1000);
       return;
     }
@@ -483,6 +509,7 @@
     if (withEntur && slot === items.length + (withCalendar ? 1 : 0)) {
       if (calendarSlide.isActive()) await calendarSlide.hide();
       const ready = await enturSlide.show();
+      if (ready) releaseHeldVideo();
       setTimeout(tick, ready ? activeEnturSeconds * 1000 : 1000);
       return;
     }
