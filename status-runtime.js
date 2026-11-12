@@ -5,15 +5,13 @@
   const ARR_URL   = "./assets/arrangements.json";
   const EXTRA_URL = "./assets/landscape_extra_films/manifest.json";
   const ARR_EXTRA_URL = "./assets/landscape_extra_arrangements/manifest.json";
-  const CAFE_MANIFEST_URL = "./assets/kafe_sandbeck/manifest.json";
-  const LIBRARY_MANIFEST_URL = "./assets/bibliotek/manifest.json";
   const BG_REL    = "./assets/status-bg.jpg";
 
   const DEFAULTS = {
     posterSeconds: 7,
     calendarSlideSecondsByPage: {"films-portrait.html":0,"films-landscape.html":20,"arrangements-portrait.html":0,"arrangements-landscape.html":20,"portrait-all.html":0,"landscape-all.html":0},
     enturSlideSecondsByPage: {"films-portrait.html":0,"films-landscape.html":0,"arrangements-portrait.html":0,"arrangements-landscape.html":0,"portrait-all.html":0,"landscape-all.html":0},
-    videoEnabledByPage: {"films-landscape.html":false,"arrangements-landscape.html":false,"kafe_sandbeck.html":false,"bibliotek.html":false},
+    videoEnabledByPage: {"films-landscape.html":false,"arrangements-landscape.html":false},
     fadeMs: 500,
     manifestRefreshSeconds: 60
   };
@@ -21,7 +19,7 @@
   const SCREEN_PAGES = ["films-portrait.html","films-landscape.html","arrangements-portrait.html","arrangements-landscape.html","portrait-all.html","landscape-all.html"];
   let enturSecondsDraft = { ...DEFAULTS.enturSlideSecondsByPage };
   let calendarSecondsDraft = { ...DEFAULTS.calendarSlideSecondsByPage };
-  const VIDEO_PAGES = ["films-landscape.html","arrangements-landscape.html","kafe_sandbeck.html","bibliotek.html"];
+  const VIDEO_PAGES = ["films-landscape.html","arrangements-landscape.html"];
   let videoEnabledDraft = { ...DEFAULTS.videoEnabledByPage };
 
   const els = {
@@ -237,13 +235,11 @@
     els.tbody.innerHTML = `<tr><td colspan="7" class="muted">Loading…</td></tr>`;
 
     try {
-      const [filmsData, arrData, extraData, arrExtraData, cafeData, libraryData] = await Promise.all([
+      const [filmsData, arrData, extraData, arrExtraData] = await Promise.all([
         fetchJson(FILMS_URL),
         fetchJson(ARR_URL),
         fetchJson(EXTRA_URL).catch(() => ({ items: [] })),
-        fetchJson(ARR_EXTRA_URL).catch(() => ({ items: [] })),
-        fetchJson(CAFE_MANIFEST_URL).catch(() => ({ items: [] })),
-        fetchJson(LIBRARY_MANIFEST_URL).catch(() => ({ items: [] }))
+        fetchJson(ARR_EXTRA_URL).catch(() => ({ items: [] }))
       ]);
 
       const films = filmsData.films || [];
@@ -252,10 +248,6 @@
       const extraArrLandscape = countExtraItems(arrExtraData);
       const filmVideos = countVideos(extraData);
       const arrangementVideos = countVideos(arrExtraData);
-      const cafeImages = countExtraItems(cafeData);
-      const libraryImages = countExtraItems(libraryData);
-      const cafeVideos = countVideos(cafeData);
-      const libraryVideos = countVideos(libraryData);
 
       const filmsPortrait      = countField(films, "poster");
       const filmsLandscapeBase = countField(films, "landscape");
@@ -273,23 +265,19 @@
         { page:"arrangements-portrait.html", desc:"DX arrangement posters (portrait)", imageCount:arrPortrait },
         { page:"arrangements-landscape.html", desc:`DX arrangement posters + ${extraArrLandscape} OneDrive image(s) — landscape_extra_arrangements`, imageCount:arrangementsLandscapeImageCount },
         { page:"portrait-all.html", desc:"DX films + arrangements (portrait)", imageCount:portraitAll },
-        { page:"landscape-all.html", desc:`DX films + arrangements, plus ${extraLandscape + extraArrLandscape} OneDrive image(s) (both landscape folders)`, imageCount:landscapeAll },
-        { page:"kafe_sandbeck.html", desc:`OneDrive kafe_sandbeck (${cafeImages} image(s))`, imageCount:cafeImages },
-        { page:"bibliotek.html", desc:`OneDrive bibliotek (${libraryImages} image(s))`, imageCount:libraryImages }
+        { page:"landscape-all.html", desc:`DX films + arrangements, plus ${extraLandscape + extraArrLandscape} OneDrive image(s) (both landscape folders)`, imageCount:landscapeAll }
       ];
       rows.forEach(row => {
         row.videoCount = row.page === "films-landscape.html" ? (videoEnabledDraft["films-landscape.html"] ? filmVideos : 0) :
           row.page === "arrangements-landscape.html" ? (videoEnabledDraft["arrangements-landscape.html"] ? arrangementVideos : 0) :
           row.page === "landscape-all.html" ? ((videoEnabledDraft["films-landscape.html"] ? filmVideos : 0) +
-            (videoEnabledDraft["arrangements-landscape.html"] ? arrangementVideos : 0)) :
-          row.page === "kafe_sandbeck.html" ? (videoEnabledDraft["kafe_sandbeck.html"] ? cafeVideos : 0) :
-          row.page === "bibliotek.html" ? (videoEnabledDraft["bibliotek.html"] ? libraryVideos : 0) : 0;
+            (videoEnabledDraft["arrangements-landscape.html"] ? arrangementVideos : 0)) : 0;
         row.calendar = calendarFor(row.page);
         row.entur = enturFor(row.page);
         if (row.calendar > 0) row.desc += " + Calendar";
         if (row.entur > 0) row.desc += " + Entur Tavla";
         row.count = row.imageCount + row.videoCount + (row.calendar > 0 ? 1 : 0) + (row.entur > 0 ? 1 : 0);
-        row.seconds = row.imageCount * (VIDEO_PAGES.includes(row.page) && !SCREEN_PAGES.includes(row.page) ? 10 : posterSeconds) + row.calendar + row.entur;
+        row.seconds = row.imageCount * posterSeconds + row.calendar + row.entur;
       });
 
       els.tbody.innerHTML = rows.map(r => `

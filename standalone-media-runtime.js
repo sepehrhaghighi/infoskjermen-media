@@ -8,7 +8,6 @@
   const group = groups[page];
   if (!group) return;
   const MANIFEST_URL = "./assets/" + group + "/manifest.json";
-  const CONFIG_URL = "https://script.google.com/macros/s/AKfycbwTw7_A4V68NbmGn2aFmo-r3ddEWvO9G9VcIf0pc4W_EaMhiVgCi4JV3jNIqtQTa9pqsA/exec";
   const IMAGE_MS = 10000;
   const FADE_MS = 300;
   const REFRESH_MS = 60000;
@@ -35,43 +34,16 @@
     } catch { return ""; }
   }
 
-  function fetchVideoSetting() {
-    return new Promise(resolve => {
-      const cb = "__screen_cfg_" + Math.random().toString(36).slice(2);
-      const script = document.createElement("script");
-      let finished = false;
-      const finish = enabled => {
-        if (finished) return;
-        finished = true;
-        clearTimeout(timer);
-        script.remove();
-        try { delete window[cb]; } catch { window[cb] = undefined; }
-        resolve(enabled);
-      };
-      window[cb] = payload => {
-        const cfg = payload?.config && typeof payload.config === "object" ? payload.config : payload;
-        finish(cfg?.videoEnabledByPage?.[page] === true);
-      };
-      const timer = setTimeout(() => finish(false), 10000);
-      script.onerror = () => finish(false);
-      script.src = CONFIG_URL + "?callback=" + encodeURIComponent(cb) + "&_=" + Date.now();
-      document.head.appendChild(script);
-    });
-  }
-
   async function reload() {
     try {
-      const [res, videoEnabled] = await Promise.all([
-        fetch(MANIFEST_URL + "?_=" + Date.now(), {cache:"no-store"}),
-        fetchVideoSetting()
-      ]);
+      const res = await fetch(MANIFEST_URL + "?_=" + Date.now(), {cache:"no-store"});
       if (!res.ok) throw new Error("Manifest HTTP " + res.status);
       const data = await res.json();
       if (!Array.isArray(data.items)) throw new Error("Invalid manifest");
       const pictures = [], movies = [];
       for (const entry of data.items) {
         if (entry?.kind === "video") {
-          if (!videoEnabled || !window.SignageVideo.validUrl(entry.url, group)) continue;
+          if (!window.SignageVideo.validUrl(entry.url, group)) continue;
           const url = new URL(entry.url);
           if (entry.v != null && entry.v !== "") url.searchParams.set("v", String(entry.v));
           movies.push({kind:"video", name:String(entry.name||""), originalName:String(entry.originalName||""), url:url.href, v:""});
