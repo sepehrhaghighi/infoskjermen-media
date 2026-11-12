@@ -5,7 +5,7 @@
     try {
       const u = new URL(value, document.baseURI);
       return u.protocol === "https:" && u.hostname === HOST &&
-        /^\/media\/(films|arrangements)\/[A-Za-z0-9._!-]+\.mp4$/i.test(u.pathname) &&
+        /^\/media\/(films|arrangements|kafe_sandbeck|bibliotek)\/[A-Za-z0-9._!-]+\.mp4$/i.test(u.pathname) &&
         (!group || u.pathname.startsWith("/media/" + group + "/"));
     } catch { return false; }
   }
