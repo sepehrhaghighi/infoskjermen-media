@@ -31,7 +31,6 @@
     applyBtn: document.getElementById("applyBtn"),
     tbody: document.getElementById("tbody"),
     statusBox: document.getElementById("statusBox"),
-    diagBox: document.getElementById("diagBox"),
     bgLayer: document.getElementById("bgLayer")
   };
 
@@ -43,18 +42,6 @@
       tone === "warn" ? "status-warn" :
       "status-muted"
     );
-  }
-
-  function setDiag(obj) {
-    if (typeof obj === "string") {
-      els.diagBox.textContent = obj;
-      return;
-    }
-    try {
-      els.diagBox.textContent = JSON.stringify(obj, null, 2);
-    } catch {
-      els.diagBox.textContent = String(obj);
-    }
   }
 
   function disableUi(disabled) {
@@ -413,31 +400,31 @@
     const key = (els.updateKey.value || "").trim();
     if (!key) {
       setStatus("Update key is required.", "bad");
-      setDiag({ stage: "precheck", error: "missing_key" });
+      
       return;
     }
     const cfg = readUiConfig();
     setStatus("Applying configuration using HTTPS POST…", "warn");
-    setDiag({ stage: "write_request", url: CONFIG_SERVICE_URL, sent: cfg });
+    
     try {
       submitConfigPost(cfg, key);
     } catch (error) {
       els.updateKey.value = "";
       setStatus("Configuration request could not be submitted.", "bad");
-      setDiag({ stage: "submit", error: String(error.message || error), sent: cfg });
+      
       return;
     }
     els.updateKey.value = "";
     const result = await verifyConfigPost(cfg);
     if (!result.ok) {
       setStatus("Update could not be verified. Check Apps Script deployment and retry.", "warn");
-      setDiag({ stage: "verify", sent: cfg, readBack: result.read });
+      
       return;
     }
     setUiConfig(result.read.config);
     await renderCounts();
     setStatus("Applied successfully.", "ok");
-    setDiag({ stage: "verify", sent: cfg, received: result.read.config, result: "match" });
+    
   }
 
   function preload(url) {
@@ -490,11 +477,7 @@
   (async () => {
     disableUi(true);
     setStatus("Loading config…", "warn");
-    setDiag({
-      stage: "init",
-      configServiceUrl: CONFIG_SERVICE_URL,
-      defaults: DEFAULTS
-    });
+    
 
     els.updateKey.value = "";
     initBackground();
@@ -509,19 +492,11 @@
       els.fadeMs.value = DEFAULTS.fadeMs;
       els.refreshSeconds.value = DEFAULTS.manifestRefreshSeconds;
 
-      setStatus("Read failed. Showing defaults only — do not Apply. Check diagnostics and refresh.", "bad");
-      setDiag({
-        stage: "init_read",
-        error: loaded.error,
-        message: loaded.message,
-        defaultsUsed: DEFAULTS
-      });
+      setStatus("Could not load saved settings. Refresh the page; Apply is disabled to protect your settings.", "bad");
+      
     } else {
       setStatus("Config loaded.", "ok");
-      setDiag({
-        stage: "init_read",
-        loadedConfig: loaded.config
-      });
+      
     }
 
     disableUi(false);
