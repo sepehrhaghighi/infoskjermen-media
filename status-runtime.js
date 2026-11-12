@@ -268,14 +268,14 @@
       const landscapeAll = filmsLandscapeImageCount + arrangementsLandscapeImageCount;
 
       const rows = [
-        { page:"films-portrait.html", desc:"Films portrait (poster)", imageCount:filmsPortrait },
-        { page:"films-landscape.html", desc:`Films landscape (subset + ${extraLandscape} manual extra)`, imageCount:filmsLandscapeImageCount },
-        { page:"arrangements-portrait.html", desc:"Arrangements portrait (poster)", imageCount:arrPortrait },
-        { page:"arrangements-landscape.html", desc:`Arrangements landscape (subset + ${extraArrLandscape} manual extra)`, imageCount:arrangementsLandscapeImageCount },
-        { page:"portrait-all.html", desc:"Films then arrangements (portrait)", imageCount:portraitAll },
-        { page:"landscape-all.html", desc:`Films + arrangements landscape (subset + ${extraLandscape} film extra + ${extraArrLandscape} arrangement extra)`, imageCount:landscapeAll },
-        { page:"kafe_sandbeck.html", desc:"Kafé Sandbeck — manual media", imageCount:cafeImages },
-        { page:"bibliotek.html", desc:"Bibliotek — manual media", imageCount:libraryImages }
+        { page:"films-portrait.html", desc:"DX film posters (portrait)", imageCount:filmsPortrait },
+        { page:"films-landscape.html", desc:`DX film posters + ${extraLandscape} OneDrive image(s) — landscape_extra_films`, imageCount:filmsLandscapeImageCount },
+        { page:"arrangements-portrait.html", desc:"DX arrangement posters (portrait)", imageCount:arrPortrait },
+        { page:"arrangements-landscape.html", desc:`DX arrangement posters + ${extraArrLandscape} OneDrive image(s) — landscape_extra_arrangements`, imageCount:arrangementsLandscapeImageCount },
+        { page:"portrait-all.html", desc:"DX films + arrangements (portrait)", imageCount:portraitAll },
+        { page:"landscape-all.html", desc:`DX films + arrangements, plus ${extraLandscape + extraArrLandscape} OneDrive image(s) (both landscape folders)`, imageCount:landscapeAll },
+        { page:"kafe_sandbeck.html", desc:`OneDrive kafe_sandbeck (${cafeImages} image(s))`, imageCount:cafeImages },
+        { page:"bibliotek.html", desc:`OneDrive bibliotek (${libraryImages} image(s))`, imageCount:libraryImages }
       ];
       rows.forEach(row => {
         row.videoCount = row.page === "films-landscape.html" ? (videoEnabledDraft["films-landscape.html"] ? filmVideos : 0) :
