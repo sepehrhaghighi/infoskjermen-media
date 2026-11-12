@@ -1,0 +1,10 @@
+{
+  "name": "Kafé Sandbeck Signage",
+  "short_name": "Kafé Sandbeck",
+  "id": "./kafe_sandbeck.html",
+  "start_url": "./kafe_sandbeck.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#000000"
+}
