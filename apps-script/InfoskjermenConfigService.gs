@@ -1,11 +1,13 @@
-const VERSION_TAG = "display-config-2026-10-26-calendar-entur-per-page-v4";
+const VERSION_TAG = "display-config-2026-11-12-muted-videos-v5";
 
 const SCREEN_PAGES = ["films-portrait.html","films-landscape.html","arrangements-portrait.html","arrangements-landscape.html","portrait-all.html","landscape-all.html"];
+const VIDEO_PAGES = ["films-landscape.html","arrangements-landscape.html"];
 const DEFAULTS = {
   posterSeconds: 7,
   calendarSlideSeconds: 20,   // 0 = off
   calendarSlideSecondsByPage: {"films-portrait.html":0,"films-landscape.html":20,"arrangements-portrait.html":0,"arrangements-landscape.html":20,"portrait-all.html":0,"landscape-all.html":0},
   enturSlideSecondsByPage: {"films-portrait.html":0,"films-landscape.html":0,"arrangements-portrait.html":0,"arrangements-landscape.html":0,"portrait-all.html":0,"landscape-all.html":0},
+  videoEnabledByPage: {"films-landscape.html":false,"arrangements-landscape.html":false},
   fadeMs: 500,
   manifestRefreshSeconds: 60,
 };
@@ -41,6 +43,13 @@ function normalizeDurationPages_(raw, fallbacks) {
   return result;
 }
 
+function normalizeVideoPages_(raw) {
+  const value = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {};
+  const result = {};
+  VIDEO_PAGES.forEach(function(page) { result[page] = parseBoolean_(value[page]); });
+  return result;
+}
+
 function normalizeConfig_(cfg) {
   cfg = cfg || {};
 
@@ -67,6 +76,7 @@ function normalizeConfig_(cfg) {
     }),
 
     enturSlideSecondsByPage: normalizeDurationPages_(cfg.enturSlideSecondsByPage),
+    videoEnabledByPage: normalizeVideoPages_(cfg.videoEnabledByPage),
 
     fadeMs: clampInt(
       cfg.fadeMs,
@@ -175,6 +185,14 @@ function incomingFromParams_(params) {
         Array.isArray(incoming.enturSlideSecondsByPage) ||
         typeof incoming.enturSlideSecondsByPage !== "object") {
       throw new Error("enturSlideSecondsByPage must be a JSON object.");
+    }
+  }
+
+  if (Object.prototype.hasOwnProperty.call(params, "videoEnabledByPage")) {
+    incoming.videoEnabledByPage = JSON.parse(String(params.videoEnabledByPage));
+    if (!incoming.videoEnabledByPage || Array.isArray(incoming.videoEnabledByPage) ||
+        typeof incoming.videoEnabledByPage !== "object") {
+      throw new Error("videoEnabledByPage must be a JSON object.");
     }
   }
 
