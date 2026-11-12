@@ -16,10 +16,11 @@
       )
     );
   }
-  async function play(item) {
-    if (!validUrl(item?.url)) return false;
+  async function play(item, options = {}) {
+    const hold = options.hold === true;
+    if (!validUrl(item?.url)) return hold ? null : false;
     const stage = document.querySelector(".stage");
-    if (!stage) return false;
+    if (!stage) return hold ? null : false;
     const video = document.createElement("video");
     video.muted = true;
     video.defaultMuted = true;
@@ -39,20 +40,32 @@
     video.style.objectFit = "contain";
     return new Promise(resolve => {
       let finished = false, startTimer, stopTimer;
+      function cleanup() {
+        video.pause();
+        video.removeAttribute("src");
+        video.load();
+        video.remove();
+      }
       function end(ok) {
         if (finished) return;
         finished = true;
         clearTimeout(startTimer);
         clearTimeout(stopTimer);
         video.pause();
-        video.removeAttribute("src");
-        video.load();
-        video.remove();
-        resolve(ok);
+        if (ok && hold) {
+          // Keep the final video frame visible until the next scene is ready.
+          resolve({ release: cleanup });
+        } else {
+          cleanup();
+          resolve(hold ? null : ok);
+        }
       }
       video.addEventListener("ended", () => end(true), { once: true });
       video.addEventListener("error", () => end(false), { once: true });
-      video.addEventListener("playing", () => clearTimeout(startTimer), { once: true });
+      video.addEventListener("playing", () => {
+        clearTimeout(startTimer);
+        if (typeof options.onPlaying === "function") options.onPlaying();
+      }, { once: true });
       video.addEventListener("loadedmetadata", () => {
         if (Number.isFinite(video.duration) && video.duration > 0) {
           clearTimeout(stopTimer);

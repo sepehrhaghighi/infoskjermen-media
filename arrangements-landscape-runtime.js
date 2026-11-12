@@ -32,6 +32,13 @@
 
   let refreshTimer = null;
   let tickTimer = null;
+  let heldVideo = null;
+
+  function releaseHeldVideo() {
+    if (!heldVideo) return;
+    heldVideo.release();
+    heldVideo = null;
+  }
 
   let items = [];
   let idx = 0;
@@ -622,8 +629,16 @@
       qrWrap.classList.remove("show");
       dateA.classList.remove("show");
       dateB.classList.remove("show");
-      await window.SignageVideo.play(item);
-      tickTimer = setTimeout(tick, 200);
+      const previousVideo = heldVideo;
+      heldVideo = null;
+      const finalFrame = await window.SignageVideo.play(item, {
+        hold: true,
+        onPlaying: () => previousVideo?.release()
+      });
+      // If this video fails, release the previous held frame too.
+      if (!finalFrame) previousVideo?.release();
+      heldVideo = finalFrame;
+      tickTimer = setTimeout(tick, 0);
       return;
     }
 
@@ -634,6 +649,7 @@
         return;
       }
       await fadeToEntur();
+      releaseHeldVideo();
       tickTimer = setTimeout(tick, (item.seconds || enturSlideSeconds) * 1000);
       return;
     }
@@ -647,6 +663,7 @@
       }
 
       await fadeToCalendar();
+      releaseHeldVideo();
 
       tickTimer = setTimeout(async () => {
         const nextItem = items[idx % items.length];
@@ -680,6 +697,11 @@
       }
     } else {
       swapToPoster(item);
+    }
+    if (heldVideo) {
+      // Allow the new image layer to settle behind the last video frame.
+      if (fadeMs > 0) await sleep(fadeMs);
+      releaseHeldVideo();
     }
 
     tickTimer = setTimeout(tick, (item.seconds || posterSeconds) * 1000);
