@@ -3,7 +3,7 @@
   const CONFIG_SERVICE_URL = "https://script.google.com/macros/s/AKfycbwTw7_A4V68NbmGn2aFmo-r3ddEWvO9G9VcIf0pc4W_EaMhiVgCi4JV3jNIqtQTa9pqsA/exec";
   const CALENDAR_FRAME_URL = "https://sepehrhaghighi.github.io/infoskjermen-media/calendar-slide.html";
   const MANIFEST_URL = "./assets/films.json";
-  const EXTRA_MANIFEST_URL = "./assets/landscape_extra/manifest.json";
+  const EXTRA_MANIFEST_URL = "./assets/landscape_extra_films/manifest.json";
   const FIELD = "landscape";
   const ENTUR_TAVLA_URL = "https://vis-tavla.entur.no/vB3ZXkgI42ecuHXY9X7I";
 

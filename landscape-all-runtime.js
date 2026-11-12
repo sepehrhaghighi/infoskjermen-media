@@ -16,7 +16,7 @@
   const FILMS_URL = "./assets/films.json";
   const ARR_URL   = "./assets/arrangements.json";
 
-  const EXTRA_MANIFEST_URL = "./assets/landscape_extra/manifest.json";
+  const EXTRA_MANIFEST_URL = "./assets/landscape_extra_films/manifest.json";
   const ARR_EXTRA_MANIFEST_URL = "./assets/landscape_extra_arrangements/manifest.json";
 
   const FIELD = "landscape";

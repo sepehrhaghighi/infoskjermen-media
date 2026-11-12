@@ -3,7 +3,7 @@
   const CONFIG_SERVICE_URL = "https://script.google.com/macros/s/AKfycbwTw7_A4V68NbmGn2aFmo-r3ddEWvO9G9VcIf0pc4W_EaMhiVgCi4JV3jNIqtQTa9pqsA/exec";
   const FILMS_URL = "./assets/films.json";
   const ARR_URL   = "./assets/arrangements.json";
-  const EXTRA_URL = "./assets/landscape_extra/manifest.json";
+  const EXTRA_URL = "./assets/landscape_extra_films/manifest.json";
   const ARR_EXTRA_URL = "./assets/landscape_extra_arrangements/manifest.json";
   const CAFE_MANIFEST_URL = "./assets/kafe_sandbeck/manifest.json";
   const LIBRARY_MANIFEST_URL = "./assets/bibliotek/manifest.json";
