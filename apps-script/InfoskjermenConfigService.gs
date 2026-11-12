@@ -1,13 +1,13 @@
-const VERSION_TAG = "display-config-2026-11-12-muted-videos-v5";
+const VERSION_TAG = "display-config-2026-11-12-four-video-screens-v6";
 
 const SCREEN_PAGES = ["films-portrait.html","films-landscape.html","arrangements-portrait.html","arrangements-landscape.html","portrait-all.html","landscape-all.html"];
-const VIDEO_PAGES = ["films-landscape.html","arrangements-landscape.html"];
+const VIDEO_PAGES = ["films-landscape.html","arrangements-landscape.html","kafe_sandbeck.html","bibliotek.html"];
 const DEFAULTS = {
   posterSeconds: 7,
   calendarSlideSeconds: 20,   // 0 = off
   calendarSlideSecondsByPage: {"films-portrait.html":0,"films-landscape.html":20,"arrangements-portrait.html":0,"arrangements-landscape.html":20,"portrait-all.html":0,"landscape-all.html":0},
   enturSlideSecondsByPage: {"films-portrait.html":0,"films-landscape.html":0,"arrangements-portrait.html":0,"arrangements-landscape.html":0,"portrait-all.html":0,"landscape-all.html":0},
-  videoEnabledByPage: {"films-landscape.html":false,"arrangements-landscape.html":false},
+  videoEnabledByPage: {"films-landscape.html":false,"arrangements-landscape.html":false,"kafe_sandbeck.html":false,"bibliotek.html":false},
   fadeMs: 500,
   manifestRefreshSeconds: 60,
 };

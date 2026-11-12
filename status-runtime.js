@@ -5,13 +5,15 @@
   const ARR_URL   = "./assets/arrangements.json";
   const EXTRA_URL = "./assets/landscape_extra/manifest.json";
   const ARR_EXTRA_URL = "./assets/landscape_extra_arrangements/manifest.json";
+  const CAFE_MANIFEST_URL = "./assets/kafe_sandbeck/manifest.json";
+  const LIBRARY_MANIFEST_URL = "./assets/bibliotek/manifest.json";
   const BG_REL    = "./assets/status-bg.jpg";
 
   const DEFAULTS = {
     posterSeconds: 7,
     calendarSlideSecondsByPage: {"films-portrait.html":0,"films-landscape.html":20,"arrangements-portrait.html":0,"arrangements-landscape.html":20,"portrait-all.html":0,"landscape-all.html":0},
     enturSlideSecondsByPage: {"films-portrait.html":0,"films-landscape.html":0,"arrangements-portrait.html":0,"arrangements-landscape.html":0,"portrait-all.html":0,"landscape-all.html":0},
-    videoEnabledByPage: {"films-landscape.html":false,"arrangements-landscape.html":false},
+    videoEnabledByPage: {"films-landscape.html":false,"arrangements-landscape.html":false,"kafe_sandbeck.html":false,"bibliotek.html":false},
     fadeMs: 500,
     manifestRefreshSeconds: 60
   };
@@ -19,7 +21,7 @@
   const SCREEN_PAGES = ["films-portrait.html","films-landscape.html","arrangements-portrait.html","arrangements-landscape.html","portrait-all.html","landscape-all.html"];
   let enturSecondsDraft = { ...DEFAULTS.enturSlideSecondsByPage };
   let calendarSecondsDraft = { ...DEFAULTS.calendarSlideSecondsByPage };
-  const VIDEO_PAGES = ["films-landscape.html","arrangements-landscape.html"];
+  const VIDEO_PAGES = ["films-landscape.html","arrangements-landscape.html","kafe_sandbeck.html","bibliotek.html"];
   let videoEnabledDraft = { ...DEFAULTS.videoEnabledByPage };
 
   const els = {
@@ -232,14 +234,16 @@
     const enturMap = normalizeDurationMap(enturSecondsDraft);
     const enturFor = page => enturMap[page] || 0;
 
-    els.tbody.innerHTML = `<tr><td colspan="6" class="muted">Loading…</td></tr>`;
+    els.tbody.innerHTML = `<tr><td colspan="7" class="muted">Loading…</td></tr>`;
 
     try {
-      const [filmsData, arrData, extraData, arrExtraData] = await Promise.all([
+      const [filmsData, arrData, extraData, arrExtraData, cafeData, libraryData] = await Promise.all([
         fetchJson(FILMS_URL),
         fetchJson(ARR_URL),
         fetchJson(EXTRA_URL).catch(() => ({ items: [] })),
-        fetchJson(ARR_EXTRA_URL).catch(() => ({ items: [] }))
+        fetchJson(ARR_EXTRA_URL).catch(() => ({ items: [] })),
+        fetchJson(CAFE_MANIFEST_URL).catch(() => ({ items: [] })),
+        fetchJson(LIBRARY_MANIFEST_URL).catch(() => ({ items: [] }))
       ]);
 
       const films = filmsData.films || [];
@@ -248,6 +252,10 @@
       const extraArrLandscape = countExtraItems(arrExtraData);
       const filmVideos = countVideos(extraData);
       const arrangementVideos = countVideos(arrExtraData);
+      const cafeImages = countExtraItems(cafeData);
+      const libraryImages = countExtraItems(libraryData);
+      const cafeVideos = countVideos(cafeData);
+      const libraryVideos = countVideos(libraryData);
 
       const filmsPortrait      = countField(films, "poster");
       const filmsLandscapeBase = countField(films, "landscape");
@@ -265,29 +273,35 @@
         { page:"arrangements-portrait.html", desc:"Arrangements portrait (poster)", imageCount:arrPortrait },
         { page:"arrangements-landscape.html", desc:`Arrangements landscape (subset + ${extraArrLandscape} manual extra)`, imageCount:arrangementsLandscapeImageCount },
         { page:"portrait-all.html", desc:"Films then arrangements (portrait)", imageCount:portraitAll },
-        { page:"landscape-all.html", desc:`Films + arrangements landscape (subset + ${extraLandscape} film extra + ${extraArrLandscape} arrangement extra)`, imageCount:landscapeAll }
+        { page:"landscape-all.html", desc:`Films + arrangements landscape (subset + ${extraLandscape} film extra + ${extraArrLandscape} arrangement extra)`, imageCount:landscapeAll },
+        { page:"kafe_sandbeck.html", desc:"Kafé Sandbeck — manual media", imageCount:cafeImages },
+        { page:"bibliotek.html", desc:"Bibliotek — manual media", imageCount:libraryImages }
       ];
       rows.forEach(row => {
         row.videoCount = row.page === "films-landscape.html" ? (videoEnabledDraft["films-landscape.html"] ? filmVideos : 0) :
           row.page === "arrangements-landscape.html" ? (videoEnabledDraft["arrangements-landscape.html"] ? arrangementVideos : 0) :
           row.page === "landscape-all.html" ? ((videoEnabledDraft["films-landscape.html"] ? filmVideos : 0) +
-            (videoEnabledDraft["arrangements-landscape.html"] ? arrangementVideos : 0)) : 0;
+            (videoEnabledDraft["arrangements-landscape.html"] ? arrangementVideos : 0)) :
+          row.page === "kafe_sandbeck.html" ? (videoEnabledDraft["kafe_sandbeck.html"] ? cafeVideos : 0) :
+          row.page === "bibliotek.html" ? (videoEnabledDraft["bibliotek.html"] ? libraryVideos : 0) : 0;
         row.calendar = calendarFor(row.page);
         row.entur = enturFor(row.page);
         if (row.calendar > 0) row.desc += " + Calendar";
         if (row.entur > 0) row.desc += " + Entur Tavla";
         row.count = row.imageCount + row.videoCount + (row.calendar > 0 ? 1 : 0) + (row.entur > 0 ? 1 : 0);
-        row.seconds = row.imageCount * posterSeconds + row.calendar + row.entur;
+        row.seconds = row.imageCount * (VIDEO_PAGES.includes(row.page) && !SCREEN_PAGES.includes(row.page) ? 10 : posterSeconds) + row.calendar + row.entur;
       });
 
       els.tbody.innerHTML = rows.map(r => `
         <tr>
           <td>${pill("ok","ok")} <a href="./${r.page}" target="_blank" rel="noopener noreferrer">${r.page}</a></td>
           <td class="muted">${r.desc}</td>
-          <td class="right"><input class="calendar-seconds" type="number" min="0" max="3600" step="1"
-            data-page="${r.page}" value="${r.calendar}" aria-label="Calendar seconds for ${r.page}"></td>
-          <td class="right"><input class="entur-seconds" type="number" min="0" max="3600" step="1"
-            data-page="${r.page}" value="${r.entur}" aria-label="Entur Tavla seconds for ${r.page}"></td>
+          <td class="right">${SCREEN_PAGES.includes(r.page) ?
+            '<input class="calendar-seconds" type="number" min="0" max="3600" step="1" data-page="' +
+            r.page + '" value="' + r.calendar + '" aria-label="Calendar seconds for ' + r.page + '">' : "—"}</td>
+          <td class="right">${SCREEN_PAGES.includes(r.page) ?
+            '<input class="entur-seconds" type="number" min="0" max="3600" step="1" data-page="' +
+            r.page + '" value="' + r.entur + '" aria-label="Entur Tavla seconds for ' + r.page + '">' : "—"}</td>
           <td class="right">${VIDEO_PAGES.includes(r.page) ?
             '<input type="checkbox" class="video-enabled" data-page="' + r.page + '" ' +
             (videoEnabledDraft[r.page] ? 'checked' : '') + ' aria-label="Muted video for ' + r.page + '">' :
@@ -298,7 +312,7 @@
       `).join("");
 
     } catch (e) {
-      els.tbody.innerHTML = `<tr><td colspan="6">${pill("ERROR","bad")} <span class="mono">${escapeHtml(String(e.message || e))}</span></td></tr>`;
+      els.tbody.innerHTML = `<tr><td colspan="7">${pill("ERROR","bad")} <span class="mono">${escapeHtml(String(e.message || e))}</span></td></tr>`;
     }
   }
 
@@ -462,12 +476,14 @@
   els.posterSeconds.addEventListener("input", renderCounts);
   els.tbody.addEventListener("change", event => {
     const input = event.target.closest("input.entur-seconds, input.calendar-seconds, input.video-enabled");
-    if (!input || !SCREEN_PAGES.includes(input.dataset.page)) return;
+    if (!input) return;
     if (input.classList.contains("video-enabled")) {
+      if (!VIDEO_PAGES.includes(input.dataset.page)) return;
       videoEnabledDraft[input.dataset.page] = input.checked;
       renderCounts();
       return;
     }
+    if (!SCREEN_PAGES.includes(input.dataset.page)) return;
     const value = Math.max(0, Math.min(3600, Math.round(safeNumber(input.value) ?? 0)));
     if (input.classList.contains("calendar-seconds")) calendarSecondsDraft[input.dataset.page] = value;
     else enturSecondsDraft[input.dataset.page] = value;

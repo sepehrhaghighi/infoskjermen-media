@@ -60,7 +60,7 @@ for (const filename of pages) {
     record(filename + ": CSP SHA-256 hashes do not match embedded scripts; run node scripts/check-security.mjs --fix");
   }
 }
-for (const filename of ["entur-slide.js", "kiosk-auto-reload.js", "klubben-contact.js", "signage-video.js", "films-landscape-runtime.js", "arrangements-landscape-runtime.js", "landscape-all-runtime.js", "status-runtime.js", "apps-script/InfoskjermenConfigService.gs"]) {
+for (const filename of ["entur-slide.js", "kiosk-auto-reload.js", "klubben-contact.js", "signage-video.js", "films-landscape-runtime.js", "arrangements-landscape-runtime.js", "landscape-all-runtime.js", "status-runtime.js", "standalone-media-runtime.js", "standalone-kiosk-refresh.js", "apps-script/InfoskjermenConfigService.gs"]) {
   try {
     new Script(readFileSync(path.join(root, filename), "utf8"), { filename });
   } catch (error) {
