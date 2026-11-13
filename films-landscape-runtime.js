@@ -451,20 +451,24 @@
 
     const baseVersion = data.updated ? ("?v=" + encodeURIComponent(data.updated)) : "";
 
-    const posters = (data.films || [])
-      .map((x) => x?.[FIELD])
-      .filter(Boolean)
-      .map((url) => ({
-        kind: "poster",
-        url,
-        v: baseVersion,
-        seconds: posterSeconds
-      }));
-
     const extraItems = await loadManualExtras(EXTRA_MANIFEST_URL, posterSeconds);
     const extraImages = window.SignageVideo.sort(extraItems.filter(it => it.kind !== "video"));
     const extraVideos = videoEnabled ? window.SignageVideo.sort(extraItems.filter(it => it.kind === "video")) : [];
-    let nextItems = mergeUniqueItems(posters, extraImages).concat(extraVideos);
+
+    // Insert a manual poster at the screening's chronological position only
+    // when its original filename exactly matches a DX title missing landscape.
+    // DX landscape images take priority; unmatched manual posters stay A–Z.
+    const posters = window.FilmPosterMatching.buildFilmPlaylist(
+      data.films || [], extraImages,
+      film => ({
+        kind: "poster",
+        url: film.landscape,
+        v: baseVersion,
+        seconds: posterSeconds
+      }),
+      image => image
+    );
+    let nextItems = mergeUniqueItems(posters, extraVideos);
 
     if (calendarSlideSeconds > 0) {
       nextItems.push({ kind: "calendar", seconds: calendarSlideSeconds });
