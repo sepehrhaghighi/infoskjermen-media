@@ -462,7 +462,7 @@
       }));
 
     const extraItems = await loadManualExtras(EXTRA_MANIFEST_URL, posterSeconds);
-    const extraImages = extraItems.filter(it => it.kind !== "video");
+    const extraImages = window.SignageVideo.sort(extraItems.filter(it => it.kind !== "video"));
     const extraVideos = videoEnabled ? window.SignageVideo.sort(extraItems.filter(it => it.kind === "video")) : [];
     let nextItems = mergeUniqueItems(posters, extraImages).concat(extraVideos);
 
