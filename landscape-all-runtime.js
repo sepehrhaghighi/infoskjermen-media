@@ -333,18 +333,19 @@
     const v1 = filmsData.updated ? ("?v=" + encodeURIComponent(filmsData.updated)) : "";
     const v2 = arrData.updated ? ("?v=" + encodeURIComponent(arrData.updated)) : "";
 
-    const films = (filmsData.films || [])
-      .filter(x => x?.[FIELD])
-      .map(x => ({
-        url: x[FIELD],
+    // Match manually supplied landscape posters by original filename to DX
+    // film titles; use the DX screening time for their playlist position.
+    const films = window.FilmPosterMatching.buildFilmPlaylist(
+      filmsData.films || [],
+      filmExtraItems.filter(it => it.kind !== "video"),
+      film => ({
+        url: film.landscape,
         v: v1,
         source: "film",
         date: ""
-      }));
-
-    const filmExtras = window.SignageVideo.sort(filmExtraItems.filter(it => it.kind !== "video")).map(it => ({
-      ...it, source: "film_extra", date: ""
-    }));
+      }),
+      image => ({ ...image, source: "film_extra", date: "" })
+    );
     const filmVideos = filmVideosEnabled ? window.SignageVideo.sort(
       filmExtraItems.filter(it => it.kind === "video" && window.SignageVideo.validUrl(it.url, "films"))
     ).map(it => ({...it, source: "film_extra", date: ""})) : [];
@@ -365,10 +366,11 @@
       arrExtraItems.filter(it => it.kind === "video" && window.SignageVideo.validUrl(it.url, "arrangements"))
     ).map(it => ({...it, source: "arrangement_extra", date: ""})) : [];
 
-    // Order: films -> film manual extras -> arrangements -> arrangement manual extras
+    // Order: chronological DX films (with matched manual posters inserted),
+    // unmatched manual films A–Z, film videos A–Z, then arrangements.
     const nextItems = mergeUniqueItems(
       films,
-      filmExtras.concat(filmVideos, arrs, arrExtras, arrVideos)
+      filmVideos.concat(arrs, arrExtras, arrVideos)
     );
 
     const changed =
