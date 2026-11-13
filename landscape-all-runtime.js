@@ -342,7 +342,7 @@
         date: ""
       }));
 
-    const filmExtras = filmExtraItems.filter(it => it.kind !== "video").map(it => ({
+    const filmExtras = window.SignageVideo.sort(filmExtraItems.filter(it => it.kind !== "video")).map(it => ({
       ...it, source: "film_extra", date: ""
     }));
     const filmVideos = filmVideosEnabled ? window.SignageVideo.sort(
@@ -358,7 +358,7 @@
         date: formatArrangementDateTimeRange(x.begin, x.end)
       }));
 
-    const arrExtras = arrExtraItems.filter(it => it.kind !== "video").map(it => ({
+    const arrExtras = window.SignageVideo.sort(arrExtraItems.filter(it => it.kind !== "video")).map(it => ({
       ...it, source: "arrangement_extra", date: ""
     }));
     const arrVideos = arrangementVideosEnabled ? window.SignageVideo.sort(
