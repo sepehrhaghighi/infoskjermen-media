@@ -21,7 +21,7 @@
 
   async function fetchJson(url) {
     const response = await fetch(url, { cache: "no-store" });
-    if (!response.ok) throw new Error("Kunne ikke hente data (HTTP " + response.status + ").");
+    if (!response.ok) throw new Error("Could not load data (HTTP " + response.status + ").");
     return response.json();
   }
 
@@ -53,40 +53,40 @@
     const counts = manualImageCounts(manualManifest);
     const covered = counts ? missing.filter(entry => counts.get(entry.key) === 1).length : 0;
     const updatedText = data?.updated
-      ? "films.json oppdatert: " + data.updated
-      : "films.json har ingen updated-verdi";
+      ? "films.json updated: " + data.updated
+      : "films.json has no updated timestamp";
 
     metaEl.innerHTML =
       '<span class="' + (missing.length ? "warn" : "ok") + '">' +
-      (missing.length ? missing.length + " film(er) mangler liggende plakat fra DX" :
-        "Ingen filmer mangler liggende plakat fra DX") + "</span>" +
-      (counts ? " · " + covered + " har en manuell plakat" : "") +
+      (missing.length ? missing.length + " film(s) missing DX landscape posters" :
+        "No films are missing DX landscape posters") + "</span>" +
+      (counts ? " · " + covered + " have a manual poster" : "") +
       " · " + escapeHtml(updatedText) +
-      " · Sist sjekket: " + escapeHtml(new Date().toLocaleString("nb-NO"));
+       " · Last checked: "  + escapeHtml(new Date().toLocaleString("nb-NO"));
 
     if (!missing.length) {
-      listEl.innerHTML = '<div class="empty ok">Ingen filmer mangler liggende plakat fra DX akkurat nå.</div>';
+      listEl.innerHTML = '<div class="empty ok">No films are missing DX landscape posters right now.</div>';
       return;
     }
 
     listEl.innerHTML = '<div class="card"><ol>' + missing.map(entry => {
       const count = counts ? counts.get(entry.key) || 0 : null;
       const state = count === null
-        ? '<span class="small">Kunne ikke kontrollere manuelle filer nå.</span>'
+        ? '<span class="small">Could not check manual uploads right now.</span>'
         : count > 1
-          ? '<span class="warn small">Flere manuelle filer matcher denne tittelen. Behold kun én fil for sikker plassering.</span>'
+          ? '<span class="warn small">Multiple manual files match this title. Keep only one file for reliable placement.</span>'
           : count === 1
-            ? '<span class="ok small">Manuell plakat er publisert og blir plassert etter filmens visningstid.</span>'
-            : '<span class="small">Ingen tilsvarende manuell plakat er publisert ennå.</span>';
+            ? '<span class="ok small">A manual poster is published and placed by the film’s screening time.</span>'
+            : '<span class="small">No matching manual poster has been published yet.</span>';
       return '<li><strong>' + escapeHtml(entry.title) + '</strong>' +
-        '<div class="small">Filnavn: <code class="filename">' + escapeHtml(entry.filename) + '</code> ' +
-        '<button type="button" class="copyName" data-filename="' + escapeHtml(entry.filename) + '">Kopier filnavn</button></div>' +
+        '<div class="small">Filename: <code class="filename">' + escapeHtml(entry.filename) + '</code> ' +
+        '<button type="button" class="copyName" data-filename="' + escapeHtml(entry.filename) + '">Copy filename</button></div>' +
         '<div>' + state + '</div></li>';
     }).join("") + "</ol></div>";
   }
 
   async function load() {
-    metaEl.textContent = "Laster…";
+    metaEl.textContent = "Loading…";
     try {
       const [data, manualManifest] = await Promise.all([
         fetchJson(FILMS_URL),
@@ -94,9 +94,9 @@
       ]);
       renderMissing(data, manualManifest);
     } catch (err) {
-      metaEl.innerHTML = '<span class="warn">Kunne ikke laste films.json</span>';
-      listEl.innerHTML = '<div class="empty">Feil ved lasting: ' +
-        escapeHtml(err instanceof Error && /^Kunne ikke hente data/.test(err.message) ? err.message : "Kontroller nettforbindelsen og prøv igjen.") + '</div>';
+      metaEl.innerHTML = '<span class="warn">Could not load films.json</span>';
+      listEl.innerHTML = '<div class="empty">Error loading data: ' +
+        escapeHtml(err instanceof Error && /^Could not load data/.test(err.message) ? err.message : "Check your connection and try again.") + '</div>';
     }
   }
 
@@ -107,9 +107,9 @@
     if (!filename) return;
     try {
       await navigator.clipboard.writeText(filename);
-      copyStatus.textContent = "Filnavn kopiert: " + filename;
+      copyStatus.textContent = "Filename copied: " + filename;
     } catch {
-      copyStatus.textContent = "Kunne ikke kopiere automatisk. Marker filnavnet og kopier det.";
+      copyStatus.textContent = "Could not copy automatically. Select the filename and copy it manually.";
     }
   });
 
