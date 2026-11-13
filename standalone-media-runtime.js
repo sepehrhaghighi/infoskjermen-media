@@ -49,10 +49,10 @@
           movies.push({kind:"video", name:String(entry.name||""), originalName:String(entry.originalName||""), url:url.href, v:""});
         } else {
           const url = imageUrl(entry);
-          if (url) pictures.push({kind:"image",name:String(entry.name||""),url});
+          if (url) pictures.push({kind:"image",name:String(entry.name||""),originalName:String(entry.originalName||entry.name||""),url});
         }
       }
-      const next = pictures.concat(window.SignageVideo.sort(movies));
+      const next = window.SignageVideo.sort(pictures).concat(window.SignageVideo.sort(movies));
       if (!items.length) {
         items = next;
         index = Math.min(index, Math.max(0, items.length - 1));
