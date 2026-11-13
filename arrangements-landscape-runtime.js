@@ -568,20 +568,23 @@
 
     const baseVersion = data.updated ? ("?v=" + encodeURIComponent(data.updated)) : "";
 
-    const posters = (data.arrangements || [])
-      .filter((x) => x?.[FIELD])
-      .map((x) => ({
-        kind: "image",
-        url: x[FIELD],
-        v: baseVersion,
-        date: formatArrangementDateTimeRange(x.begin, x.end),
-        seconds: posterSeconds
-      }));
-
     const extraItems = await loadManualExtras(EXTRA_MANIFEST_URL, posterSeconds);
     const extraImages = window.SignageVideo.sort(extraItems.filter(it => it.kind !== "video"));
     const extraVideos = videoEnabled ? window.SignageVideo.sort(extraItems.filter(it => it.kind === "video")) : [];
-    let nextItems = mergeUniqueItems(posters, extraImages).concat(extraVideos);
+    // Date-prefixed manual images join DX events by date. Their names are not
+    // matched to DX; undated manual images remain alphabetically at the end.
+    const posters = window.ArrangementDateOrder.buildArrangementPlaylist(
+      data.arrangements || [], extraImages,
+      event => ({
+        kind: "image",
+        url: event.landscape,
+        v: baseVersion,
+        date: formatArrangementDateTimeRange(event.begin, event.end),
+        seconds: posterSeconds
+      }),
+      image => image
+    );
+    let nextItems = mergeUniqueItems(posters, extraVideos);
 
     if (calendarSlideSeconds > 0) {
       nextItems.push({
