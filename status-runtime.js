@@ -71,7 +71,7 @@
 
   async function fetchJson(url) {
     const r = await fetch(url, { cache: "no-store" });
-    if (!r.ok) throw new Error(`${r.status} ${r.statusText} for ${url}`);
+    if (!r.ok) throw new Error(`Kunne ikke hente data (HTTP ${r.status}) fra ${url}`);
     return await r.json();
   }
 
@@ -282,7 +282,7 @@
 
       els.tbody.innerHTML = rows.map(r => `
         <tr>
-          <td>${pill("ok","ok")} <a href="./${r.page}" target="_blank" rel="noopener noreferrer">${r.page}</a></td>
+          <td>${pill("OK","ok")} <a href="./${r.page}" target="_blank" rel="noopener noreferrer">${r.page}</a></td>
           <td class="muted">${r.desc}</td>
           <td class="right">${SCREEN_PAGES.includes(r.page) ?
             '<input class="calendar-seconds" type="number" min="0" max="3600" step="1" data-page="' +
@@ -300,7 +300,7 @@
       `).join("");
 
     } catch (e) {
-      els.tbody.innerHTML = `<tr><td colspan="7">${pill("FEIL","bad")} <span class="mono">${escapeHtml(String(e.message || e))}</span></td></tr>`;
+      els.tbody.innerHTML = `<tr><td colspan="7">${pill("FEIL","bad")} <span class="mono">${escapeHtml(e instanceof Error && /^Kunne ikke hente data/.test(e.message) ? e.message : "Kunne ikke laste oversikten. Kontroller nettforbindelsen og prøv igjen.")}</span></td></tr>`;
     }
   }
 
