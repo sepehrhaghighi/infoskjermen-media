@@ -2,7 +2,7 @@
 <!-- Routine maintenance -->
 <html lang="no">
 <head>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' 'sha256-SQyPTT0bvEjZJJ71EH4DbYgw4tZmo11ztU8i+pU3Y+g=' https://script.google.com https://script.googleusercontent.com; style-src 'self' 'unsafe-inline'; img-src 'self' https://sepehrhaghighi.github.io data:; font-src 'self' data:; connect-src 'self' https://api.met.no; frame-src 'self' https://sepehrhaghighi.github.io https://vis-tavla.entur.no https://script.google.com https://script.googleusercontent.com; form-action 'none'; upgrade-insecure-requests">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://script.google.com https://script.googleusercontent.com; style-src 'self' 'unsafe-inline'; img-src 'self' https://sepehrhaghighi.github.io data:; font-src 'self' data:; connect-src 'self' https://api.met.no; frame-src 'self' https://sepehrhaghighi.github.io https://vis-tavla.entur.no https://script.google.com https://script.googleusercontent.com; form-action 'none'; upgrade-insecure-requests">
   <meta name="referrer" content="no-referrer">
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -89,12 +89,30 @@
       font-size: 13px;
       color: #bdbdbd;
     }
+    code.filename {
+      display: inline-block;
+      background: #202020;
+      color: #fff;
+      padding: 4px 6px;
+      border-radius: 5px;
+      overflow-wrap: anywhere;
+    }
+    h2 { font-size: 18px; margin-top: 0; }
+    #copyStatus { min-height: 1.2em; margin: 6px 0; }
   </style>
 </head>
 <body>
   <div class="wrap">
     <h1>Missing Features</h1>
     <div id="meta" class="meta">Laster…</div>
+
+    <section class="card" aria-label="Veiledning">
+      <h2>Slik legger du inn en manglende filmplakat</h2>
+      <p>Finn filmen i listen nedenfor. Gi den liggende plakaten <strong>nøyaktig filnavnet som foreslås</strong>, og last den opp i OneDrive-mappen <code>landscape_extra_films</code>.</p>
+      <p>Etter synkronisering matcher InfoSkjermen filnavnet med filmtittelen fra DX og plasserer plakaten <strong>kronologisk etter visningstidspunkt</strong> i både Film landscape og Landscape all.</p>
+      <p class="small">Bruk JPG/JPEG eller PNG. Forslaget bruker .jpg; hvis bildet er PNG, bruk .png i stedet. Det skal kun ligge én manuell plakat per filmtittel. Manuelle plakater uten treff vises fortsatt alfabetisk etter DX-filmene. Hvis DX senere leverer en landscape-plakat, får den forrang.</p>
+    </section>
+    <div id="copyStatus" class="small" aria-live="polite"></div>
 
     <div class="toolbar">
       <button id="reloadBtn" type="button">Oppdater nå</button>
@@ -104,126 +122,8 @@
     <div id="list"></div>
   </div>
 
-  <script>
-    (() => {
-      const FILMS_URL = "./assets/films.json";
-      const REFRESH_MS = 30 * 60 * 1000;
-
-      const metaEl = document.getElementById("meta");
-      const listEl = document.getElementById("list");
-      const reloadBtn = document.getElementById("reloadBtn");
-
-      function escapeHtml(value) {
-        return String(value ?? "")
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;")
-          .replace(/"/g, "&quot;")
-          .replace(/'/g, "&#39;");
-      }
-
-      function guessTitle(item, index) {
-        return (
-          item.title ||
-          item.name ||
-          item.film ||
-          item.movie ||
-          item.programTitle ||
-          item.originalTitle ||
-          `Film ${index + 1}`
-        );
-      }
-
-      function normalizeTitle(title) {
-        return String(title || "")
-          .toLowerCase()
-          .trim()
-          .replace(/\s+/g, " ");
-      }
-
-      async function fetchJson(url) {
-        const response = await fetch(url, { cache: "no-store" });
-        if (!response.ok) {
-          throw new Error(`${response.status} ${response.statusText}`);
-        }
-        return await response.json();
-      }
-
-      function renderMissing(data) {
-        const films = Array.isArray(data?.films) ? data.films : [];
-
-        const rawMissing = films
-          .map((item, index) => ({ item, index }))
-          .filter(({ item }) => item?.poster && !item?.landscape)
-          .map(({ item, index }) => ({
-            title: guessTitle(item, index)
-          }));
-
-        const seen = new Set();
-        const missing = [];
-
-        for (const entry of rawMissing) {
-          const key = normalizeTitle(entry.title);
-          if (!key || seen.has(key)) continue;
-          seen.add(key);
-          missing.push(entry);
-        }
-
-        const updatedText = data?.updated
-          ? `films.json oppdatert: ${data.updated}`
-          : "films.json har ingen updated-verdi";
-
-        metaEl.innerHTML = `
-          <span class="${missing.length ? "warn" : "ok"}">
-            ${missing.length
-              ? `${missing.length} film(er) mangler landscape`
-              : "Ingen filmer mangler landscape"}
-          </span>
-          · ${escapeHtml(updatedText)}
-          · Sist sjekket: ${escapeHtml(new Date().toLocaleString("nb-NO"))}
-        `;
-
-        if (!missing.length) {
-          listEl.innerHTML = `
-            <div class="empty ok">
-              Ingen filmer mangler landscape akkurat nå.
-            </div>
-          `;
-          return;
-        }
-
-        listEl.innerHTML = `
-          <div class="card">
-            <ol>
-              ${missing.map((entry, i) => `
-                <li><strong>Film ${i + 1}</strong> — ${escapeHtml(entry.title)}</li>
-              `).join("")}
-            </ol>
-          </div>
-        `;
-      }
-
-      async function load() {
-        metaEl.textContent = "Laster…";
-        try {
-          const data = await fetchJson(FILMS_URL);
-          renderMissing(data);
-        } catch (err) {
-          metaEl.innerHTML = `<span class="warn">Kunne ikke laste films.json</span>`;
-          listEl.innerHTML = `
-            <div class="empty">
-              Feil ved lasting: ${escapeHtml(err?.message || err)}
-            </div>
-          `;
-        }
-      }
-
-      reloadBtn.addEventListener("click", load);
-
-      load();
-      setInterval(load, REFRESH_MS);
-    })();
-  </script>
+  <script src="./film-title-matching.js"></script>
+  <script src="./missing-features-runtime.js"></script>
 <script src="./kiosk-auto-reload.js"></script>
 <script src="./standalone-kiosk-refresh.js"></script>
 </body>
