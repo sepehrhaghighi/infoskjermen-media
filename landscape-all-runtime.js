@@ -350,18 +350,19 @@
       filmExtraItems.filter(it => it.kind === "video" && window.SignageVideo.validUrl(it.url, "films"))
     ).map(it => ({...it, source: "film_extra", date: ""})) : [];
 
-    const arrs = (arrData.arrangements || [])
-      .filter(x => x?.[FIELD])
-      .map(x => ({
-        url: x[FIELD],
+    // Dates at the start of manual arrangement filenames determine position;
+    // the rest of the filename is just a label for staff.
+    const arrs = window.ArrangementDateOrder.buildArrangementPlaylist(
+      arrData.arrangements || [],
+      arrExtraItems.filter(it => it.kind !== "video"),
+      event => ({
+        url: event.landscape,
         v: v2,
         source: "arrangement",
-        date: formatArrangementDateTimeRange(x.begin, x.end)
-      }));
-
-    const arrExtras = window.SignageVideo.sort(arrExtraItems.filter(it => it.kind !== "video")).map(it => ({
-      ...it, source: "arrangement_extra", date: ""
-    }));
+        date: formatArrangementDateTimeRange(event.begin, event.end)
+      }),
+      image => ({...image, source: "arrangement_extra", date: ""})
+    );
     const arrVideos = arrangementVideosEnabled ? window.SignageVideo.sort(
       arrExtraItems.filter(it => it.kind === "video" && window.SignageVideo.validUrl(it.url, "arrangements"))
     ).map(it => ({...it, source: "arrangement_extra", date: ""})) : [];
@@ -370,7 +371,7 @@
     // unmatched manual films A–Z, film videos A–Z, then arrangements.
     const nextItems = mergeUniqueItems(
       films,
-      filmVideos.concat(arrs, arrExtras, arrVideos)
+      filmVideos.concat(arrs, arrVideos)
     );
 
     const changed =
