@@ -1,12 +1,12 @@
 <!doctype html>
 <!-- Routine maintenance -->
-<html lang="no">
+<html lang="nb">
 <head>
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://script.google.com https://script.googleusercontent.com; style-src 'self' 'unsafe-inline'; img-src 'self' https://sepehrhaghighi.github.io data:; font-src 'self' data:; connect-src 'self' https://api.met.no; frame-src 'self' https://sepehrhaghighi.github.io https://vis-tavla.entur.no https://script.google.com https://script.googleusercontent.com; form-action 'none'; upgrade-insecure-requests">
   <meta name="referrer" content="no-referrer">
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Missing Features</title>
+  <title>Manglende liggende filmplakater</title>
   <style>
     :root { color-scheme: dark; }
 
@@ -103,14 +103,14 @@
 </head>
 <body>
   <div class="wrap">
-    <h1>Missing Features</h1>
+    <h1>Manglende liggende filmplakater</h1>
     <div id="meta" class="meta">Laster…</div>
 
     <section class="card" aria-label="Veiledning">
       <h2>Slik legger du inn en manglende filmplakat</h2>
       <p>Finn filmen i listen nedenfor. Gi den liggende plakaten <strong>nøyaktig filnavnet som foreslås</strong>, og last den opp i OneDrive-mappen <code>landscape_extra_films</code>.</p>
-      <p>Etter synkronisering matcher InfoSkjermen filnavnet med filmtittelen fra DX og plasserer plakaten <strong>kronologisk etter visningstidspunkt</strong> i både Film landscape og Landscape all.</p>
-      <p class="small">Bruk JPG/JPEG eller PNG. Forslaget bruker .jpg; hvis bildet er PNG, bruk .png i stedet. Det skal kun ligge én manuell plakat per filmtittel. Manuelle plakater uten treff vises fortsatt alfabetisk etter DX-filmene. Hvis DX senere leverer en landscape-plakat, får den forrang.</p>
+      <p>Etter synkronisering matcher InfoSkjermen filnavnet med filmtittelen fra DX og plasserer plakaten <strong>kronologisk etter visningstidspunkt</strong> både i filmvisningen i liggende format og i den samlede liggende visningen.</p>
+      <p class="small">Bruk JPG/JPEG eller PNG. Forslaget bruker .jpg; hvis bildet er PNG, bruk .png i stedet. Det skal kun ligge én manuell plakat per filmtittel. Manuelle plakater uten treff vises fortsatt alfabetisk etter DX-filmene. Hvis DX senere leverer en liggende plakat, får den forrang.</p>
     </section>
     <div id="copyStatus" class="small" aria-live="polite"></div>
 
@@ -122,8 +122,8 @@
     <div id="list"></div>
   </div>
 
-  <script src="./film-title-matching.js"></script>
-  <script src="./missing-features-runtime.js"></script>
+  <script src="./film-title-matching.js?v=20261113-nb2"></script>
+  <script src="./missing-features-runtime.js?v=20261113-nb2"></script>
 <script src="./kiosk-auto-reload.js"></script>
 <script src="./standalone-kiosk-refresh.js"></script>
 </body>
