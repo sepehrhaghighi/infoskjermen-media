@@ -21,7 +21,7 @@
 
   async function fetchJson(url) {
     const response = await fetch(url, { cache: "no-store" });
-    if (!response.ok) throw new Error(response.status + " " + response.statusText);
+    if (!response.ok) throw new Error("Kunne ikke hente data (HTTP " + response.status + ").");
     return response.json();
   }
 
@@ -58,14 +58,14 @@
 
     metaEl.innerHTML =
       '<span class="' + (missing.length ? "warn" : "ok") + '">' +
-      (missing.length ? missing.length + " film(er) mangler landscape fra DX" :
-        "Ingen filmer mangler landscape fra DX") + "</span>" +
+      (missing.length ? missing.length + " film(er) mangler liggende plakat fra DX" :
+        "Ingen filmer mangler liggende plakat fra DX") + "</span>" +
       (counts ? " · " + covered + " har en manuell plakat" : "") +
       " · " + escapeHtml(updatedText) +
       " · Sist sjekket: " + escapeHtml(new Date().toLocaleString("nb-NO"));
 
     if (!missing.length) {
-      listEl.innerHTML = '<div class="empty ok">Ingen filmer mangler landscape fra DX akkurat nå.</div>';
+      listEl.innerHTML = '<div class="empty ok">Ingen filmer mangler liggende plakat fra DX akkurat nå.</div>';
       return;
     }
 
@@ -96,7 +96,7 @@
     } catch (err) {
       metaEl.innerHTML = '<span class="warn">Kunne ikke laste films.json</span>';
       listEl.innerHTML = '<div class="empty">Feil ved lasting: ' +
-        escapeHtml(err?.message || err) + '</div>';
+        escapeHtml(err instanceof Error && /^Kunne ikke hente data/.test(err.message) ? err.message : "Kontroller nettforbindelsen og prøv igjen.") + '</div>';
     }
   }
 
