@@ -151,7 +151,7 @@
       s.onerror = () => finish({
         ok: false,
         error: "network_error",
-        message: "Could not load config service."
+        message: "Kunne ikke hente innstillingene."
       });
 
       s.onload = () => {
@@ -160,7 +160,7 @@
             finish({
               ok: false,
               error: "empty_response",
-              message: "Config service returned no callback payload."
+              message: "Tjenesten for innstillinger sendte ikke noe svar."
             });
           }
         }, 250);
@@ -173,7 +173,7 @@
           finish({
             ok: false,
             error: "timeout",
-            message: "Config service request timed out."
+            message: "Forespørselen om innstillinger tok for lang tid."
           });
         }
       }, timeoutMs);
@@ -232,7 +232,7 @@
     const enturMap = normalizeDurationMap(enturSecondsDraft);
     const enturFor = page => enturMap[page] || 0;
 
-    els.tbody.innerHTML = `<tr><td colspan="7" class="muted">Loading…</td></tr>`;
+    els.tbody.innerHTML = `<tr><td colspan="7" class="muted">Laster…</td></tr>`;
 
     try {
       const [filmsData, arrData, extraData, arrExtraData] = await Promise.all([
@@ -260,12 +260,12 @@
       const landscapeAll = filmsLandscapeImageCount + arrangementsLandscapeImageCount;
 
       const rows = [
-        { page:"films-portrait.html", desc:"DX film posters (portrait)", imageCount:filmsPortrait },
-        { page:"films-landscape.html", desc:`DX film posters + ${extraLandscape} OneDrive image(s) — landscape_extra_films`, imageCount:filmsLandscapeImageCount },
-        { page:"arrangements-portrait.html", desc:"DX arrangement posters (portrait)", imageCount:arrPortrait },
-        { page:"arrangements-landscape.html", desc:`DX arrangement posters + ${extraArrLandscape} OneDrive image(s) — landscape_extra_arrangements`, imageCount:arrangementsLandscapeImageCount },
-        { page:"portrait-all.html", desc:"DX films + arrangements (portrait)", imageCount:portraitAll },
-        { page:"landscape-all.html", desc:`DX films + arrangements, plus ${extraLandscape + extraArrLandscape} OneDrive image(s) (both landscape folders)`, imageCount:landscapeAll }
+        { page:"films-portrait.html", desc:"DX-filmplakater (stående format)", imageCount:filmsPortrait },
+        { page:"films-landscape.html", desc:`DX-filmplakater + ${extraLandscape} bilde(r) fra OneDrive — landscape_extra_films`, imageCount:filmsLandscapeImageCount },
+        { page:"arrangements-portrait.html", desc:"DX-arrangementsplakater (stående format)", imageCount:arrPortrait },
+        { page:"arrangements-landscape.html", desc:`DX-arrangementsplakater + ${extraArrLandscape} bilde(r) fra OneDrive — landscape_extra_arrangements`, imageCount:arrangementsLandscapeImageCount },
+        { page:"portrait-all.html", desc:"DX-filmer og arrangementer (stående format)", imageCount:portraitAll },
+        { page:"landscape-all.html", desc:`DX-filmer og arrangementer + ${extraLandscape + extraArrLandscape} bilde(r) fra OneDrive (begge mappene for liggende format)`, imageCount:landscapeAll }
       ];
       rows.forEach(row => {
         row.videoCount = row.page === "films-landscape.html" ? (videoEnabledDraft["films-landscape.html"] ? filmVideos : 0) :
@@ -274,8 +274,8 @@
             (videoEnabledDraft["arrangements-landscape.html"] ? arrangementVideos : 0)) : 0;
         row.calendar = calendarFor(row.page);
         row.entur = enturFor(row.page);
-        if (row.calendar > 0) row.desc += " + Calendar";
-        if (row.entur > 0) row.desc += " + Entur Tavla";
+        if (row.calendar > 0) row.desc += " + kalender";
+        if (row.entur > 0) row.desc += " + Entur-tavle";
         row.count = row.imageCount + row.videoCount + (row.calendar > 0 ? 1 : 0) + (row.entur > 0 ? 1 : 0);
         row.seconds = row.imageCount * posterSeconds + row.calendar + row.entur;
       });
@@ -286,21 +286,21 @@
           <td class="muted">${r.desc}</td>
           <td class="right">${SCREEN_PAGES.includes(r.page) ?
             '<input class="calendar-seconds" type="number" min="0" max="3600" step="1" data-page="' +
-            r.page + '" value="' + r.calendar + '" aria-label="Calendar seconds for ' + r.page + '">' : "—"}</td>
+            r.page + '" value="' + r.calendar + '" aria-label="Kalender, sekunder for ' + r.page + '">' : "—"}</td>
           <td class="right">${SCREEN_PAGES.includes(r.page) ?
             '<input class="entur-seconds" type="number" min="0" max="3600" step="1" data-page="' +
-            r.page + '" value="' + r.entur + '" aria-label="Entur Tavla seconds for ' + r.page + '">' : "—"}</td>
+            r.page + '" value="' + r.entur + '" aria-label="Entur-tavle, sekunder for ' + r.page + '">' : "—"}</td>
           <td class="right">${VIDEO_PAGES.includes(r.page) ?
             '<input type="checkbox" class="video-enabled" data-page="' + r.page + '" ' +
-            (videoEnabledDraft[r.page] ? 'checked' : '') + ' aria-label="Muted video for ' + r.page + '">' :
-            (r.page === "landscape-all.html" ? "Follows sources" : "—")}</td>
+            (videoEnabledDraft[r.page] ? 'checked' : '') + ' aria-label="Video uten lyd for ' + r.page + '">' :
+            (r.page === "landscape-all.html" ? "Følger kildene" : "—")}</td>
           <td class="right mono">${r.count}</td>
-          <td class="right mono">${fmtDuration(r.seconds)}${r.videoCount ? " + video runtime" : ""}</td>
+          <td class="right mono">${fmtDuration(r.seconds)}${r.videoCount ? " + videolengde" : ""}</td>
         </tr>
       `).join("");
 
     } catch (e) {
-      els.tbody.innerHTML = `<tr><td colspan="7">${pill("ERROR","bad")} <span class="mono">${escapeHtml(String(e.message || e))}</span></td></tr>`;
+      els.tbody.innerHTML = `<tr><td colspan="7">${pill("FEIL","bad")} <span class="mono">${escapeHtml(String(e.message || e))}</span></td></tr>`;
     }
   }
 
@@ -310,7 +310,7 @@
     // Apps Script can take longer to start just after a new deployment.
     // Retry one failed read before falling back to defaults.
     if (!result.ok && ["timeout", "network_error", "empty_response"].includes(result.error)) {
-      setStatus("Config service did not respond. Retrying…", "warn");
+      setStatus("Tjenesten for innstillinger svarte ikke. Prøver igjen…", "warn");
       await new Promise(resolve => setTimeout(resolve, 800));
       result = await loadConfigJSONP({}, 16000);
     }
@@ -319,7 +319,7 @@
       return {
         ok: false,
         error: result.error || "read_failed",
-        message: result.message || "Config read failed."
+        message: result.message || "Kunne ikke lese innstillingene."
       };
     }
 
@@ -329,7 +329,7 @@
       return {
         ok: false,
         error: payload.error || "read_failed",
-        message: payload.message || "Config read failed."
+        message: payload.message || "Kunne ikke lese innstillingene."
       };
     }
 
@@ -342,7 +342,7 @@
     return {
       ok: false,
       error: "empty_config",
-      message: "Config service returned no usable config."
+      message: "Tjenesten returnerte ingen gyldige innstillinger."
     };
   }
 
@@ -352,7 +352,7 @@
     const name = "__config_post_" + Math.random().toString(36).slice(2);
     const frame = document.createElement("iframe");
     frame.name = name;
-    frame.title = "Configuration update response";
+    frame.title = "Svar fra oppdatering av innstillinger";
     frame.hidden = true;
     frame.referrerPolicy = "no-referrer";
     const form = document.createElement("form");
@@ -401,31 +401,31 @@
   async function applyConfig() {
     const key = (els.updateKey.value || "").trim();
     if (!key) {
-      setStatus("Update key is required.", "bad");
+      setStatus("Tilgangsnøkkel må fylles ut.", "bad");
       
       return;
     }
     const cfg = readUiConfig();
-    setStatus("Applying configuration using HTTPS POST…", "warn");
+    setStatus("Lagrer innstillingene via HTTPS POST…", "warn");
     
     try {
       submitConfigPost(cfg, key);
     } catch (error) {
       els.updateKey.value = "";
-      setStatus("Configuration request could not be submitted.", "bad");
+      setStatus("Kunne ikke sende forespørselen om å lagre innstillingene.", "bad");
       
       return;
     }
     els.updateKey.value = "";
     const result = await verifyConfigPost(cfg);
     if (!result.ok) {
-      setStatus("Update could not be verified. Check Apps Script deployment and retry.", "warn");
+      setStatus("Kunne ikke bekrefte at endringene ble lagret. Kontroller Apps Script og prøv igjen.", "warn");
       
       return;
     }
     setUiConfig(result.read.config);
     await renderCounts();
-    setStatus("Applied successfully.", "ok");
+    setStatus("Innstillingene er lagret.", "ok");
     
   }
 
@@ -480,7 +480,7 @@
 
   (async () => {
     disableUi(true);
-    setStatus("Loading config…", "warn");
+    setStatus("Laster innstillinger…", "warn");
     
 
     els.updateKey.value = "";
@@ -496,10 +496,10 @@
       els.fadeMs.value = DEFAULTS.fadeMs;
       els.refreshSeconds.value = DEFAULTS.manifestRefreshSeconds;
 
-      setStatus("Could not load saved settings. Refresh the page; Apply is disabled to protect your settings.", "bad");
+      setStatus("Kunne ikke laste lagrede innstillinger. Oppdater siden. Lagring er deaktivert for å beskytte innstillingene.", "bad");
       
     } else {
-      setStatus("Config loaded.", "ok");
+      setStatus("Innstillingene er lastet inn.", "ok");
       
     }
 
