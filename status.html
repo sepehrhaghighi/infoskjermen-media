@@ -1,12 +1,12 @@
 <!doctype html>
 <!-- Routine maintenance -->
-<html lang="en">
+<html lang="nb">
 <head>
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://script.google.com https://script.googleusercontent.com; style-src 'self' 'unsafe-inline'; img-src 'self' https://sepehrhaghighi.github.io data:; font-src 'self' data:; connect-src 'self' https://api.met.no; frame-src 'self' https://sepehrhaghighi.github.io https://vis-tavla.entur.no https://script.google.com https://script.googleusercontent.com; form-action https://script.google.com; upgrade-insecure-requests">
   <meta name="referrer" content="no-referrer">
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Status & Timing Control</title>
+  <title>Status og visningsinnstillinger</title>
 
   <style>
     :root { color-scheme: dark; }
@@ -148,58 +148,58 @@
   <div id="bgOverlay"></div>
 
   <div class="wrap">
-    <h1>Status & timing control</h1>
+    <h1>Status og visningsinnstillinger</h1>
 
     <div class="card">
       <div class="row">
-        <label>Seconds per poster
+        <label>Sekunder per plakat
           <input id="posterSeconds" type="number" min="1" placeholder="7">
         </label>
 
-        <label>Fade (ms)
+        <label>Overgang (ms)
           <input id="fadeMs" type="number" min="0" placeholder="500">
         </label>
 
-        <label>Refresh (sec)
+        <label>Oppdateringsintervall (sek)
           <input id="refreshSeconds" type="number" min="30" placeholder="60">
         </label>
       </div>
 
       <div class="row" style="margin-top:10px;">
-        <label>Update key
-          <input id="updateKey" type="password" placeholder="(required)">
+        <label>Tilgangsnøkkel
+          <input id="updateKey" type="password" placeholder="(påkrevd)">
         </label>
-        <button id="applyBtn">Apply</button>
+        <button id="applyBtn">Lagre innstillinger</button>
       </div>
 
-      <div id="statusBox" class="statusLine status-muted small">Ready.</div>
+      <div id="statusBox" class="statusLine status-muted small">Klar.</div>
 
       <div class="muted small" style="margin-top:10px;">
-        Apply saves the display timing and muted-video settings. Set Calendar or Entur to 0 seconds to turn that slide off for a screen.
+        Lagre-knappen oppdaterer visningstidene og innstillingene for videoer uten lyd. Sett Kalender eller Entur til 0 sekunder for å slå av den aktuelle visningen på en skjerm.
       </div>
     </div>
 
     <div class="card">
       <div class="muted small" style="margin-bottom:10px;">
-        Counts include DX posters and images/videos from the Films and Arrangements OneDrive folders.
-        Estimated duration excludes videos, which play in full.
+        Antall inkluderer DX-plakater samt bilder og videoer fra OneDrive-mappene for film og arrangementer.
+        Beregnet varighet inkluderer ikke videoer, som spilles av i full lengde.
       </div>
 
       <div class="tableWrap">
         <table>
           <thead>
             <tr>
-              <th>Page</th>
-              <th>What it shows</th>
-              <th class="right">Calendar (sec, 0=off)</th>
-              <th class="right">Entur Tavla (sec, 0=off)</th>
-              <th class="right">Videos (muted)</th>
-               <th class="right">Count</th>
-              <th class="right">Suggested duration</th>
+              <th>Visningsside</th>
+              <th>Innhold</th>
+              <th class="right">Kalender (sek, 0=av)</th>
+              <th class="right">Entur-tavle (sek, 0=av)</th>
+              <th class="right">Videoer (uten lyd)</th>
+               <th class="right">Antall</th>
+              <th class="right">Beregnet varighet</th>
             </tr>
           </thead>
           <tbody id="tbody">
-            <tr><td colspan="7" class="muted">Loading…</td></tr>
+            <tr><td colspan="7" class="muted">Laster…</td></tr>
           </tbody>
         </table>
       </div>
@@ -207,8 +207,8 @@
 
     <div class="card">
       <div class="row" style="gap:10px;">
-        <a href="./calendar-slide.html" target="_blank">calendar-slide</a>
-        <a href="./missing-features.html" target="_blank">missing-features</a>
+        <a href="./calendar-slide.html" target="_blank">Kalendervisning</a>
+        <a href="./missing-features.html" target="_blank">Manglende filmplakater</a>
       </div>
     </div>
   </div>
