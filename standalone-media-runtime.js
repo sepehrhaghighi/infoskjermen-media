@@ -20,7 +20,25 @@
   let index = 0;
   let frontIsA = false;
   let heldVideo = null;
+  let heldDocument = null;
+  function releaseHeldDocument() {
+    if (!heldDocument) return;
+    heldDocument.release();
+    heldDocument = null;
+  }
   const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+  function documentUrl(item) {
+    if (!item || typeof item.url !== "string") return "";
+    try {
+      const base = new URL("./assets/kafe_sandbeck/", document.baseURI);
+      const url = new URL(item.url, document.baseURI);
+      if (url.origin !== base.origin || !url.pathname.startsWith(base.pathname) ||
+          !url.pathname.toLowerCase().endsWith(".pdf") || url.username || url.password) return "";
+      if (item.v != null && item.v !== "") url.searchParams.set("v", String(item.v));
+      return url.href;
+    } catch { return ""; }
+  }
 
   function imageUrl(item) {
     if (!item || typeof item.url !== "string") return "";
@@ -40,9 +58,13 @@
       if (!res.ok) throw new Error("Manifest HTTP " + res.status);
       const data = await res.json();
       if (!Array.isArray(data.items)) throw new Error("Invalid manifest");
-      const pictures = [], movies = [];
+      const pictures = [], documents = [], movies = [];
       for (const entry of data.items) {
-        if (entry?.kind === "video") {
+        if (group === "kafe_sandbeck" && entry?.kind === "document") {
+          const url = documentUrl(entry);
+          if (url) documents.push({kind: "document", name: String(entry.name || ""),
+            originalName: String(entry.originalName || ""), url});
+        } else if (entry?.kind === "video") {
           if (!window.SignageVideo.validUrl(entry.url, group)) continue;
           const url = new URL(entry.url);
           if (entry.v != null && entry.v !== "") url.searchParams.set("v", String(entry.v));
@@ -52,7 +74,9 @@
           if (url) pictures.push({kind:"image",name:String(entry.name||""),originalName:String(entry.originalName||entry.name||""),url});
         }
       }
-      const next = window.SignageVideo.sort(pictures).concat(window.SignageVideo.sort(movies));
+      // Documents follow all images; videos always come last.
+      const next = window.SignageVideo.sort(pictures)
+        .concat(window.SignageVideo.sort(documents), window.SignageVideo.sort(movies));
       if (!items.length) {
         items = next;
         index = Math.min(index, Math.max(0, items.length - 1));
@@ -89,6 +113,7 @@
     previous.classList.remove("show");
     await sleep(FADE_MS + 50);
     if (heldVideo) { heldVideo.release(); heldVideo = null; }
+    releaseHeldDocument();
     previous.removeAttribute("src");
     frontIsA = !frontIsA;
     await sleep(IMAGE_MS);
@@ -97,13 +122,41 @@
   async function showVideo(item) {
     message.style.display = "none";
     const previous = heldVideo;
+    const previousDocument = heldDocument;
     heldVideo = null;
+    heldDocument = null;
     const result = await window.SignageVideo.play(item,{
       hold:true,
-      onPlaying: () => previous?.release()
+      onPlaying: () => {
+        previous?.release();
+        previousDocument?.release();
+      }
     });
-    if (!result) previous?.release();
+    if (!result) {
+      previous?.release();
+      previousDocument?.release();
+    }
     heldVideo = result;
+  }
+
+  async function showDocument(item) {
+    if (!window.CafePdfRenderer) return;
+    message.style.display = "none";
+    const previousVideo = heldVideo;
+    const previousDocument = heldDocument;
+    heldVideo = null;
+    heldDocument = null;
+    const finalPage = await window.CafePdfRenderer.play(item, {
+      onReady: () => {
+        previousVideo?.release();
+        previousDocument?.release();
+      }
+    });
+    if (!finalPage) {
+      previousVideo?.release();
+      previousDocument?.release();
+    }
+    heldDocument = finalPage;
   }
 
   async function run() {
@@ -117,6 +170,7 @@
         if (!items.length) {
           if (window.KioskAutoReload.reloadAtBoundary(0)) return;
           if (heldVideo) { heldVideo.release(); heldVideo = null; }
+          releaseHeldDocument();
           posterA.classList.remove("show");
           posterB.classList.remove("show");
           message.style.display = "flex";
@@ -132,6 +186,7 @@
       }
       const item = items[index++];
       if (item.kind === "video") await showVideo(item);
+      else if (item.kind === "document") await showDocument(item);
       else await showImage(item);
     }
   }
