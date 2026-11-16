@@ -185,6 +185,11 @@
         if (!items.length) continue;
       }
       const item = items[index++];
+      // Café uses a three-hour hard-page reload. Remember the item currently playing
+      // so it can be replayed after the browser refreshes, including for PDFs/videos.
+      if (group === "kafe_sandbeck" && typeof window.KioskAutoReload.rememberIndex === "function") {
+        window.KioskAutoReload.rememberIndex(index - 1);
+      }
       if (item.kind === "video") await showVideo(item);
       else if (item.kind === "document") await showDocument(item);
       else await showImage(item);
