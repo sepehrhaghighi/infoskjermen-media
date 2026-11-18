@@ -610,6 +610,12 @@
   }
 
   async function tick() {
+    // Keep the Arrangements sequence paused while Films occupies this screen.
+    // Content/config refreshes continue in the background; playback resumes afterward.
+    if (window.ArrangementsFilmScheduleActive === true) {
+      tickTimer = setTimeout(tick, 1000);
+      return;
+    }
     if (!items.length) {
       tickTimer = setTimeout(tick, 2000);
       return;
