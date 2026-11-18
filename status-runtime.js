@@ -124,19 +124,39 @@
   }
 
   const WEEKDAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+  const OSLO_CLOCK = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/Oslo", year:"numeric", month:"2-digit", day:"2-digit",
+    hour:"2-digit", minute:"2-digit", hourCycle:"h23"
+  });
+  function osloLocalMinute() {
+    const p = Object.fromEntries(OSLO_CLOCK.formatToParts(new Date())
+      .filter(part => part.type !== "literal").map(part => [part.type,part.value]));
+    return p.year + "-" + p.month + "-" + p.day + "T" + p.hour + ":" + p.minute;
+  }
   function normalizeSchedule(raw) {
     const cfg = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {};
-    return {
-      enabled: cfg.enabled === true,
-      windows: (Array.isArray(cfg.windows) ? cfg.windows : []).slice(0,24).map(w => ({
-        start: String(w?.start || ""), end: String(w?.end || "")
-      })),
-      weekly: (Array.isArray(cfg.weekly) ? cfg.weekly : []).slice(0,16).map(w => ({
-        days: (Array.isArray(w?.days) ? w.days : []).map(Number)
-          .filter(n => Number.isInteger(n) && n>=1 && n<=7).sort((a,b) => a-b),
-        start:String(w?.start || ""), end:String(w?.end || "")
-      }))
-    };
+    const now = osloLocalMinute();
+    const windows = (Array.isArray(cfg.windows) ? cfg.windows : []).slice(0,24)
+      .map(w => ({ start: String(w?.start || ""), end: String(w?.end || "") }))
+      .filter(w => !w.end || w.end > now);
+    const weekly = (Array.isArray(cfg.weekly) ? cfg.weekly : []).slice(0,16).map(w => ({
+      days: (Array.isArray(w?.days) ? w.days : []).map(Number)
+        .filter(n => Number.isInteger(n) && n>=1 && n<=7).sort((a,b) => a-b),
+      start:String(w?.start || ""), end:String(w?.end || "")
+    }));
+    return { enabled: cfg.enabled === true && (windows.length > 0 || weekly.length > 0),
+      windows, weekly };
+  }
+  function removeExpiredWindowRows() {
+    const now = osloLocalMinute();
+    for (const row of Array.from(els.scheduleWindows.children)) {
+      const start = row.querySelector(".windowStart")?.value || "";
+      const end = row.querySelector(".windowEnd")?.value || "";
+      if (start && end && start < end && end <= now) row.remove();
+    }
+    if (!els.scheduleWindows.children.length && !els.scheduleWeekly.children.length) {
+      els.scheduleEnabled.checked = false;
+    }
   }
   function addWindowRow(start = "", end = "") {
     if (els.scheduleWindows.children.length >= 24) return;
@@ -202,6 +222,7 @@
     cfg.weekly.forEach(w => addWeeklyRow(w.days,w.start,w.end));
   }
   function readScheduleUi() {
+    removeExpiredWindowRows();
     const windows = Array.from(els.scheduleWindows.children).map(row => ({
       start:row.querySelector(".windowStart").value,
       end:row.querySelector(".windowEnd").value
@@ -594,6 +615,8 @@
 
   els.scheduleAddWindow.addEventListener("click", () => addWindowRow());
   els.scheduleAddWeekly.addEventListener("click", () => addWeeklyRow());
+  // Remove expired one-time entries even when Status stays open all day.
+  setInterval(removeExpiredWindowRows, 60 * 1000);
   document.getElementById("arrangementsFilmScheduler").addEventListener("click", event => {
     const remove = event.target.closest("button.removeSchedule");
     if (remove) remove.closest(".scheduleEntry")?.remove();

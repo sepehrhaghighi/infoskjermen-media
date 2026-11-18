@@ -1,4 +1,4 @@
-const VERSION_TAG = "display-config-2026-11-18-arrangements-films-schedule-v7";
+const VERSION_TAG = "display-config-2026-11-18-expired-window-cleanup-v8";
 
 const SCREEN_PAGES = ["films-portrait.html","films-landscape.html","arrangements-portrait.html","arrangements-landscape.html","portrait-all.html","landscape-all.html"];
 const VIDEO_PAGES = ["films-landscape.html","arrangements-landscape.html","kafe_sandbeck.html","bibliotek.html"];
@@ -71,16 +71,19 @@ function validLocalDateTime_(value) {
 function validClockTime_(value) {
   return typeof value === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
 }
+function osloLocalDateTimeNow_() {
+  return Utilities.formatDate(new Date(), "Europe/Oslo", "yyyy-MM-dd'T'HH:mm");
+}
 function normalizeArrangementsFilmSchedule_(raw) {
   const cfg = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {};
   const windows = Array.isArray(cfg.windows) ? cfg.windows : [];
   const weekly = Array.isArray(cfg.weekly) ? cfg.weekly : [];
-  return {
-    enabled: parseBoolean_(cfg.enabled),
-    windows: windows.slice(0,24).filter(function(w) {
-      return w && validLocalDateTime_(w.start) && validLocalDateTime_(w.end) && w.start < w.end;
-    }).map(function(w) { return {start:w.start, end:w.end}; }),
-    weekly: weekly.slice(0,16).filter(function(w) {
+  const nowOslo = osloLocalDateTimeNow_();
+  const activeWindows = windows.slice(0,24).filter(function(w) {
+    return w && validLocalDateTime_(w.start) && validLocalDateTime_(w.end) &&
+      w.start < w.end && w.end > nowOslo;
+  }).map(function(w) { return {start:w.start, end:w.end}; });
+  const weeklyRules = weekly.slice(0,16).filter(function(w) {
       return w && Array.isArray(w.days) && validClockTime_(w.start) &&
         validClockTime_(w.end) && w.start !== w.end &&
         w.days.some(function(d){ return Number.isInteger(Number(d)) && Number(d) >= 1 && Number(d) <= 7; });
@@ -89,7 +92,11 @@ function normalizeArrangementsFilmSchedule_(raw) {
         return Number.isInteger(d) && d >= 1 && d <= 7;
       });
       return {days:Array.from(new Set(days)).sort(function(a,b){ return a-b; }), start:w.start, end:w.end};
-    })
+    });
+  return {
+    enabled: parseBoolean_(cfg.enabled) && (activeWindows.length > 0 || weeklyRules.length > 0),
+    windows: activeWindows,
+    weekly: weeklyRules
   };
 }
 
