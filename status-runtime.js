@@ -13,7 +13,8 @@
     enturSlideSecondsByPage: {"films-portrait.html":0,"films-landscape.html":0,"arrangements-portrait.html":0,"arrangements-landscape.html":0,"portrait-all.html":0,"landscape-all.html":0},
     videoEnabledByPage: {"films-landscape.html":false,"arrangements-landscape.html":false},
     fadeMs: 500,
-    manifestRefreshSeconds: 60
+    manifestRefreshSeconds: 60,
+    arrangementsLandscapeFilmSchedule: {enabled:false,windows:[],weekly:[]}
   };
 
   const SCREEN_PAGES = ["films-portrait.html","films-landscape.html","arrangements-portrait.html","arrangements-landscape.html","portrait-all.html","landscape-all.html"];
@@ -21,6 +22,7 @@
   let calendarSecondsDraft = { ...DEFAULTS.calendarSlideSecondsByPage };
   const VIDEO_PAGES = ["films-landscape.html","arrangements-landscape.html"];
   let videoEnabledDraft = { ...DEFAULTS.videoEnabledByPage };
+  let scheduleSupported = false;
 
   const els = {
     posterSeconds: document.getElementById("posterSeconds"),
@@ -31,7 +33,13 @@
     applyBtn: document.getElementById("applyBtn"),
     tbody: document.getElementById("tbody"),
     statusBox: document.getElementById("statusBox"),
-    bgLayer: document.getElementById("bgLayer")
+    bgLayer: document.getElementById("bgLayer"),
+    scheduleEnabled: document.getElementById("scheduleEnabled"),
+    scheduleWindows: document.getElementById("scheduleWindows"),
+    scheduleWeekly: document.getElementById("scheduleWeekly"),
+    scheduleAddWindow: document.getElementById("scheduleAddWindow"),
+    scheduleAddWeekly: document.getElementById("scheduleAddWeekly"),
+    scheduleSupport: document.getElementById("scheduleSupport")
   };
 
   function setStatus(msg, tone = "muted") {
@@ -50,6 +58,8 @@
     els.fadeMs.disabled = disabled;
     els.refreshSeconds.disabled = disabled;
     els.applyBtn.disabled = disabled;
+    document.querySelectorAll("#arrangementsFilmScheduler input, #arrangementsFilmScheduler button")
+      .forEach(input => { input.disabled = disabled || !scheduleSupported; });
   }
 
   function escapeHtml(value) {
@@ -112,6 +122,111 @@
     const src = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {};
     return Object.fromEntries(VIDEO_PAGES.map(page => [page, src[page] === true]));
   }
+
+  const WEEKDAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+  function normalizeSchedule(raw) {
+    const cfg = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {};
+    return {
+      enabled: cfg.enabled === true,
+      windows: (Array.isArray(cfg.windows) ? cfg.windows : []).slice(0,24).map(w => ({
+        start: String(w?.start || ""), end: String(w?.end || "")
+      })),
+      weekly: (Array.isArray(cfg.weekly) ? cfg.weekly : []).slice(0,16).map(w => ({
+        days: (Array.isArray(w?.days) ? w.days : []).map(Number)
+          .filter(n => Number.isInteger(n) && n>=1 && n<=7).sort((a,b) => a-b),
+        start:String(w?.start || ""), end:String(w?.end || "")
+      }))
+    };
+  }
+  function addWindowRow(start = "", end = "") {
+    if (els.scheduleWindows.children.length >= 24) return;
+    const row = document.createElement("div");
+    row.className = "scheduleEntry";
+    row.innerHTML = '<label>From <input type="datetime-local" class="windowStart"></label>' +
+      '<label>Until <input type="datetime-local" class="windowEnd"></label>' +
+      '<button type="button" class="removeSchedule">Remove</button>';
+    row.querySelector(".windowStart").value = start;
+    row.querySelector(".windowEnd").value = end;
+    els.scheduleWindows.appendChild(row);
+  }
+  function addWeeklyRow(days = [], start = "17:00", end = "22:00") {
+    if (els.scheduleWeekly.children.length >= 16) return;
+    const row = document.createElement("div");
+    row.className = "scheduleEntry";
+    const daysContainer = document.createElement("div");
+    daysContainer.className = "weekDays";
+    WEEKDAYS.forEach((day,i) => {
+      const label = document.createElement("label");
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.className = "weekday";
+      input.value = String(i+1);
+      input.checked = days.includes(i+1);
+      label.appendChild(input);
+      label.appendChild(document.createTextNode(day));
+      daysContainer.appendChild(label);
+    });
+    const wrap = document.createElement("div");
+    const heading = document.createElement("div");
+    heading.textContent = "Days";
+    heading.className = "muted small";
+    wrap.append(heading, daysContainer);
+    row.appendChild(wrap);
+    const from = document.createElement("label");
+    from.textContent = "From ";
+    const fromInput = document.createElement("input");
+    fromInput.type = "time";
+    fromInput.className = "weeklyStart";
+    fromInput.value = start;
+    from.appendChild(fromInput);
+    const until = document.createElement("label");
+    until.textContent = "Until ";
+    const untilInput = document.createElement("input");
+    untilInput.type = "time";
+    untilInput.className = "weeklyEnd";
+    untilInput.value = end;
+    until.appendChild(untilInput);
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.textContent = "Remove";
+    remove.className = "removeSchedule";
+    row.append(from, until, remove);
+    els.scheduleWeekly.appendChild(row);
+  }
+  function setScheduleUi(raw) {
+    const cfg = normalizeSchedule(raw);
+    els.scheduleEnabled.checked = cfg.enabled;
+    els.scheduleWindows.replaceChildren();
+    els.scheduleWeekly.replaceChildren();
+    cfg.windows.forEach(w => addWindowRow(w.start,w.end));
+    cfg.weekly.forEach(w => addWeeklyRow(w.days,w.start,w.end));
+  }
+  function readScheduleUi() {
+    const windows = Array.from(els.scheduleWindows.children).map(row => ({
+      start:row.querySelector(".windowStart").value,
+      end:row.querySelector(".windowEnd").value
+    }));
+    const weekly = Array.from(els.scheduleWeekly.children).map(row => ({
+      days:Array.from(row.querySelectorAll(".weekday:checked")).map(ch => Number(ch.value)),
+      start:row.querySelector(".weeklyStart").value,
+      end:row.querySelector(".weeklyEnd").value
+    }));
+    for (const w of windows) {
+      if (!w.start || !w.end || w.start >= w.end) {
+        throw new Error("Each date/time window must have an end after its start.");
+      }
+    }
+    for (const w of weekly) {
+      if (!w.days.length || !w.start || !w.end || w.start === w.end) {
+        throw new Error("Each weekly row needs weekdays and different start/end times.");
+      }
+    }
+    if (els.scheduleEnabled.checked && !windows.length && !weekly.length) {
+      throw new Error("Add a date/time or weekly rule before enabling the Films schedule.");
+    }
+    return { enabled: els.scheduleEnabled.checked, windows, weekly };
+  }
+
   function configsMatch(a, b) {
     const enturLeft = normalizeDurationMap(a.enturSlideSecondsByPage);
     const enturRight = normalizeDurationMap(b.enturSlideSecondsByPage);
@@ -123,7 +238,9 @@
       Number(a.fadeMs) === Number(b.fadeMs) &&
       Number(a.manifestRefreshSeconds) === Number(b.manifestRefreshSeconds) &&
       SCREEN_PAGES.every(page => enturLeft[page] === enturRight[page] && calendarLeft[page] === calendarRight[page]) &&
-      VIDEO_PAGES.every(page => videoA[page] === videoB[page]);
+      VIDEO_PAGES.every(page => videoA[page] === videoB[page]) &&
+      (!scheduleSupported || JSON.stringify(normalizeSchedule(a.arrangementsLandscapeFilmSchedule)) ===
+        JSON.stringify(normalizeSchedule(b.arrangementsLandscapeFilmSchedule)));
   }
 
   function loadConfigJSONP(extraParams = {}, timeoutMs = 16000) {
@@ -201,6 +318,13 @@
     enturSecondsDraft = normalizeDurationMap(cfg.enturSlideSecondsByPage);
     calendarSecondsDraft = normalizeDurationMap(cfg.calendarSlideSecondsByPage);
     videoEnabledDraft = normalizeVideoMap(cfg.videoEnabledByPage);
+    scheduleSupported = Object.prototype.hasOwnProperty.call(cfg, "arrangementsLandscapeFilmSchedule");
+    setScheduleUi(cfg.arrangementsLandscapeFilmSchedule || DEFAULTS.arrangementsLandscapeFilmSchedule);
+    els.scheduleSupport.textContent = scheduleSupported
+      ? "Schedule settings are supported by the deployed configuration service."
+      : "Deploy the updated Google Apps Script to enable scheduling.";
+    document.querySelectorAll("#arrangementsFilmScheduler input, #arrangementsFilmScheduler button")
+      .forEach(input => { input.disabled = !scheduleSupported; });
     if (cfg.fadeMs != null) els.fadeMs.value = cfg.fadeMs;
     if (refresh != null) els.refreshSeconds.value = refresh;
   }
@@ -211,6 +335,8 @@
       calendarSlideSecondsByPage: normalizeDurationMap(calendarSecondsDraft),
       enturSlideSecondsByPage: normalizeDurationMap(enturSecondsDraft),
       videoEnabledByPage: normalizeVideoMap(videoEnabledDraft),
+      arrangementsLandscapeFilmSchedule: scheduleSupported ? readScheduleUi()
+        : DEFAULTS.arrangementsLandscapeFilmSchedule,
       fadeMs: Math.max(0, safeNumber(els.fadeMs.value) ?? DEFAULTS.fadeMs),
       manifestRefreshSeconds: Math.max(30, safeNumber(els.refreshSeconds.value) ?? DEFAULTS.manifestRefreshSeconds)
     };
@@ -370,6 +496,9 @@
       fadeMs: String(cfg.fadeMs),
       manifestRefreshSeconds: String(cfg.manifestRefreshSeconds)
     };
+    if (scheduleSupported) {
+      params.arrangementsLandscapeFilmSchedule = JSON.stringify(cfg.arrangementsLandscapeFilmSchedule);
+    }
     for (const [fieldName, value] of Object.entries(params)) {
       const input = document.createElement("input");
       input.type = "hidden";
@@ -405,7 +534,12 @@
       
       return;
     }
-    const cfg = readUiConfig();
+    let cfg;
+    try { cfg = readUiConfig(); }
+    catch (err) {
+      setStatus(String(err.message || err), "bad");
+      return;
+    }
     setStatus("Applying configuration using HTTPS POST…", "warn");
     
     try {
@@ -458,6 +592,12 @@
     }
   }
 
+  els.scheduleAddWindow.addEventListener("click", () => addWindowRow());
+  els.scheduleAddWeekly.addEventListener("click", () => addWeeklyRow());
+  document.getElementById("arrangementsFilmScheduler").addEventListener("click", event => {
+    const remove = event.target.closest("button.removeSchedule");
+    if (remove) remove.closest(".scheduleEntry")?.remove();
+  });
   els.applyBtn.addEventListener("click", applyConfig);
   window.addEventListener("beforeunload", () => { els.updateKey.value = ""; });
 

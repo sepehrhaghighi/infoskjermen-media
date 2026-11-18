@@ -61,6 +61,18 @@
     .row{ display:flex; gap:12px; flex-wrap: wrap; align-items:center; }
     label{ display:flex; gap:8px; align-items:center; }
 
+    input[type="datetime-local"],input[type="time"]{
+      width: max-content; max-width: 100%;
+      padding: 7px; border-radius: 9px; border: 1px solid #353535;
+      color: #fff; background: rgba(15,15,15,0.9); color-scheme: dark;
+    }
+    .scheduleEntry { display:flex; flex-wrap:wrap; align-items:center; gap:12px;
+      border-bottom:1px solid rgba(255,255,255,.1);padding:12px 0; }
+    .scheduleEntry label { flex-direction:column;align-items:flex-start;gap:4px; }
+    .scheduleEntry .weekDays {display:flex;flex-wrap:wrap;gap:8px;}
+    .scheduleEntry .weekDays label { flex-direction:row;gap:4px;align-items:center; }
+    .scheduleEntry button {align-self:end;}
+    .scheduleBlock {margin-top:12px;}
     input[type="number"], input[type="password"], input[type="url"]{
       width: 150px;
       padding: 6px 8px;
@@ -179,6 +191,28 @@
       </div>
     </div>
 
+    <div class="card" id="arrangementsFilmScheduler">
+      <h2 style="margin:0 0 6px;font-size:18px;">Arrangements Landscape — show Films on a schedule</h2>
+      <p class="muted small" style="margin:0 0 10px;">
+        During these times, the Arrangements Landscape screen shows the normal Films Landscape playlist.
+        Outside the schedule it automatically shows Arrangements again. Times use Europe/Oslo.
+        Save your changes with the Apply button above.
+      </p>
+      <label><input type="checkbox" id="scheduleEnabled"> Enable scheduled Films takeover</label>
+      <div id="scheduleSupport" class="muted small" style="margin-top:8px;"></div>
+      <div class="scheduleBlock">
+        <b>Specific date and time windows</b>
+        <div id="scheduleWindows"></div>
+        <button id="scheduleAddWindow" type="button">Add date/time window</button>
+      </div>
+      <div class="scheduleBlock">
+        <b>Repeat weekly</b>
+        <div id="scheduleWeekly"></div>
+        <button id="scheduleAddWeekly" type="button">Add weekly hours</button>
+        <p class="muted small">For an overnight period (e.g. Friday 20:00–02:00), select the day it starts.</p>
+      </div>
+    </div>
+
     <div class="card">
       <div class="muted small" style="margin-bottom:10px;">
         Counts include DX posters and images/videos from the Films and Arrangements OneDrive folders.
@@ -213,6 +247,6 @@
     </div>
   </div>
 
-<script src="./status-runtime.js?v=20261113-en4"></script>
+<script src="./status-runtime.js?v=20261118-arr-schedule-v1"></script>
 </body>
 </html>

@@ -1,4 +1,4 @@
-const VERSION_TAG = "display-config-2026-11-12-four-video-screens-v6";
+const VERSION_TAG = "display-config-2026-11-18-arrangements-films-schedule-v7";
 
 const SCREEN_PAGES = ["films-portrait.html","films-landscape.html","arrangements-portrait.html","arrangements-landscape.html","portrait-all.html","landscape-all.html"];
 const VIDEO_PAGES = ["films-landscape.html","arrangements-landscape.html","kafe_sandbeck.html","bibliotek.html"];
@@ -10,6 +10,7 @@ const DEFAULTS = {
   videoEnabledByPage: {"films-landscape.html":false,"arrangements-landscape.html":false,"kafe_sandbeck.html":false,"bibliotek.html":false},
   fadeMs: 500,
   manifestRefreshSeconds: 60,
+  arrangementsLandscapeFilmSchedule: { enabled: false, windows: [], weekly: [] }
 };
 
 function getScriptProps_() {
@@ -50,6 +51,48 @@ function normalizeVideoPages_(raw) {
   return result;
 }
 
+
+/**
+ * Norway-local schedule values; datetime strings are local wall-clock times
+ * (YYYY-MM-DDTHH:mm) rather than UTC timestamps.
+ * One-off windows: [start,end). Weekly rules allow crossing midnight.
+ */
+function validLocalDateTime_(value) {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) return false;
+  const y = Number(value.slice(0,4));
+  const m = Number(value.slice(5,7));
+  const d = Number(value.slice(8,10));
+  const h = Number(value.slice(11,13));
+  const min = Number(value.slice(14,16));
+  const date = new Date(Date.UTC(y,m-1,d));
+  return y >= 2020 && y <= 2100 && m >= 1 && m <= 12 && h <= 23 && min <= 59 &&
+    date.getUTCFullYear() === y && date.getUTCMonth() === m-1 && date.getUTCDate() === d;
+}
+function validClockTime_(value) {
+  return typeof value === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
+}
+function normalizeArrangementsFilmSchedule_(raw) {
+  const cfg = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {};
+  const windows = Array.isArray(cfg.windows) ? cfg.windows : [];
+  const weekly = Array.isArray(cfg.weekly) ? cfg.weekly : [];
+  return {
+    enabled: parseBoolean_(cfg.enabled),
+    windows: windows.slice(0,24).filter(function(w) {
+      return w && validLocalDateTime_(w.start) && validLocalDateTime_(w.end) && w.start < w.end;
+    }).map(function(w) { return {start:w.start, end:w.end}; }),
+    weekly: weekly.slice(0,16).filter(function(w) {
+      return w && Array.isArray(w.days) && validClockTime_(w.start) &&
+        validClockTime_(w.end) && w.start !== w.end &&
+        w.days.some(function(d){ return Number.isInteger(Number(d)) && Number(d) >= 1 && Number(d) <= 7; });
+    }).map(function(w) {
+      const days = w.days.map(Number).filter(function(d) {
+        return Number.isInteger(d) && d >= 1 && d <= 7;
+      });
+      return {days:Array.from(new Set(days)).sort(function(a,b){ return a-b; }), start:w.start, end:w.end};
+    })
+  };
+}
+
 function normalizeConfig_(cfg) {
   cfg = cfg || {};
 
@@ -77,6 +120,7 @@ function normalizeConfig_(cfg) {
 
     enturSlideSecondsByPage: normalizeDurationPages_(cfg.enturSlideSecondsByPage),
     videoEnabledByPage: normalizeVideoPages_(cfg.videoEnabledByPage),
+    arrangementsLandscapeFilmSchedule: normalizeArrangementsFilmSchedule_(cfg.arrangementsLandscapeFilmSchedule),
 
     fadeMs: clampInt(
       cfg.fadeMs,
@@ -193,6 +237,15 @@ function incomingFromParams_(params) {
     if (!incoming.videoEnabledByPage || Array.isArray(incoming.videoEnabledByPage) ||
         typeof incoming.videoEnabledByPage !== "object") {
       throw new Error("videoEnabledByPage must be a JSON object.");
+    }
+  }
+
+  if (Object.prototype.hasOwnProperty.call(params, "arrangementsLandscapeFilmSchedule")) {
+    incoming.arrangementsLandscapeFilmSchedule = JSON.parse(String(params.arrangementsLandscapeFilmSchedule));
+    if (!incoming.arrangementsLandscapeFilmSchedule ||
+        typeof incoming.arrangementsLandscapeFilmSchedule !== "object" ||
+        Array.isArray(incoming.arrangementsLandscapeFilmSchedule)) {
+      throw new Error("arrangementsLandscapeFilmSchedule must be a JSON object.");
     }
   }
 
