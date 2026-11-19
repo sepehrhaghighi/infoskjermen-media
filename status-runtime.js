@@ -380,6 +380,54 @@
     return posterCount + " posters/images · " + videoCount + " videos · " +
       calendarCount + " Calendar · " + enturCount + " Entur Tavla";
   }
+
+  // Match the Missing Features page's definition of films lacking DX landscapes.
+  // Do not warn about a playable gap when exactly one manual image fills it.
+  function filmPosterGapNotice(films, manualManifest) {
+    const matching = window.FilmPosterMatching;
+    if (!matching) return {
+      tone: "warning",
+      text: "Landscape poster check unavailable."
+    };
+    const seen = new Set();
+    const missingDxKeys = [];
+    for (const film of (Array.isArray(films) ? films : [])) {
+      if (!film?.poster || film?.landscape) continue;
+      const key = matching.normalizeTitle(matching.titleOf(film));
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      missingDxKeys.push(key);
+    }
+    if (!missingDxKeys.length) return null;
+
+    if (!Array.isArray(manualManifest?.items)) {
+      return {
+        tone: "warning",
+        text: missingDxKeys.length + " film" + (missingDxKeys.length === 1 ? "" : "s") +
+          " missing DX landscape posters; manual coverage could not be checked."
+      };
+    }
+
+    const manualCounts = new Map();
+    for (const file of manualManifest.items) {
+      if (!file?.url || file.kind === "video" || file.kind === "document") continue;
+      const key = matching.keyFromFilename(file.originalName || file.name);
+      if (key) manualCounts.set(key, (manualCounts.get(key) || 0) + 1);
+    }
+    const uncovered = missingDxKeys.filter(key => manualCounts.get(key) !== 1).length;
+    const covered = missingDxKeys.length - uncovered;
+    if (uncovered) {
+      let text = uncovered + " film" + (uncovered === 1 ? "" : "s") +
+        " missing a landscape poster";
+      if (covered) text += " (" + covered + " covered by manual uploads)";
+      return {tone:"warning", text};
+    }
+    return {
+      tone:"covered",
+      text: missingDxKeys.length + " missing DX poster" +
+        (missingDxKeys.length === 1 ? "" : "s") + " covered by manual uploads"
+    };
+  }
   async function renderCounts() {
     const posterSeconds = Math.max(1, safeNumber(els.posterSeconds.value) ?? DEFAULTS.posterSeconds);
     const calendarMap = normalizeDurationMap(calendarSecondsDraft);
@@ -393,7 +441,7 @@
       const [filmsData, arrData, extraData, arrExtraData] = await Promise.all([
         fetchJson(FILMS_URL),
         fetchJson(ARR_URL),
-        fetchJson(EXTRA_URL).catch(() => ({ items: [] })),
+        fetchJson(EXTRA_URL).catch(() => null),
         fetchJson(ARR_EXTRA_URL).catch(() => ({ items: [] }))
       ]);
 
@@ -403,6 +451,7 @@
       const extraArrLandscape = countExtraItems(arrExtraData);
       const filmVideos = countVideos(extraData);
       const arrangementVideos = countVideos(arrExtraData);
+      const filmGapNotice = filmPosterGapNotice(films, extraData);
 
       const filmsPortrait      = countField(films, "poster");
       const filmsLandscapeBase = countField(films, "landscape");
@@ -416,7 +465,7 @@
 
       const rows = [
         { page:"films-portrait.html", desc:"DX film posters (portrait)", imageCount:filmsPortrait },
-        { page:"films-landscape.html", desc:`DX film posters + ${extraLandscape} OneDrive image(s) — landscape_extra_films`, imageCount:filmsLandscapeImageCount },
+        { page:"films-landscape.html", desc:`DX film posters + ${extraLandscape} OneDrive image(s) — landscape_extra_films`, imageCount:filmsLandscapeImageCount, filmGapNotice },
         { page:"arrangements-portrait.html", desc:"DX arrangement posters (portrait)", imageCount:arrPortrait },
         { page:"arrangements-landscape.html", desc:`DX arrangement posters + ${extraArrLandscape} OneDrive image(s) — landscape_extra_arrangements`, imageCount:arrangementsLandscapeImageCount },
         { page:"portrait-all.html", desc:"DX films + arrangements (portrait)", imageCount:portraitAll },
@@ -438,7 +487,11 @@
       els.tbody.innerHTML = rows.map(r => `
         <tr>
           <td>${pill("ok","ok")} <a href="./${r.page}" target="_blank" rel="noopener noreferrer">${r.page}</a></td>
-          <td class="muted">${r.desc}</td>
+          <td class="muted">${r.desc}${r.filmGapNotice ?
+            '<div class="filmPosterNotice ' + r.filmGapNotice.tone + '">' +
+            (r.filmGapNotice.tone === "warning" ? '⚠ ' : '✓ ') +
+            escapeHtml(r.filmGapNotice.text) +
+            ' — <a href="./missing-features.html">Check Missing Features</a></div>' : ""}</td>
           <td class="right">${SCREEN_PAGES.includes(r.page) ?
             '<input class="calendar-seconds" type="number" min="0" max="3600" step="1" data-page="' +
             r.page + '" value="' + r.calendar + '" aria-label="Calendar seconds for ' + r.page + '">' : "—"}</td>
