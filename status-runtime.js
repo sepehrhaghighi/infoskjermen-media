@@ -372,6 +372,14 @@
   }
 
   function countVideos(data) { return Array.isArray(data?.items) ? data.items.filter(x => x?.url && x.kind === "video").length : 0; }
+  function formatCountBreakdown(row) {
+    const posterCount = row.imageCount;
+    const videoCount = row.videoCount;
+    const calendarCount = row.calendar > 0 ? 1 : 0;
+    const enturCount = row.entur > 0 ? 1 : 0;
+    return posterCount + " posters/images · " + videoCount + " videos · " +
+      calendarCount + " Calendar · " + enturCount + " Entur Tavla";
+  }
   async function renderCounts() {
     const posterSeconds = Math.max(1, safeNumber(els.posterSeconds.value) ?? DEFAULTS.posterSeconds);
     const calendarMap = normalizeDurationMap(calendarSecondsDraft);
@@ -441,7 +449,8 @@
             '<input type="checkbox" class="video-enabled" data-page="' + r.page + '" ' +
             (videoEnabledDraft[r.page] ? 'checked' : '') + ' aria-label="Muted video for ' + r.page + '">' :
             (r.page === "landscape-all.html" ? "Follows sources" : "—")}</td>
-          <td class="right mono">${r.count}</td>
+          <td class="right"><div class="mono countTotal">${r.count}</div>
+            <div class="countBreakdown">(${formatCountBreakdown(r)})</div></td>
           <td class="right mono">${fmtDuration(r.seconds)}${r.videoCount ? " + video runtime" : ""}</td>
         </tr>
       `).join("");
