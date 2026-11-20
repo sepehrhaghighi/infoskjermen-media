@@ -424,8 +424,8 @@
     }
     return {
       tone:"covered",
-      text: missingDxKeys.length + " missing DX poster" +
-        (missingDxKeys.length === 1 ? "" : "s") + " covered by manual uploads"
+      text: "All film landscape posters available (" + covered +
+        " supplied manually)"
     };
   }
   async function renderCounts() {

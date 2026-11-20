@@ -19,7 +19,9 @@
   }
 
   function keyFromFilename(filename) {
-    const name = String(filename || "").replace(/\.(?:jpg|jpeg|png)$/i, "");
+    // Files saved with visible extensions can end up as "ViQueens.jpg.jpg".
+    // Strip repeated image extensions so these still match the DX film title.
+    const name = String(filename || "").replace(/(?:\.(?:jpe?g|png))+$/i, "");
     return normalizeTitle(name);
   }
 
